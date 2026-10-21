@@ -1,0 +1,25 @@
+# Secretos y configuracion local (NUNCA subir)
+.env
+.env.*
+!.env.example
+
+# Dependencias
+node_modules/
+
+# Audios y archivos generados (el repositorio es publico)
+backend/uploads/
+*.wav
+*.mp3
+*.ogg
+
+# Entorno de Python para el analisis de audio
+audio-processing/venv/
+__pycache__/
+*.pyc
+
+# Compilados, registros y sistema
+dist/
+build/
+*.log
+.DS_Store
+Thumbs.db

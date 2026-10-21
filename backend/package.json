@@ -1,0 +1,27 @@
+{
+  "name": "vocalanalytics-backend",
+  "version": "0.1.0",
+  "description": "API REST de VocalAnalytics (autenticacion, RBAC y base para el analisis de audio)",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "crear-superadmin": "node scripts/crear-superadmin.js",
+    "test": "node --test \"tests/*.test.js\""
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.11.0",
+    "zod": "^3.23.8"
+  }
+}
