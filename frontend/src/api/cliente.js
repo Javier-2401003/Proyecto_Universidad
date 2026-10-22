@@ -74,6 +74,31 @@ export async function pedir(ruta, { metodo = 'GET', cuerpo } = {}) {
   return datos;
 }
 
+// Descarga un archivo protegido (por ejemplo, el audio de una llamada) y lo
+// devuelve como Blob. Un <audio src> no puede enviar el token, por eso se pide asi.
+export async function pedirArchivo(ruta) {
+  const token = obtenerToken();
+
+  let respuesta;
+  try {
+    respuesta = await fetch(`${URL_BASE}${ruta}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch {
+    throw new ErrorApi(
+      0,
+      'SIN_CONEXION',
+      'No se pudo conectar con el servidor. Compruebe que el backend este encendido.'
+    );
+  }
+
+  if (!respuesta.ok) {
+    const datos = await respuesta.json().catch(() => null);
+    throw errorDeRespuesta(respuesta.status, datos, token);
+  }
+  return respuesta.blob();
+}
+
 // Envia un formulario multipart (archivos). Usa XMLHttpRequest porque fetch no
 // informa el avance de la subida. alProgreso recibe un numero de 0 a 100.
 export function enviarFormulario(ruta, formulario, alProgreso) {

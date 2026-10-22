@@ -1,8 +1,8 @@
 # Frontend - VocalAnalytics
 
 Interfaz web en React + Vite. Por ahora incluye el login, el menú lateral según los
-permisos del usuario, la gestión de usuarios (listar y crear) y la carga de audios
-por lotes (con datos simulados, ver más abajo).
+permisos del usuario, la gestión de usuarios (listar y crear), la carga de audios
+por lotes y el detalle de una llamada (estas dos con datos simulados, ver más abajo).
 
 ## Puesta en marcha
 Requisitos: Node.js 20 o superior y el backend funcionando (ver `README.md` de la raíz).
@@ -45,19 +45,34 @@ src/
 El menú y la protección de la ruta ya dependen de `usuario.permisos`: no hace falta
 tocar nada más. El backend vuelve a comprobar los permisos en cada petición.
 
-## Carga de audios por lotes (modo de prueba)
-El contrato está en `docs/api.md`. Mientras el backend no tenga esos endpoints, la
-pantalla usa **datos simulados** (`src/api/simulacion/lotes.js`) y muestra el aviso
-"Modo de prueba". Los archivos no salen de la computadora.
+## Modo de prueba (carga de lotes y detalle de llamada)
+Los contratos están en `docs/api.md`. Mientras el backend no tenga los endpoints de
+`/llamadas`, estas pantallas usan **datos simulados** (`src/api/simulacion/`) y muestran
+el aviso "Modo de prueba". Los archivos no salen de la computadora.
 
+- Para usar el backend real, cree `frontend/.env` con `VITE_SIMULAR_LLAMADAS=false` y
+  reinicie `npm run dev`. Cuando los endpoints estén en `main`, cambie el valor por
+  defecto en `src/api/simulacion/activa.js` a `false`.
+- Los datos simulados viven en memoria: al recargar la página (F5) se pierden y hay que
+  cargar un lote de nuevo.
+
+### Carga de audios por lotes
 - Solo el rol **Supervisor** puede cargar lotes (permiso de escritura en `CARGA_LOTES`);
   el SuperAdmin solo puede consultar el módulo.
 - La simulación aplica las mismas reglas del contrato: 5, 10 o 15 archivos WAV/MP3 de
   hasta 25 MB, audios duplicados y agente válido.
 - Un archivo cuyo nombre contenga `error` termina en estado ERROR, para probar ese caso.
-- Para usar el backend real, cree `frontend/.env` con `VITE_SIMULAR_CARGA_LOTES=false`
-  y reinicie `npm run dev`. Cuando los endpoints estén en `main`, cambie el valor por
-  defecto de `SIMULAR` en `src/api/lotes.js` a `false`.
+- El lote en pantalla queda en la dirección (`/carga-lotes?lote=1`), así que al volver
+  del detalle de una llamada se sigue viendo.
+
+### Detalle de una llamada (`/llamadas/:id`)
+- Se abre desde la carga de lotes, haciendo clic en una llamada **Completada**.
+- Muestra el puntaje final (odómetro de 0 a 100), la clasificación, el diagnóstico, los
+  puntajes de texto y voz, el mapa de sentimiento por hablante, las alertas y la
+  transcripción. Al hacer clic en un tiempo se resalta la frase (y, con audio real, el
+  reproductor salta a ese segundo).
+- La simulación alterna tres conversaciones de ejemplo: positiva, cliente problemático
+  y falla del agente (con audio de baja confianza).
 
 ## Sesión
 - El token se guarda en `sessionStorage`: sobrevive a una recarga y se borra al

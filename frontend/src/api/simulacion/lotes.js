@@ -81,6 +81,16 @@ export async function obtenerLote(idLote) {
   return estadoActual(lote);
 }
 
+// Para la simulacion del detalle de llamada: la llamada con su estado actual y su lote.
+export function buscarLlamada(idLlamada) {
+  for (const lote of lotes.values()) {
+    const actual = estadoActual(lote);
+    const llamada = actual.llamadas.find((l) => l.id_llamada === idLlamada);
+    if (llamada) return { lote: actual, llamada };
+  }
+  return null;
+}
+
 // Las mismas reglas y codigos de error que POST /llamadas/lotes en docs/api.md.
 function validar(idAgente, archivos) {
   if (!Number.isInteger(idAgente)) {

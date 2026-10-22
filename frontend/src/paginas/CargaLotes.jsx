@@ -2,6 +2,7 @@
 // agregan 5, 10 o 15 audios WAV/MP3 y, tras subirlos, se sigue el avance del
 // procesamiento de cada llamada.
 import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   CircleAlert,
   CircleCheck,
@@ -46,7 +47,16 @@ function erroresLocales(archivos) {
 export default function CargaLotes({ nombre }) {
   const { tienePermiso } = useSesion();
   const puedeCargar = tienePermiso('CARGA_LOTES', 'escribir');
-  const [lote, setLote] = useState(null);
+  // El lote en pantalla va en la direccion (?lote=12): al volver del detalle de
+  // una llamada, el seguimiento del lote sigue ahi.
+  const [parametros, setParametros] = useSearchParams();
+  const idLote = Number(parametros.get('lote')) || null;
+  const [loteSubido, setLoteSubido] = useState(null);
+
+  function alSubir(lote) {
+    setLoteSubido(lote);
+    setParametros({ lote: String(lote.id_lote) });
+  }
 
   return (
     <section>
@@ -65,10 +75,15 @@ export default function CargaLotes({ nombre }) {
 
       {!puedeCargar ? (
         <p className="alerta">Su usuario puede consultar este modulo, pero no tiene permiso para cargar lotes.</p>
-      ) : lote ? (
-        <ResultadoLote loteInicial={lote} alTerminar={() => setLote(null)} />
+      ) : idLote ? (
+        <ResultadoLote
+          key={idLote}
+          idLote={idLote}
+          loteInicial={loteSubido?.id_lote === idLote ? loteSubido : null}
+          alTerminar={() => setParametros({})}
+        />
       ) : (
-        <FormularioLote alSubir={setLote} />
+        <FormularioLote alSubir={alSubir} />
       )}
     </section>
   );
@@ -257,24 +272,55 @@ const ESTADOS_LOTE = {
   CON_ERRORES: 'Completado con errores',
 };
 
-// Muestra el lote recien subido y consulta su estado hasta que termina.
-function ResultadoLote({ loteInicial, alTerminar }) {
+// Muestra el lote y consulta su estado cada pocos segundos hasta que termina.
+// loteInicial es la respuesta de la subida; sin ella (al volver de otra
+// pantalla) el lote se pide al backend.
+function ResultadoLote({ idLote, loteInicial, alTerminar }) {
   const [lote, setLote] = useState(loteInicial);
   const [errorConsulta, setErrorConsulta] = useState('');
-  const enProceso = lote.estado_lote === 'PROCESANDO';
+  const estado = lote?.estado_lote;
 
   useEffect(() => {
-    if (!enProceso) return undefined;
-    const temporizador = setTimeout(() => {
-      obtenerLote(loteInicial.id_lote)
+    if (estado && estado !== 'PROCESANDO') return undefined;
+    let activo = true;
+    const consultar = () =>
+      obtenerLote(idLote)
         .then((actual) => {
+          if (!activo) return;
           setLote(actual);
           setErrorConsulta('');
         })
-        .catch((excepcion) => setErrorConsulta(excepcion.message));
-    }, INTERVALO_CONSULTA_MS);
-    return () => clearTimeout(temporizador);
-  }, [lote, enProceso, loteInicial.id_lote]);
+        .catch((excepcion) => {
+          if (!activo) return;
+          setErrorConsulta(excepcion.message);
+          // Si el lote no existe, reintentar no sirve de nada.
+          if (excepcion.estado === 404) clearInterval(intervalo);
+        });
+    if (!estado) consultar();
+    const intervalo = setInterval(consultar, INTERVALO_CONSULTA_MS);
+    return () => {
+      activo = false;
+      clearInterval(intervalo);
+    };
+  }, [idLote, estado]);
+
+  if (!lote) {
+    return errorConsulta ? (
+      <div className="formulario">
+        <p className="alerta alerta--error" role="alert">
+          {errorConsulta}
+        </p>
+        <div className="formulario__acciones">
+          <button type="button" className="boton boton--primario" onClick={alTerminar}>
+            <RotateCcw size={18} aria-hidden="true" />
+            Cargar otro lote
+          </button>
+        </div>
+      </div>
+    ) : (
+      <Cargando texto="Cargando el lote..." />
+    );
+  }
 
   const completadas = lote.llamadas.filter((l) => l.estado_procesamiento === 'COMPLETADO').length;
 
@@ -319,7 +365,13 @@ function ResultadoLote({ loteInicial, alTerminar }) {
             <li key={llamada.id_llamada} className="archivo">
               <FileAudio size={18} aria-hidden="true" />
               <div className="archivo__datos">
-                <span className="archivo__nombre">{llamada.nombre_archivo_original}</span>
+                {llamada.estado_procesamiento === 'COMPLETADO' ? (
+                  <Link to={`/llamadas/${llamada.id_llamada}`} className="archivo__nombre enlace">
+                    {llamada.nombre_archivo_original}
+                  </Link>
+                ) : (
+                  <span className="archivo__nombre">{llamada.nombre_archivo_original}</span>
+                )}
                 {llamada.mensaje_error && <small className="campo__error">{llamada.mensaje_error}</small>}
               </div>
               <span className={`etiqueta etiqueta--${llamada.estado_procesamiento.toLowerCase()}`}>

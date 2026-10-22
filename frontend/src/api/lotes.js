@@ -1,13 +1,11 @@
 // Carga de audios por lotes. Contrato: docs/api.md, seccion "Carga de audios por lotes".
-//
 // Mientras el backend no tenga estos endpoints, se usan datos simulados
-// (api/simulacion/lotes.js). Para usar el backend real ponga
-// VITE_SIMULAR_CARGA_LOTES=false en frontend/.env. Cuando los endpoints esten
-// listos en main, cambie el valor por defecto de SIMULAR a false.
+// (api/simulacion/lotes.js); ver api/simulacion/activa.js.
 import { enviarFormulario, pedir } from './cliente.js';
+import { SIMULAR } from './simulacion/activa.js';
 import * as simulacion from './simulacion/lotes.js';
 
-export const SIMULAR = import.meta.env.VITE_SIMULAR_CARGA_LOTES !== 'false';
+export { SIMULAR };
 
 // Los mismos valores que backend/.env (LOTE_TAMANOS_PERMITIDOS y AUDIO_MAX_MB).
 // El frontend solo avisa antes de subir; el backend siempre vuelve a validar.

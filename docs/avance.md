@@ -32,7 +32,13 @@ Avance aproximado: **15-20 %** (20/10/2026).
     - Decisiones clave: un lote = un solo agente; todo o nada (si un archivo falla, no se
       guarda ninguno); `multipart/form-data` con el campo `audios` repetido; límites en
       `backend/.env` (`LOTE_TAMANOS_PERMITIDOS=5,10,15`, `AUDIO_MAX_MB=25`).
+  - `docs/api.md`, sección **Detalle de una llamada** (propuesto el 22/10/2026 por Javier,
+    a revisar por Willy y David): `GET /llamadas/:id_llamada` y `GET /llamadas/:id_llamada/audio`.
+    Define qué datos del análisis muestra la pantalla (transcripción por hablante con
+    sentimiento, alertas, puntaje, clasificación y diagnóstico). Su apartado **"De dónde
+    salen los datos"** es la base para `docs/contrato_audio.md`.
   - `docs/contrato_audio.md` (David y Willy): pendiente. Cómo llama Node a Python y el JSON que devuelve.
+- Guía para instalar y probar la demo en cualquier computadora: `docs/demo.md`.
 
 ---
 
@@ -55,9 +61,16 @@ Los módulos sin pantalla muestran "En construcción" (`src/modulos.js`).
 Rama `javier-carga-lotes`: pantalla **Carga de audios por lotes** según el contrato de
 `docs/api.md` (selector de agente, arrastrar o elegir archivos, validación de cantidad,
 formato, tamaño y duplicados, barra de progreso y seguimiento del procesamiento de cada
-llamada). Funciona con **datos simulados** (`src/api/simulacion/lotes.js`) hasta que
-existan los endpoints; con `VITE_SIMULAR_CARGA_LOTES=false` usa el backend real.
-Solo el Supervisor puede cargar lotes; el SuperAdmin solo consulta.
+llamada). Solo el Supervisor puede cargar lotes; el SuperAdmin solo consulta.
+
+Rama `javier-detalle-llamada`: pantalla **Detalle de una
+llamada** (`/llamadas/:id`), que se abre desde la carga de lotes: odómetro del puntaje final,
+clasificación, diagnóstico, puntajes de texto y voz, mapa de sentimiento por hablante con
+alertas, transcripción y reproductor de audio (salta al segundo elegido). Contrato propuesto
+en `docs/api.md` y guía de demo en `docs/demo.md`.
+
+Las dos pantallas funcionan con **datos simulados** (`src/api/simulacion/`) hasta que existan
+los endpoints; con `VITE_SIMULAR_LLAMADAS=false` usan el backend real.
 
 **En curso:** -
 
@@ -65,6 +78,8 @@ Solo el Supervisor puede cargar lotes; el SuperAdmin solo consulta.
 - Willy: los 3 endpoints de carga de lotes **tal como están en `docs/api.md`**
   (`GET /agentes`, `POST /llamadas/lotes`, `GET /llamadas/lotes/:id_lote`). Cuando estén,
   aviso para conectarlos y probar juntos.
+- Willy y David: revisar la sección "Detalle de una llamada" de `docs/api.md` y avisar si
+  algún dato no se puede producir o guardar así.
 - Willy: endpoints para editar, desactivar y asignar supervisor (para completar Gestión de usuarios).
   Asignar supervisor también hace falta para que `GET /agentes` devuelva agentes al Supervisor.
 - Willy: un endpoint de roles (`GET /api/v1/roles`); hoy la lista de roles del formulario está fija
