@@ -23,6 +23,9 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 | `GET /auth/me` | Sesión | Hecho |
 | `GET /usuarios` | `GESTION_USUARIOS` leer | Hecho |
 | `POST /usuarios` | `GESTION_USUARIOS` escribir | Hecho |
+| `PUT /usuarios/:id_usuario/supervisor` | `GESTION_USUARIOS` escribir | **Propuesto, pendiente (Willy)** |
+| `PATCH /usuarios/:id_usuario` | `GESTION_USUARIOS` escribir | **Propuesto, pendiente (Willy)** |
+| `PATCH /usuarios/:id_usuario/estado` | `GESTION_USUARIOS` escribir | **Propuesto, pendiente (Willy)** |
 | `GET /agentes` | `CARGA_LOTES` leer | **Acordado, pendiente (Willy)** |
 | `POST /llamadas/lotes` | `CARGA_LOTES` escribir | **Acordado, pendiente (Willy)** |
 | `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | **Acordado, pendiente (Willy)** |
@@ -55,7 +58,10 @@ Solo incluye módulos activos. El frontend arma el menú con esta lista.
 ## Usuarios
 
 ### `GET /usuarios`
-`200`: lista de `{ "id_usuario", "nombre_completo", "correo_electronico", "estado": "ACTIVO" | "INACTIVO", "fecha_creacion", "roles": [...] }` (máximo 200).
+`200`: lista de `{ "id_usuario", "nombre_completo", "correo_electronico", "estado": "ACTIVO" | "INACTIVO", "fecha_creacion", "roles": [...], "supervisor" }` (máximo 200).
+
+`supervisor` (**propuesto**, campo nuevo): `{ "id_usuario", "nombre_completo" }` del supervisor
+asignado, o `null` si no tiene (siempre `null` para quien no es agente).
 
 ### `POST /usuarios`
 Cuerpo: `{ "nombre_completo", "correo_electronico", "password" (8 a 72 bytes), "rol": "AGENTE" | "SUPERVISOR" | "SUPERADMIN" }`
@@ -63,6 +69,71 @@ Cuerpo: `{ "nombre_completo", "correo_electronico", "password" (8 a 72 bytes), "
 `201`: `{ "id_usuario", "mensaje", "fecha_registro" }`
 
 Errores: `400 DATOS_INVALIDOS`, `400 ROL_INEXISTENTE`, `409 CORREO_DUPLICADO`.
+
+## Gestión de usuarios: supervisor, edición y estado (propuesto, pendiente de implementar)
+
+### Decisiones
+1. **Un agente tiene como máximo un supervisor.** La tabla `TB_AsignacionSupervisor` permitiría
+   varios, pero con uno solo es claro quién ve las llamadas de cada agente. Asignar uno nuevo
+   reemplaza al anterior. Un supervisor puede tener muchos agentes.
+2. **Cada usuario tiene un solo rol** (igual que en `POST /usuarios`). Editar el rol reemplaza el anterior.
+3. **Nadie puede quitarse su propio rol ni desactivarse a sí mismo**, para que el SuperAdmin
+   no se quede fuera del sistema por error.
+4. **Desactivar no borra nada:** el usuario ya no puede iniciar sesión, sus tokens dejan de
+   servir de inmediato y sus llamadas y asignaciones se conservan. Se puede reactivar.
+5. Todo cambio queda en `TB_LogAuditoria` (módulo `GESTION_USUARIOS`), nunca con contraseñas.
+6. Las tres rutas responden con el usuario actualizado, con la misma forma que cada elemento
+   de `GET /usuarios`, para que el frontend reemplace la fila sin volver a pedir la lista.
+
+Errores comunes a las tres: `400 DATOS_INVALIDOS` (`:id_usuario` no es un número o el cuerpo no
+es válido) y `404 NO_ENCONTRADO` (el usuario no existe).
+
+### `PUT /usuarios/:id_usuario/supervisor`
+Asigna, cambia o quita el supervisor de un agente.
+
+Cuerpo: `{ "id_supervisor": 5 }`, o `{ "id_supervisor": null }` para dejarlo sin supervisor.
+
+`200`: el usuario actualizado (ver decisión 6), con `supervisor` lleno o `null`.
+
+| Estado y código | Cuándo |
+|---|---|
+| `400 NO_ES_AGENTE` | El usuario de la ruta no tiene rol AGENTE. |
+| `400 SUPERVISOR_INVALIDO` | `id_supervisor` no existe, no está activo o no tiene rol SUPERVISOR. |
+
+Auditoría: `ASIGNACION_SUPERVISOR` con `{ id_agente, id_supervisor_anterior, id_supervisor_nuevo }`.
+Si el supervisor ya era el mismo, responde `200` sin cambiar nada ni registrar auditoría.
+
+### `PATCH /usuarios/:id_usuario`
+Edita los datos de un usuario. Se envían solo los campos que cambian (al menos uno):
+
+`{ "nombre_completo"?, "correo_electronico"?, "rol"?: "AGENTE" | "SUPERVISOR" | "SUPERADMIN" }`
+
+La contraseña no se cambia aquí (quedará para un endpoint propio).
+
+Al cambiar el rol se limpian las asignaciones que dejan de tener sentido: si deja de ser
+AGENTE pierde su supervisor; si deja de ser SUPERVISOR, sus agentes quedan sin supervisor.
+
+`200`: el usuario actualizado.
+
+| Estado y código | Cuándo |
+|---|---|
+| `400 ROL_INEXISTENTE` | El rol no existe. |
+| `400 OPERACION_NO_PERMITIDA` | El usuario intenta cambiar su propio rol. |
+| `409 CORREO_DUPLICADO` | Otro usuario ya tiene ese correo. |
+
+Auditoría: `EDICION_USUARIO` con `{ id_usuario, cambios: { <campo>: { anterior, nuevo } } }`
+(solo los campos que de verdad cambiaron).
+
+### `PATCH /usuarios/:id_usuario/estado`
+Cuerpo: `{ "estado": "ACTIVO" | "INACTIVO" }`
+
+`200`: el usuario actualizado.
+
+| Estado y código | Cuándo |
+|---|---|
+| `400 OPERACION_NO_PERMITIDA` | El usuario intenta desactivarse a sí mismo. |
+
+Auditoría: `CAMBIO_ESTADO_USUARIO` con `{ id_usuario, estado_anterior, estado_nuevo }`.
 
 ---
 
