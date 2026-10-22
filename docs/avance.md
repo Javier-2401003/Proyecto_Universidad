@@ -37,18 +37,28 @@ Avance aproximado: **15-20 %** (20/10/2026).
 ---
 
 ## Javier - Frontend
-_Última actualización: 20/10/2026_
+_Última actualización: 22/10/2026_
 
 **Objetivo para la próxima reunión**
-- [ ] Proyecto React + Vite en `frontend/`.
-- [ ] Login contra `POST /api/v1/auth/login`, guardando el token.
-- [ ] Menú lateral según `usuario.permisos`.
-- [ ] Gestión de usuarios: listar y crear.
-- [ ] Demo: SuperAdmin crea un agente; el agente solo ve su panel.
+- [x] Proyecto React + Vite en `frontend/`.
+- [x] Login contra `POST /api/v1/auth/login`, guardando el token.
+- [x] Menú lateral según `usuario.permisos`.
+- [x] Gestión de usuarios: listar y crear.
+- [x] Demo: SuperAdmin crea un agente; el agente solo ve su panel.
 
-**Hecho:** -
+**Hecho:** rama `javier-frontend-base`. Login con errores del backend, sesión en
+`sessionStorage` (vuelve al login si el token vence), menú y rutas protegidas por
+permiso, gestión de usuarios (tabla + formulario con errores por campo), diseño
+adaptable a móvil y modo oscuro. Cómo ejecutarlo y cómo agregar pantallas: `frontend/README.md`.
+Los módulos sin pantalla muestran "En construcción" (`src/modulos.js`).
+
 **En curso:** -
-**Necesito de otros:** -
+
+**Necesito de otros:**
+- Willy: endpoints para editar, desactivar y asignar supervisor (para completar Gestión de usuarios),
+  y `docs/api.md` con los endpoints de carga de lotes.
+- Willy: un endpoint de roles (`GET /api/v1/roles`); hoy la lista de roles del formulario está fija
+  en el frontend con los 3 roles base.
 
 ---
 
