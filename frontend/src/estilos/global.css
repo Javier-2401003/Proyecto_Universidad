@@ -14,6 +14,8 @@
   --error-suave: #fdecec;
   --exito: #1b7a3d;
   --exito-suave: #e7f6ec;
+  --aviso: #8a5a00;
+  --aviso-suave: #fff4dc;
   --menu-fondo: #16202e;
   --menu-texto: #c9d3e0;
   --menu-activo: #2a3a52;
@@ -41,6 +43,8 @@
     --error-suave: #3a1d1f;
     --exito: #5fd38b;
     --exito-suave: #173323;
+    --aviso: #f2c063;
+    --aviso-suave: #3a2e14;
     --menu-fondo: #0b1017;
     --menu-activo: #1f2b3c;
     --sombra: none;
@@ -445,6 +449,156 @@ h2 {
 }
 
 .etiqueta--inactivo {
+  background: var(--error-suave);
+  color: var(--error);
+}
+
+/* ---------- Carga de lotes ---------- */
+.alerta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.alerta svg {
+  flex-shrink: 0;
+}
+
+.alerta--aviso {
+  background: var(--aviso-suave);
+  color: var(--aviso);
+}
+
+.campo--corto {
+  max-width: 420px;
+}
+
+.zona-archivos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 28px 16px;
+  border: 2px dashed var(--borde);
+  border-radius: var(--radio);
+  color: var(--texto-secundario);
+  text-align: center;
+}
+
+.zona-archivos p {
+  margin: 0;
+}
+
+.zona-archivos--activa {
+  border-color: var(--primario);
+  background: var(--primario-suave);
+}
+
+.contador {
+  margin: 16px 0 8px;
+  font-weight: 600;
+}
+
+.contador--error {
+  color: var(--error);
+}
+
+.lista-archivos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.archivo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+
+.archivo > svg {
+  flex-shrink: 0;
+  color: var(--texto-secundario);
+}
+
+.archivo--error {
+  border-color: var(--error);
+  background: var(--error-suave);
+}
+
+.archivo__datos {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.archivo__nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progreso {
+  position: relative;
+  height: 28px;
+  margin-top: 16px;
+  overflow: hidden;
+  border-radius: var(--radio);
+  background: var(--fondo);
+}
+
+.progreso__barra {
+  height: 100%;
+  background: var(--primario);
+  transition: width 0.2s;
+}
+
+.progreso span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.resumen-lote {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  margin-bottom: 16px;
+}
+
+.resumen-lote div {
+  display: flex;
+  flex-direction: column;
+}
+
+.etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.etiqueta--procesando {
+  background: var(--primario-suave);
+  color: var(--primario);
+}
+
+.etiqueta--completado {
+  background: var(--exito-suave);
+  color: var(--exito);
+}
+
+.etiqueta--error {
   background: var(--error-suave);
   color: var(--error);
 }

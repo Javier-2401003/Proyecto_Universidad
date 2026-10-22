@@ -41,11 +41,21 @@ permiso, gestión de usuarios (tabla + formulario con errores por campo), diseñ
 adaptable a móvil y modo oscuro. Cómo ejecutarlo y cómo agregar pantallas: `frontend/README.md`.
 Los módulos sin pantalla muestran "En construcción" (`src/modulos.js`).
 
+Rama `javier-carga-lotes`: pantalla **Carga de audios por lotes** según el contrato de
+`docs/api.md` (selector de agente, arrastrar o elegir archivos, validación de cantidad,
+formato, tamaño y duplicados, barra de progreso y seguimiento del procesamiento de cada
+llamada). Funciona con **datos simulados** (`src/api/simulacion/lotes.js`) hasta que
+existan los endpoints; con `VITE_SIMULAR_CARGA_LOTES=false` usa el backend real.
+Solo el Supervisor puede cargar lotes; el SuperAdmin solo consulta.
+
 **En curso:** -
 
 **Necesito de otros:**
-- Willy: endpoints para editar, desactivar y asignar supervisor (para completar Gestión de usuarios),
-  y `docs/api.md` con los endpoints de carga de lotes.
+- Willy: los 3 endpoints de carga de lotes **tal como están en `docs/api.md`**
+  (`GET /agentes`, `POST /llamadas/lotes`, `GET /llamadas/lotes/:id_lote`). Cuando estén,
+  aviso para conectarlos y probar juntos.
+- Willy: endpoints para editar, desactivar y asignar supervisor (para completar Gestión de usuarios).
+  Asignar supervisor también hace falta para que `GET /agentes` devuelva agentes al Supervisor.
 - Willy: un endpoint de roles (`GET /api/v1/roles`); hoy la lista de roles del formulario está fija
   en el frontend con los 3 roles base.
 
