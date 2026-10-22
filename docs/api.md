@@ -23,7 +23,7 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 | `GET /auth/me` | Sesión | Hecho |
 | `GET /usuarios` | `GESTION_USUARIOS` leer | Hecho |
 | `POST /usuarios` | `GESTION_USUARIOS` escribir | Hecho |
-| `PUT /usuarios/:id_usuario/supervisor` | `GESTION_USUARIOS` escribir | **Propuesto, pendiente (Willy)** |
+| `PUT /usuarios/:id_usuario/supervisor` | `GESTION_USUARIOS` escribir | Hecho |
 | `PATCH /usuarios/:id_usuario` | `GESTION_USUARIOS` escribir | **Propuesto, pendiente (Willy)** |
 | `PATCH /usuarios/:id_usuario/estado` | `GESTION_USUARIOS` escribir | **Propuesto, pendiente (Willy)** |
 | `GET /agentes` | `CARGA_LOTES` leer | **Acordado, pendiente (Willy)** |
@@ -60,7 +60,7 @@ Solo incluye módulos activos. El frontend arma el menú con esta lista.
 ### `GET /usuarios`
 `200`: lista de `{ "id_usuario", "nombre_completo", "correo_electronico", "estado": "ACTIVO" | "INACTIVO", "fecha_creacion", "roles": [...], "supervisor" }` (máximo 200).
 
-`supervisor` (**propuesto**, campo nuevo): `{ "id_usuario", "nombre_completo" }` del supervisor
+`supervisor` (campo nuevo): `{ "id_usuario", "nombre_completo" }` del supervisor
 asignado, o `null` si no tiene (siempre `null` para quien no es agente).
 
 ### `POST /usuarios`
@@ -70,7 +70,7 @@ Cuerpo: `{ "nombre_completo", "correo_electronico", "password" (8 a 72 bytes), "
 
 Errores: `400 DATOS_INVALIDOS`, `400 ROL_INEXISTENTE`, `409 CORREO_DUPLICADO`.
 
-## Gestión de usuarios: supervisor, edición y estado (propuesto, pendiente de implementar)
+## Gestión de usuarios: supervisor, edición y estado (supervisor hecho; edición y estado pendientes)
 
 ### Decisiones
 1. **Un agente tiene como máximo un supervisor.** La tabla `TB_AsignacionSupervisor` permitiría
