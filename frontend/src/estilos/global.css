@@ -1,0 +1,472 @@
+/* Estilos globales de VocalAnalytics. Los colores salen de las variables de
+   :root para poder ajustar el tema en un solo lugar (incluye modo oscuro). */
+
+:root {
+  --fondo: #f5f7fa;
+  --superficie: #ffffff;
+  --borde: #dde3ea;
+  --texto: #1c2430;
+  --texto-secundario: #5b6676;
+  --primario: #2563eb;
+  --primario-hover: #1d4ed8;
+  --primario-suave: #e8effd;
+  --error: #c62828;
+  --error-suave: #fdecec;
+  --exito: #1b7a3d;
+  --exito-suave: #e7f6ec;
+  --menu-fondo: #16202e;
+  --menu-texto: #c9d3e0;
+  --menu-activo: #2a3a52;
+  --radio: 8px;
+  --sombra: 0 1px 3px rgb(16 24 40 / 10%);
+
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  color: var(--texto);
+  background: var(--fondo);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #0f141b;
+    --superficie: #18202b;
+    --borde: #2b3644;
+    --texto: #e6ebf2;
+    --texto-secundario: #9aa6b6;
+    --primario: #4f8bff;
+    --primario-hover: #6a9cff;
+    --primario-suave: #1c2b45;
+    --error: #ff7b7b;
+    --error-suave: #3a1d1f;
+    --exito: #5fd38b;
+    --exito-suave: #173323;
+    --menu-fondo: #0b1017;
+    --menu-activo: #1f2b3c;
+    --sombra: none;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fondo);
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+}
+
+h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.texto-secundario {
+  margin: 0;
+  color: var(--texto-secundario);
+}
+
+/* ---------- Botones ---------- */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radio);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.boton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.boton--primario {
+  background: var(--primario);
+  color: #fff;
+}
+
+.boton--primario:hover:not(:disabled) {
+  background: var(--primario-hover);
+}
+
+.boton--secundario {
+  background: var(--superficie);
+  border-color: var(--borde);
+  color: var(--texto);
+}
+
+.boton--secundario:hover:not(:disabled) {
+  background: var(--fondo);
+}
+
+.boton--icono {
+  padding: 6px;
+  background: transparent;
+  color: var(--texto-secundario);
+}
+
+.boton--ancho {
+  width: 100%;
+}
+
+/* ---------- Formularios ---------- */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.campo input,
+.campo select {
+  padding: 9px 11px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--superficie);
+  color: var(--texto);
+  font: inherit;
+  font-weight: 400;
+}
+
+.campo input:focus,
+.campo select:focus {
+  outline: 2px solid var(--primario);
+  outline-offset: 1px;
+}
+
+.campo--error input,
+.campo--error select {
+  border-color: var(--error);
+}
+
+.campo__error {
+  color: var(--error);
+  font-weight: 400;
+}
+
+/* ---------- Avisos ---------- */
+.alerta {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: var(--radio);
+  background: var(--primario-suave);
+}
+
+.alerta--error {
+  background: var(--error-suave);
+  color: var(--error);
+}
+
+.alerta--exito {
+  background: var(--exito-suave);
+  color: var(--exito);
+}
+
+.cargando {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+  color: var(--texto-secundario);
+}
+
+.cargando--pantalla {
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.icono-girando {
+  animation: girar 1s linear infinite;
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 16px;
+  color: var(--texto-secundario);
+  text-align: center;
+}
+
+/* ---------- Login ---------- */
+.login {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.login__tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 380px;
+  padding: 32px 28px;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: var(--superficie);
+  box-shadow: var(--sombra);
+}
+
+.login__marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--primario);
+}
+
+.login__marca h1 {
+  margin: 0;
+  color: var(--texto);
+}
+
+/* ---------- Disposicion general ---------- */
+.disposicion {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.disposicion__principal {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.barra-superior {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--borde);
+  background: var(--superficie);
+}
+
+.barra-superior__usuario {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 0.875rem;
+}
+
+.contenido {
+  padding: 24px;
+}
+
+/* ---------- Menu lateral ---------- */
+.menu {
+  padding: 16px 12px;
+  background: var(--menu-fondo);
+  color: var(--menu-texto);
+}
+
+.menu__marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px 20px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.menu ul {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu__enlace {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radio);
+  color: inherit;
+  font-size: 0.9375rem;
+  text-decoration: none;
+}
+
+.menu__enlace:hover {
+  background: var(--menu-activo);
+}
+
+.menu__enlace.active {
+  background: var(--menu-activo);
+  color: #fff;
+  font-weight: 500;
+}
+
+/* ---------- Inicio ---------- */
+.tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+  padding: 18px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--superficie);
+  color: var(--texto);
+  text-decoration: none;
+  box-shadow: var(--sombra);
+}
+
+.tarjeta:hover {
+  border-color: var(--primario);
+}
+
+.tarjeta svg {
+  flex-shrink: 0;
+  color: var(--primario);
+}
+
+/* ---------- Gestion de usuarios ---------- */
+.encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.encabezado__acciones {
+  display: flex;
+  gap: 8px;
+}
+
+.formulario {
+  margin-bottom: 20px;
+  padding: 20px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--superficie);
+  box-shadow: var(--sombra);
+}
+
+.formulario__titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.formulario__rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.formulario__acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.tabla-contenedor {
+  overflow-x: auto;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--superficie);
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.tabla th,
+.tabla td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--borde);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tabla th {
+  color: var(--texto-secundario);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.tabla tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.etiqueta {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--fondo);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.etiqueta--activo {
+  background: var(--exito-suave);
+  color: var(--exito);
+}
+
+.etiqueta--inactivo {
+  background: var(--error-suave);
+  color: var(--error);
+}
+
+/* ---------- Pantallas pequenas ---------- */
+@media (max-width: 760px) {
+  .disposicion {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .menu ul {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .menu__marca {
+    padding-bottom: 12px;
+  }
+
+  .barra-superior,
+  .contenido {
+    padding: 12px 16px;
+  }
+}
