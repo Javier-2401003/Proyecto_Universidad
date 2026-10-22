@@ -19,9 +19,20 @@ Avance aproximado: **15-20 %** (20/10/2026).
 
 ## Acuerdos
 - Solo herramientas gratuitas; Whisper siempre en local (ver `CLAUDE.md`).
-- Contratos entre áreas, pendientes de crear y acordar al inicio de esta fase:
-  - `docs/contrato_audio.md` (David y Willy): cómo llama Node a Python y el JSON que devuelve.
-  - `docs/api.md` (Willy y Javier): endpoints para el frontend.
+- Contratos entre áreas:
+  - `docs/api.md` (Willy y Javier): **creado el 22/10/2026**. Documenta los endpoints que ya
+    existen y deja **acordada la carga de audios por lotes**: `GET /agentes`,
+    `POST /llamadas/lotes` y `GET /llamadas/lotes/:id_lote`.
+    - **Willy:** implementa esos tres endpoints **tal como están en `docs/api.md`** (campos,
+      respuestas y códigos de error). Si necesitas cambiar algo, cámbialo primero en
+      `docs/api.md` en un PR propio y avisa a Javier. Ya no hace falta crear `docs/api.md`:
+      agrega ahí los endpoints nuevos (editar/desactivar usuario, asignar supervisor).
+    - **Javier:** construye la pantalla de carga con ese contrato y datos de prueba hasta
+      que el endpoint exista.
+    - Decisiones clave: un lote = un solo agente; todo o nada (si un archivo falla, no se
+      guarda ninguno); `multipart/form-data` con el campo `audios` repetido; límites en
+      `backend/.env` (`LOTE_TAMANOS_PERMITIDOS=5,10,15`, `AUDIO_MAX_MB=25`).
+  - `docs/contrato_audio.md` (David y Willy): pendiente. Cómo llama Node a Python y el JSON que devuelve.
 
 ---
 
