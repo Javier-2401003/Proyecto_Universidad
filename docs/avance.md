@@ -78,14 +78,32 @@ _Última actualización: 20/10/2026_
 ---
 
 ## Willy - Backend
-_Última actualización: 20/10/2026_
+_Última actualización: 22/10/2026_
 
 **Objetivo para la próxima reunión**
-- [ ] `POST /api/v1/llamadas/lotes` (5, 10 o 15 audios, máx. 25 MB, duplicados por SHA-256).
+- [x] `POST /api/v1/llamadas/lotes` (5, 10 o 15 audios, máx. 25 MB, duplicados por SHA-256).
 - [ ] Gestión de usuarios: editar, desactivar y asignar supervisor.
-- [ ] Pruebas de lo nuevo; `npm test` pasando.
-- [ ] `docs/api.md` con todos los endpoints.
+- [x] Pruebas de lo nuevo; `npm test` pasando (31 pruebas).
+- [ ] `docs/api.md` con todos los endpoints (ya están los de carga; faltan los de gestión de usuarios).
 
-**Hecho:** -
+**Hecho:**
+- `GET /api/v1/agentes` y `POST /api/v1/llamadas/lotes`, según `docs/api.md` (rama `willy-carga-lotes`).
+  Usan `multer` (MIT). Los audios quedan en `backend/uploads/lotes/<id_lote>/` y las llamadas en `PENDIENTE`.
+- Nuevas variables en `backend/.env`: `LOTE_TAMANOS_PERMITIDOS` y `AUDIO_MAX_MB` (ver `.env.example`).
+- `tests/lotes.test.js`: crea su propio supervisor y agentes de prueba y los borra al terminar.
+
 **En curso:** -
-**Necesito de otros:** -
+
+**Pendiente:**
+- `GET /api/v1/llamadas/lotes/:id_lote` (estado del lote, para que el frontend muestre el avance).
+- Gestión de usuarios: editar, desactivar y asignar supervisor.
+
+**Necesito de otros:**
+- **Equipo:** decidir si el SuperAdmin también puede subir lotes. Con los permisos iniciales solo
+  lee `CARGA_LOTES`, así que solo el Supervisor puede subir. Si se decide que sí, lo cambio con
+  un script `database/04_...sql`.
+- **Javier:** para probar la pantalla de carga con la API real hay que iniciar sesión como
+  Supervisor con al menos un agente asignado. Mientras no exista el endpoint de asignar
+  supervisor, la asignación se hace en phpMyAdmin (`TB_AsignacionSupervisor`).
+- **David:** `ruta_audio_storage` es relativa a `backend/uploads/` (ej. `lotes/12/101.mp3`). Lo
+  agregamos a `docs/contrato_audio.md`.
