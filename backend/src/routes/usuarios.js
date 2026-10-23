@@ -30,6 +30,31 @@ const esquemaAsignarSupervisor = z.object({
   id_supervisor: z.number({ required_error: 'Es obligatorio (use null para quitarlo).' }).int().positive().nullable(),
 });
 
+// PATCH: solo los campos que cambian (al menos uno). strict() rechaza campos
+// desconocidos, por ejemplo "password", que no se cambia aqui.
+const esquemaEditarUsuario = z
+  .object({
+    nombre_completo: z.string().trim().min(2).max(100).optional(),
+    correo_electronico: z.string().trim().toLowerCase().email().max(150).optional(),
+    // En mayusculas: TB_Rol no distingue mayusculas, pero las comparaciones del codigo si.
+    rol: z.string().trim().toUpperCase().min(1).max(50).optional(),
+  })
+  .strict('Solo se pueden editar nombre_completo, correo_electronico y rol.')
+  .refine((datos) => Object.keys(datos).length > 0, 'Envie al menos un campo para editar.');
+
+const esquemaCambiarEstado = z.object({
+  estado: z.enum(['ACTIVO', 'INACTIVO'], { errorMap: () => ({ message: 'Debe ser ACTIVO o INACTIVO.' }) }),
+});
+
+async function registrarAuditoria(conexion, req, accion, detalle) {
+  await conexion.execute(
+    `INSERT INTO TB_LogAuditoria
+       (id_usuario, accion_ejecutada, modulo_afectado, detalle_cambio, direccion_ip)
+     VALUES (?, ?, 'GESTION_USUARIOS', ?, ?)`,
+    [req.usuario.id, accion, JSON.stringify(detalle), obtenerIp(req)]
+  );
+}
+
 // Usuarios con la forma que devuelve la API (docs/api.md, GET /usuarios).
 // El supervisor sale de una subconsulta para no duplicar filas en GROUP_CONCAT.
 async function buscarUsuarios(condicion = '', parametros = []) {
@@ -115,19 +140,112 @@ rutasUsuarios.put(
           idAgente,
         ]);
       }
-      await conexion.execute(
-        `INSERT INTO TB_LogAuditoria
-           (id_usuario, accion_ejecutada, modulo_afectado, detalle_cambio, direccion_ip)
-         VALUES (?, 'ASIGNACION_SUPERVISOR', 'GESTION_USUARIOS', ?, ?)`,
-        [
-          req.usuario.id,
-          JSON.stringify({ id_agente: idAgente, id_supervisor_anterior: idAnterior, id_supervisor_nuevo: idSupervisor }),
-          obtenerIp(req),
-        ]
-      );
+      await registrarAuditoria(conexion, req, 'ASIGNACION_SUPERVISOR', {
+        id_agente: idAgente,
+        id_supervisor_anterior: idAnterior,
+        id_supervisor_nuevo: idSupervisor,
+      });
     });
 
     res.json(await buscarUsuario(idAgente));
+  }
+);
+
+rutasUsuarios.patch('/:id_usuario', autenticar, requierePermiso('GESTION_USUARIOS', 'escribir'), async (req, res) => {
+  const { id_usuario: idUsuario } = validar(esquemaIdUsuario, req.params);
+  const datos = validar(esquemaEditarUsuario, req.body ?? {});
+  const usuario = await buscarUsuario(idUsuario);
+
+  // Solo se guardan (y se auditan) los campos que de verdad cambian.
+  const cambios = {};
+  for (const campo of ['nombre_completo', 'correo_electronico']) {
+    if (datos[campo] !== undefined && datos[campo] !== usuario[campo]) {
+      cambios[campo] = { anterior: usuario[campo], nuevo: datos[campo] };
+    }
+  }
+
+  let idRolNuevo;
+  const rolActual = usuario.roles.join(',');
+  if (datos.rol !== undefined && datos.rol !== rolActual) {
+    const roles = await consultar('SELECT id_rol FROM TB_Rol WHERE nombre_rol = ?', [datos.rol]);
+    if (roles.length === 0) {
+      throw new ErrorHttp(400, 'ROL_INEXISTENTE', `El rol "${datos.rol}" no existe.`);
+    }
+    // Asi el SuperAdmin no puede quedarse fuera del sistema por error.
+    if (idUsuario === req.usuario.id) {
+      throw new ErrorHttp(400, 'OPERACION_NO_PERMITIDA', 'No puede cambiar su propio rol.');
+    }
+    idRolNuevo = roles[0].id_rol;
+    cambios.rol = { anterior: rolActual, nuevo: datos.rol };
+  }
+
+  if (Object.keys(cambios).length === 0) {
+    return res.json(usuario); // Sin cambios: no se toca la base ni la auditoria.
+  }
+
+  try {
+    await conTransaccion(async (conexion) => {
+      if (cambios.nombre_completo || cambios.correo_electronico) {
+        await conexion.execute(
+          'UPDATE TB_Usuario SET nombre_completo = ?, correo_electronico = ? WHERE id_usuario = ?',
+          [
+            datos.nombre_completo ?? usuario.nombre_completo,
+            datos.correo_electronico ?? usuario.correo_electronico,
+            idUsuario,
+          ]
+        );
+      }
+      if (cambios.rol) {
+        await conexion.execute('DELETE FROM TB_UsuarioRol WHERE id_usuario = ?', [idUsuario]);
+        await conexion.execute('INSERT INTO TB_UsuarioRol (id_usuario, id_rol) VALUES (?, ?)', [idUsuario, idRolNuevo]);
+        // Las asignaciones que dejan de tener sentido con el rol nuevo (docs/api.md).
+        if (usuario.roles.includes('AGENTE') && datos.rol !== 'AGENTE') {
+          await conexion.execute('DELETE FROM TB_AsignacionSupervisor WHERE id_agente = ?', [idUsuario]);
+        }
+        if (usuario.roles.includes('SUPERVISOR') && datos.rol !== 'SUPERVISOR') {
+          await conexion.execute('DELETE FROM TB_AsignacionSupervisor WHERE id_supervisor = ?', [idUsuario]);
+        }
+      }
+      await registrarAuditoria(conexion, req, 'EDICION_USUARIO', { id_usuario: idUsuario, cambios });
+    });
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      throw new ErrorHttp(409, 'CORREO_DUPLICADO', 'Ya existe un usuario con ese correo.');
+    }
+    throw error;
+  }
+
+  res.json(await buscarUsuario(idUsuario));
+});
+
+// Desactivar no borra nada: el middleware autenticar rechaza a los usuarios
+// INACTIVO en cada peticion, asi que sus tokens dejan de servir de inmediato.
+rutasUsuarios.patch(
+  '/:id_usuario/estado',
+  autenticar,
+  requierePermiso('GESTION_USUARIOS', 'escribir'),
+  async (req, res) => {
+    const { id_usuario: idUsuario } = validar(esquemaIdUsuario, req.params);
+    const { estado } = validar(esquemaCambiarEstado, req.body ?? {});
+    const usuario = await buscarUsuario(idUsuario);
+
+    if (idUsuario === req.usuario.id && estado === 'INACTIVO') {
+      throw new ErrorHttp(400, 'OPERACION_NO_PERMITIDA', 'No puede desactivarse a si mismo.');
+    }
+    if (usuario.estado === estado) {
+      return res.json(usuario); // Sin cambios: no se toca la base ni la auditoria.
+    }
+
+    await conTransaccion(async (conexion) => {
+      await conexion.execute('UPDATE TB_Usuario SET estado = ? WHERE id_usuario = ?', [estado, idUsuario]);
+      await registrarAuditoria(conexion, req, 'CAMBIO_ESTADO_USUARIO', {
+        id_usuario: idUsuario,
+        estado_anterior: usuario.estado,
+        estado_nuevo: estado,
+      });
+    });
+
+    res.json(await buscarUsuario(idUsuario));
   }
 );
 

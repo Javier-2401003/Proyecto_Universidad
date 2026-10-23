@@ -23,6 +23,10 @@ git switch -c willy-gestion-usuarios
 - Si la tarea necesita código de un PR que todavía no se fusiona, se crea la rama a partir de
   esa otra rama (se llama "rama apilada"). Si no, siempre desde `main`.
 
+**Antes de escribir código, mira en qué rama estás** (`git status`). Si cambiaste de rama
+para probar algo (por ejemplo la rama de Javier para ver su pantalla), vuelve a la tuya con
+`git switch willy-gestion-usuarios` antes de seguir; si no, tus cambios caen en la rama equivocada.
+
 **En el ejemplo** se hicieron dos ramas:
 1. `willy-contrato-gestion-usuarios`: solo el contrato en `docs/api.md`.
 2. `willy-gestion-usuarios`: el código, creada a partir de la anterior.
@@ -139,6 +143,31 @@ Lo importante de cada pieza:
 Si la ruta es de un grupo nuevo (por ejemplo `/agentes`), se crea su archivo en
 `src/routes/` y se registra en `src/app.js` con `app.use('/api/v1/...', rutas...)`.
 
+### Segundo ejemplo: editar (`PATCH`) y desactivar
+
+`PATCH /usuarios/:id_usuario` y `PATCH /usuarios/:id_usuario/estado` siguen el mismo recorrido,
+pero agregan cuatro ideas que sirven para muchos endpoints de "editar":
+
+1. **Campos opcionales, pero al menos uno.** En zod cada campo lleva `.optional()` y al final
+   `.refine(...)` exige que venga alguno. `.strict()` rechaza campos que no existen: así, si el
+   frontend manda `password` por error, recibe un 400 en lugar de creer que la cambió.
+2. **Comparar antes de guardar.** Se arma un objeto `cambios` solo con lo que es distinto del
+   valor actual. Si queda vacío, se responde sin tocar la base ni la auditoría. Si no, la
+   auditoría guarda `{ anterior, nuevo }` de cada campo: así se puede reconstruir qué pasó.
+3. **Efectos secundarios en la misma transacción.** Cambiar el rol obliga a limpiar las
+   asignaciones que ya no tienen sentido (un ex agente no puede tener supervisor). Se hace
+   dentro de la misma `conTransaccion` que el cambio de rol: o pasa todo, o nada.
+4. **Protegerse de errores del propio usuario.** Nadie puede quitarse su rol ni desactivarse:
+   se compara `idUsuario === req.usuario.id` (el usuario de la ruta con el que hace la petición).
+
+Un detalle que se descubrió aquí: `TB_Rol` no distingue mayúsculas (su collation es `_ci`),
+así que `'supervisor'` también encuentra el rol, pero en JavaScript `'supervisor' !== 'SUPERVISOR'`.
+Por eso el esquema convierte el rol con `.toUpperCase()` antes de usarlo. **Cuando el código
+compara textos que vienen de la base, hay que normalizarlos igual que los guarda la base.**
+
+Y no hace falta código extra para que desactivar "corte" la sesión: el middleware
+`autenticar` ya revisa en cada petición que el usuario esté `ACTIVO`.
+
 ---
 
 ## Paso 4. Probar
@@ -166,6 +195,16 @@ Qué probar siempre:
 - Que un rol sin permiso recibe `403`.
 - Que la auditoría se registró con el detalle correcto.
 - Los casos raros: repetir la misma petición, valores `null`, datos mal formados.
+
+**Pruebas que cambian cosas delicadas.** Para probar "nadie puede desactivarse a sí mismo" no se
+usa tu SuperAdmin real: la prueba crea un segundo SuperAdmin y lo intenta con él. Si el código
+tuviera un error, quedaría desactivado el usuario de prueba, no el tuyo. Después de correr
+pruebas así, conviene comprobar en phpMyAdmin que no quedaron usuarios `test.%` y que tu
+SuperAdmin sigue `ACTIVO`.
+
+**Claves foráneas al limpiar.** `TB_LogAuditoria` apunta al usuario que hizo cada cambio
+(`ON DELETE RESTRICT`), así que para borrar un usuario de prueba que hizo cambios primero hay
+que borrar su auditoría (lo hace el `after` de `tests/usuarios.test.js`).
 
 `npm test` debe pasar completo antes de abrir el PR.
 
