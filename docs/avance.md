@@ -63,17 +63,34 @@ Los módulos sin pantalla muestran "En construcción" (`src/modulos.js`).
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 20/10/2026_
+_Última actualización: 23/10/2026_
 
 **Objetivo para la próxima reunión**
-- [ ] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
-- [ ] `python analizar.py ruta_del_audio` que imprima un JSON: transcripción con tiempos, tono (F0), volumen (RMS), duración.
-- [ ] Tiempo de un audio de 3 a 5 min con los modelos `base` y `small`.
-- [ ] Borrador de `docs/contrato_audio.md`.
+- [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
+- [x] `python analizar.py ruta_del_audio` que imprima un JSON: transcripción con tiempos, tono (F0), volumen (RMS), duración.
+- [x] Tiempo de un audio de 3 a 5 min con los modelos `base` y `small`.
+- [x] Borrador de `docs/contrato_audio.md`.
 
-**Hecho:** -
+**Hecho:** rama `david-audio-base`: `analizar.py` (faster-whisper en CPU + librosa) imprime
+solo un JSON por stdout; errores en JSON con código de salida 1. Python **3.12** (con 3.14
+fallan dependencias); no hace falta instalar ffmpeg (PyAV lo trae). Con un audio de 4,5 min
+en una laptop sin GPU: **`base` ~1 min, `small` ~1 min 40 s**, 0,6-0,8 GB de RAM.
+openai-whisper tardó lo mismo pero usa el doble de memoria y PyTorch, así que se usa
+faster-whisper. Detalle en `audio-processing/README.md`.
+Rama `david-contrato-audio`: borrador v0.1 de `docs/contrato_audio.md` (PR aparte).
+
 **En curso:** -
-**Necesito de otros:** -
+
+**Pendiente:**
+- Repetir los tiempos con una llamada real (se midió con voz sintética de Windows).
+- v0.2 del contrato: `hablante` (diarización) y `score_sentimiento` (léxico RN-01).
+- Umbrales de alertas de volumen y tono; validar el criterio de `baja_confianza_audio`.
+
+**Necesito de otros:**
+- Willy: revisar `docs/contrato_audio.md` y responder sus preguntas (sección 7), sobre todo
+  qué hacer con `hablante` y `score_sentimiento`, que son NOT NULL.
+- Reunión: agregar faster-whisper (MIT, gratis) a `docs/herramientas.md`, y aclarar ahí que
+  ffmpeg ya no hay que instalarlo aparte.
 
 ---
 
