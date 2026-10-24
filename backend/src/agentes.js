@@ -26,7 +26,17 @@ export async function agentesVisibles(usuario) {
   return consultar(`${SQL_AGENTES_ACTIVOS} ${SOLO_ASIGNADOS} ORDER BY u.nombre_completo`, [usuario.id]);
 }
 
-// Devuelve el agente si el usuario puede verlo, o null.
+// Para CONSULTAR lo ya cargado (ej. un lote): no importa si el agente se desactivo despues.
+export async function puedeVerAgente(usuario, idAgente) {
+  if (veTodos(usuario)) return true;
+  const filas = await consultar(
+    'SELECT 1 FROM TB_AsignacionSupervisor WHERE id_supervisor = ? AND id_agente = ?',
+    [usuario.id, idAgente]
+  );
+  return filas.length > 0;
+}
+
+// Para CARGAR audios: devuelve el agente si el usuario puede verlo y esta activo, o null.
 export async function buscarAgenteVisible(usuario, idAgente) {
   const filas = veTodos(usuario)
     ? await consultar(`${SQL_AGENTES_ACTIVOS} AND u.id_usuario = ?`, [idAgente])

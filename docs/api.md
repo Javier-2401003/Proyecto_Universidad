@@ -25,7 +25,7 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 | `POST /usuarios` | `GESTION_USUARIOS` escribir | Hecho |
 | `GET /agentes` | `CARGA_LOTES` leer | Hecho |
 | `POST /llamadas/lotes` | `CARGA_LOTES` escribir | Hecho |
-| `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | **Acordado, pendiente (Willy)** |
+| `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | Hecho |
 
 ---
 
@@ -66,7 +66,7 @@ Errores: `400 DATOS_INVALIDOS`, `400 ROL_INEXISTENTE`, `409 CORREO_DUPLICADO`.
 
 ---
 
-## Carga de audios por lotes (`GET /agentes` y `POST /llamadas/lotes` hechos; `GET /llamadas/lotes/:id_lote` pendiente)
+## Carga de audios por lotes
 
 ### Decisiones
 1. **Un lote pertenece a un solo agente.** `TB_Llamada.id_agente` es obligatorio, así que
@@ -172,3 +172,8 @@ Estado del lote y de cada llamada, para mostrar el avance del procesamiento.
 `estado_procesamiento`: `PENDIENTE`, `PROCESANDO`, `COMPLETADO` o `ERROR` (con `mensaje_error`).
 
 Errores: `404 NO_ENCONTRADO` si el lote no existe o el supervisor no tiene asignado a su agente.
+
+Detalles de la implementación:
+- El lote sigue visible aunque su agente se haya desactivado después de la carga.
+- Mientras no exista el procesamiento automático (contrato de audio con David), las llamadas
+  se quedan en `PENDIENTE` y el lote en `PROCESANDO`.

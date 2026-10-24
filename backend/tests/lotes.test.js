@@ -25,6 +25,7 @@ const CORREOS = {
   supervisor: `test.supervisor.${SUFIJO}@ejemplo.test`,
   agenteAsignado: `test.agente.asignado.${SUFIJO}@ejemplo.test`,
   agenteAjeno: `test.agente.ajeno.${SUFIJO}@ejemplo.test`,
+  supervisorAjeno: `test.supervisor.ajeno.${SUFIJO}@ejemplo.test`,
 };
 
 let servidor;
@@ -111,6 +112,7 @@ before(async () => {
   ids.supervisor = await crear(CORREOS.supervisor, 'SUPERVISOR');
   ids.agenteAsignado = await crear(CORREOS.agenteAsignado, 'AGENTE');
   ids.agenteAjeno = await crear(CORREOS.agenteAjeno, 'AGENTE');
+  ids.supervisorAjeno = await crear(CORREOS.supervisorAjeno, 'SUPERVISOR');
   // Aun no hay endpoint para asignar supervisor: se hace directo en la base.
   await consultar('INSERT INTO TB_AsignacionSupervisor (id_supervisor, id_agente) VALUES (?, ?)', [
     ids.supervisor,
@@ -119,6 +121,7 @@ before(async () => {
 
   tokens.supervisor = await iniciarSesion(CORREOS.supervisor, PASSWORD);
   tokens.agente = await iniciarSesion(CORREOS.agenteAsignado, PASSWORD);
+  tokens.supervisorAjeno = await iniciarSesion(CORREOS.supervisorAjeno, PASSWORD);
 });
 
 after(async () => {
@@ -130,7 +133,7 @@ after(async () => {
       await consultar('DELETE FROM TB_LogAuditoria WHERE id_usuario = ?', [ids.supervisor]);
       await consultar('DELETE FROM TB_AsignacionSupervisor WHERE id_supervisor = ?', [ids.supervisor]);
     }
-    await consultar('DELETE FROM TB_Usuario WHERE correo_electronico IN (?, ?, ?)', Object.values(CORREOS));
+    await consultar('DELETE FROM TB_Usuario WHERE correo_electronico IN (?, ?, ?, ?)', Object.values(CORREOS));
     if (loteCreado) {
       await rm(path.join(config.lotes.carpetaUploads, 'lotes', String(loteCreado.id_lote)), {
         recursive: true,
@@ -314,4 +317,62 @@ test('volver a subir un audio ya cargado responde 409 con id_llamada_existente',
   assert.equal(datos.error.detalles.length, 1);
   assert.equal(datos.error.detalles[0].archivo, AUDIOS_BUENOS[2].nombre);
   assert.equal(datos.error.detalles[0].id_llamada_existente, loteCreado.llamadas[2].id_llamada);
+});
+
+// --- GET /llamadas/lotes/:id_lote ---
+
+function verLote(idLote, token) {
+  return llamar(`/api/v1/llamadas/lotes/${idLote}`, { token });
+}
+
+test('GET lote: el Supervisor ve el estado del lote y de cada llamada', { skip: SIN_ADMIN }, async () => {
+  const { estado, datos } = await verLote(loteCreado.id_lote, tokens.supervisor);
+  assert.equal(estado, 200);
+  assert.equal(datos.id_lote, loteCreado.id_lote);
+  assert.equal(datos.codigo_lote, loteCreado.codigo_lote);
+  assert.equal(datos.estado_lote, 'PROCESANDO');
+  assert.equal(datos.total_archivos, 5);
+  assert.ok(!Number.isNaN(Date.parse(datos.fecha_creacion)));
+  assert.deepEqual(datos.agente, { id_usuario: ids.agenteAsignado, nombre_completo: 'Prueba AGENTE' });
+  assert.deepEqual(
+    datos.llamadas,
+    loteCreado.llamadas.map((llamada) => ({ ...llamada, mensaje_error: null }))
+  );
+});
+
+test('GET lote: el SuperAdmin tambien lo ve', { skip: SIN_ADMIN }, async () => {
+  const { estado } = await verLote(loteCreado.id_lote, tokens.admin);
+  assert.equal(estado, 200);
+});
+
+test('GET lote: un Supervisor sin ese agente asignado recibe 404 (no se revela que existe)', { skip: SIN_ADMIN }, async () => {
+  const { estado, datos } = await verLote(loteCreado.id_lote, tokens.supervisorAjeno);
+  assert.equal(estado, 404);
+  assert.equal(datos.error.codigo, 'NO_ENCONTRADO');
+});
+
+test('GET lote: sigue visible aunque el agente se haya desactivado despues', { skip: SIN_ADMIN }, async () => {
+  await consultar("UPDATE TB_Usuario SET estado = 'INACTIVO' WHERE id_usuario = ?", [ids.agenteAsignado]);
+  try {
+    const { estado } = await verLote(loteCreado.id_lote, tokens.supervisor);
+    assert.equal(estado, 200);
+  } finally {
+    await consultar("UPDATE TB_Usuario SET estado = 'ACTIVO' WHERE id_usuario = ?", [ids.agenteAsignado]);
+  }
+});
+
+test('GET lote que no existe responde 404 y un id no numerico 400', { skip: SIN_ADMIN }, async () => {
+  const noExiste = await verLote(999999999, tokens.supervisor);
+  assert.equal(noExiste.estado, 404);
+  assert.equal(noExiste.datos.error.codigo, 'NO_ENCONTRADO');
+
+  const texto = await verLote('abc', tokens.supervisor);
+  assert.equal(texto.estado, 400);
+  assert.equal(texto.datos.error.codigo, 'DATOS_INVALIDOS');
+});
+
+test('GET lote: un Agente no tiene permiso (403)', { skip: SIN_ADMIN }, async () => {
+  const { estado, datos } = await verLote(loteCreado.id_lote, tokens.agente);
+  assert.equal(estado, 403);
+  assert.equal(datos.error.codigo, 'PROHIBIDO');
 });

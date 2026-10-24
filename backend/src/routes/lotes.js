@@ -1,4 +1,5 @@
-// Carga de audios por lotes (docs/api.md, POST /llamadas/lotes).
+// Carga de audios por lotes (docs/api.md, POST /llamadas/lotes) y estado de un
+// lote (GET /llamadas/lotes/:id_lote).
 // Todo o nada: si un solo archivo no es valido, no se guarda ninguno.
 // El analisis (Whisper) toma despues las llamadas en estado PENDIENTE.
 import { Router } from 'express';
@@ -8,10 +9,10 @@ import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { z } from 'zod';
 import { config } from '../config.js';
-import { conTransaccion } from '../db.js';
+import { consultar, conTransaccion } from '../db.js';
 import { ErrorHttp, validar, obtenerIp } from '../errores.js';
 import { autenticar, requierePermiso } from '../middleware/auth.js';
-import { buscarAgenteVisible } from '../agentes.js';
+import { buscarAgenteVisible, puedeVerAgente } from '../agentes.js';
 import { crearAlmacenamientoAudio } from '../almacenamientoAudio.js';
 
 export const rutasLlamadas = Router();
@@ -226,3 +227,44 @@ rutasLlamadas.post(
     }
   }
 );
+
+const esquemaIdLote = z.object({
+  id_lote: z.coerce.number({ invalid_type_error: 'Debe ser un numero.' }).int().positive(),
+});
+
+// Estado del lote y de cada llamada, para que el frontend muestre el avance.
+// Si el usuario no puede ver al agente del lote, responde 404 (no revela que existe).
+rutasLlamadas.get('/lotes/:id_lote', autenticar, requierePermiso('CARGA_LOTES', 'leer'), async (req, res) => {
+  const { id_lote: idLote } = validar(esquemaIdLote, req.params);
+  const noEncontrado = new ErrorHttp(404, 'NO_ENCONTRADO', 'El lote no existe.');
+
+  // Un lote siempre tiene llamadas (se guardan todas o ninguna) y todas son del mismo agente.
+  const [lote] = await consultar(
+    `SELECT l.id_lote, l.codigo_lote, l.estado_lote, l.total_archivos, l.fecha_creacion,
+            u.id_usuario AS id_agente, u.nombre_completo AS nombre_agente
+       FROM TB_LoteAudio l
+       JOIN TB_Usuario u ON u.id_usuario = (
+              SELECT MIN(c.id_agente) FROM TB_Llamada c WHERE c.id_lote = l.id_lote)
+      WHERE l.id_lote = ?`,
+    [idLote]
+  );
+  if (!lote || !(await puedeVerAgente(req.usuario, lote.id_agente))) {
+    throw noEncontrado;
+  }
+
+  const llamadas = await consultar(
+    `SELECT id_llamada, nombre_archivo_original, estado_procesamiento, mensaje_error
+       FROM TB_Llamada WHERE id_lote = ? ORDER BY id_llamada`,
+    [idLote]
+  );
+
+  res.json({
+    id_lote: lote.id_lote,
+    codigo_lote: lote.codigo_lote,
+    estado_lote: lote.estado_lote,
+    total_archivos: lote.total_archivos,
+    fecha_creacion: lote.fecha_creacion,
+    agente: { id_usuario: lote.id_agente, nombre_completo: lote.nombre_agente },
+    llamadas,
+  });
+});
