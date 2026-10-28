@@ -103,14 +103,45 @@ _Última actualización: 20/10/2026_
 ---
 
 ## Willy - Backend
-_Última actualización: 20/10/2026_
+_Última actualización: 27/10/2026_
 
 **Objetivo para la próxima reunión**
-- [ ] `POST /api/v1/llamadas/lotes` (5, 10 o 15 audios, máx. 25 MB, duplicados por SHA-256).
-- [ ] Gestión de usuarios: editar, desactivar y asignar supervisor.
-- [ ] Pruebas de lo nuevo; `npm test` pasando.
-- [ ] `docs/api.md` con todos los endpoints.
+- [x] `POST /api/v1/llamadas/lotes` (5, 10 o 15 audios, máx. 25 MB, duplicados por SHA-256).
+- [x] `GET /api/v1/llamadas/lotes/:id_lote` (avance del lote).
+- [x] Gestión de usuarios: editar, desactivar y asignar supervisor (PR #11, en revisión).
+- [x] Pruebas de lo nuevo; `npm test` pasando.
+- [ ] `GET /api/v1/llamadas/:id_llamada` y `/audio` (detalle de una llamada, contrato del PR #12).
 
-**Hecho:** -
+**Hecho:**
+- `GET /api/v1/agentes`, `POST /api/v1/llamadas/lotes` y `GET /api/v1/llamadas/lotes/:id_lote`,
+  según `docs/api.md` (rama `willy-carga-lotes`, PR #7). Usan `multer` (MIT). Los audios quedan en
+  `backend/uploads/lotes/<id_lote>/` y las llamadas en `PENDIENTE`.
+- Nuevas variables en `backend/.env`: `LOTE_TAMANOS_PERMITIDOS` y `AUDIO_MAX_MB` (ver `.env.example`).
+- `tests/lotes.test.js`: crea su propio supervisor y agentes de prueba y los borra al terminar.
+- Revisé, aprobé y fusioné el PR #12 de Javier. Prueba de integración real (frontend de Javier +
+  PR #7 + PR #11, `VITE_SIMULAR_LLAMADAS=false`): el Supervisor ve solo a su agente, un lote de 5
+  audios reales se guarda (201), un audio repetido da 409 en el archivo correcto y el avance del
+  lote se muestra bien. El contrato de carga coincide con lo implementado.
+
 **En curso:** -
-**Necesito de otros:** -
+
+**Pendiente:**
+- Detalle de una llamada (`GET /llamadas/:id_llamada` y `/audio`): se puede hacer con
+  `01_esquema.sql` sin cambios. Visibilidad: agente sus llamadas, supervisor sus agentes
+  asignados (reutiliza `puedeVerAgente`), SuperAdmin todas.
+- Anotar en `docs/api.md` (PR propio): la visibilidad del supervisor es por la asignación
+  actual (si un agente cambia de supervisor, el anterior deja de ver sus llamadas y lotes viejos),
+  y `fecha_inicio` hoy es la fecha de carga hasta que el procesamiento la complete.
+
+**Necesito de otros:**
+- **Javier (detalles menores del PR #12, no bloquean):** `CargaLotes.jsx:297` deja de consultar con
+  un 404 pero dice "Se reintentará automáticamente"; la pantalla consulta el lote cada 2 s sin fin
+  mientras las llamadas sigan en `PENDIENTE` (límite: 1000 peticiones / 15 min por IP).
+- **Equipo:** decidir si el SuperAdmin también puede subir lotes. Con los permisos iniciales solo
+  lee `CARGA_LOTES`, así que solo el Supervisor puede subir. Si se decide que sí, lo cambio con
+  un script `database/04_...sql`.
+- **Javier:** para probar la pantalla de carga con la API real hay que iniciar sesión como
+  Supervisor con al menos un agente asignado. Mientras no exista el endpoint de asignar
+  supervisor, la asignación se hace en phpMyAdmin (`TB_AsignacionSupervisor`).
+- **David:** `ruta_audio_storage` es relativa a `backend/uploads/` (ej. `lotes/12/101.mp3`). Lo
+  agregamos a `docs/contrato_audio.md`.

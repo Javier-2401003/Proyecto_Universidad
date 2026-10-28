@@ -26,9 +26,9 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 | `PUT /usuarios/:id_usuario/supervisor` | `GESTION_USUARIOS` escribir | **Propuesto, pendiente (Willy)** |
 | `PATCH /usuarios/:id_usuario` | `GESTION_USUARIOS` escribir | **Propuesto, pendiente (Willy)** |
 | `PATCH /usuarios/:id_usuario/estado` | `GESTION_USUARIOS` escribir | **Propuesto, pendiente (Willy)** |
-| `GET /agentes` | `CARGA_LOTES` leer | **Acordado, pendiente (Willy)** |
-| `POST /llamadas/lotes` | `CARGA_LOTES` escribir | **Acordado, pendiente (Willy)** |
-| `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | **Acordado, pendiente (Willy)** |
+| `GET /agentes` | `CARGA_LOTES` leer | Hecho |
+| `POST /llamadas/lotes` | `CARGA_LOTES` escribir | Hecho |
+| `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | Hecho |
 | `GET /llamadas/:id_llamada` | Sesión + visibilidad por rol | **Propuesto, pendiente (Willy)** |
 | `GET /llamadas/:id_llamada/audio` | Igual que el anterior | **Propuesto, pendiente (Willy)** |
 
@@ -139,7 +139,7 @@ Auditoría: `CAMBIO_ESTADO_USUARIO` con `{ id_usuario, estado_anterior, estado_n
 
 ---
 
-## Carga de audios por lotes (acordado, pendiente de implementar)
+## Carga de audios por lotes
 
 ### Decisiones
 1. **Un lote pertenece a un solo agente.** `TB_Llamada.id_agente` es obligatorio, así que
@@ -211,6 +211,20 @@ Auditoría: `CARGA_LOTE` en `TB_LogAuditoria`, módulo `CARGA_LOTES`, con
 Los archivos se guardan en `backend/uploads/` (está en `.gitignore`); la ruta queda en
 `TB_Llamada.ruta_audio_storage`.
 
+Detalles de la implementación (no cambian el contrato, lo precisan):
+- **Quién puede subir:** con los permisos iniciales (`02_datos_iniciales.sql`) solo el
+  **Supervisor** tiene `CARGA_LOTES` escribir. El SuperAdmin puede ver `GET /agentes`, pero
+  `POST /llamadas/lotes` le responde `403 PROHIBIDO`.
+- **Orden de las validaciones:** `DATOS_INVALIDOS` → `AGENTE_INVALIDO` → `CANTIDAD_INVALIDA` →
+  `FORMATO_NO_PERMITIDO` → `ARCHIVO_DEMASIADO_GRANDE` → `AUDIO_DUPLICADO`. Se responde solo
+  el primer tipo de error que aparezca, con todos los archivos que lo tienen.
+- **Formato:** el contenido debe coincidir con la extensión (un `.mp3` que en realidad es WAV
+  se rechaza). Si los audios llegan en un campo distinto de `audios`, responde
+  `400 DATOS_INVALIDOS` con ese campo en `detalles`.
+- **Nombre original:** se conserva tal cual, con acentos y mayúsculas (máximo 255 caracteres).
+- **Ruta en disco (para el procesamiento, David):** `ruta_audio_storage` es relativa a
+  `backend/uploads/` y usa `/`, por ejemplo `lotes/12/101.mp3` (`lotes/<id_lote>/<id_llamada>.<ext>`).
+
 ### `GET /llamadas/lotes/:id_lote`
 Estado del lote y de cada llamada, para mostrar el avance del procesamiento.
 
@@ -231,6 +245,11 @@ Estado del lote y de cada llamada, para mostrar el avance del procesamiento.
 `estado_procesamiento`: `PENDIENTE`, `PROCESANDO`, `COMPLETADO` o `ERROR` (con `mensaje_error`).
 
 Errores: `404 NO_ENCONTRADO` si el lote no existe o el supervisor no tiene asignado a su agente.
+
+Detalles de la implementación:
+- El lote sigue visible aunque su agente se haya desactivado después de la carga.
+- Mientras no exista el procesamiento automático (contrato de audio con David), las llamadas
+  se quedan en `PENDIENTE` y el lote en `PROCESANDO`.
 
 ---
 
