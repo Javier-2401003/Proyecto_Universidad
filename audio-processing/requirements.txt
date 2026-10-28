@@ -1,0 +1,6 @@
+# Python 3.12 (ver README.md). Todo es gratuito y corre en local, sin API keys.
+faster-whisper==1.2.1
+librosa==1.0.0
+# PyAV decodifica mp3/wav/ogg y trae ffmpeg incluido. La version 19 rompe
+# faster-whisper 1.2.1 (error "unexpected keyword argument 'metadata_errors'").
+av==18.1.0
