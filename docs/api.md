@@ -26,9 +26,11 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 | `PUT /usuarios/:id_usuario/supervisor` | `GESTION_USUARIOS` escribir | Hecho |
 | `PATCH /usuarios/:id_usuario` | `GESTION_USUARIOS` escribir | Hecho |
 | `PATCH /usuarios/:id_usuario/estado` | `GESTION_USUARIOS` escribir | Hecho |
-| `GET /agentes` | `CARGA_LOTES` leer | **Acordado, pendiente (Willy)** |
-| `POST /llamadas/lotes` | `CARGA_LOTES` escribir | **Acordado, pendiente (Willy)** |
-| `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | **Acordado, pendiente (Willy)** |
+| `GET /agentes` | `CARGA_LOTES` leer | Hecho |
+| `POST /llamadas/lotes` | `CARGA_LOTES` escribir | Hecho |
+| `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | Hecho |
+| `GET /llamadas/:id_llamada` | Sesión + visibilidad por rol | **Propuesto, pendiente (Willy)** |
+| `GET /llamadas/:id_llamada/audio` | Igual que el anterior | **Propuesto, pendiente (Willy)** |
 
 ---
 
@@ -139,7 +141,7 @@ Auditoría: `CAMBIO_ESTADO_USUARIO` con `{ id_usuario, estado_anterior, estado_n
 
 ---
 
-## Carga de audios por lotes (acordado, pendiente de implementar)
+## Carga de audios por lotes
 
 ### Decisiones
 1. **Un lote pertenece a un solo agente.** `TB_Llamada.id_agente` es obligatorio, así que
@@ -211,6 +213,20 @@ Auditoría: `CARGA_LOTE` en `TB_LogAuditoria`, módulo `CARGA_LOTES`, con
 Los archivos se guardan en `backend/uploads/` (está en `.gitignore`); la ruta queda en
 `TB_Llamada.ruta_audio_storage`.
 
+Detalles de la implementación (no cambian el contrato, lo precisan):
+- **Quién puede subir:** con los permisos iniciales (`02_datos_iniciales.sql`) solo el
+  **Supervisor** tiene `CARGA_LOTES` escribir. El SuperAdmin puede ver `GET /agentes`, pero
+  `POST /llamadas/lotes` le responde `403 PROHIBIDO`.
+- **Orden de las validaciones:** `DATOS_INVALIDOS` → `AGENTE_INVALIDO` → `CANTIDAD_INVALIDA` →
+  `FORMATO_NO_PERMITIDO` → `ARCHIVO_DEMASIADO_GRANDE` → `AUDIO_DUPLICADO`. Se responde solo
+  el primer tipo de error que aparezca, con todos los archivos que lo tienen.
+- **Formato:** el contenido debe coincidir con la extensión (un `.mp3` que en realidad es WAV
+  se rechaza). Si los audios llegan en un campo distinto de `audios`, responde
+  `400 DATOS_INVALIDOS` con ese campo en `detalles`.
+- **Nombre original:** se conserva tal cual, con acentos y mayúsculas (máximo 255 caracteres).
+- **Ruta en disco (para el procesamiento, David):** `ruta_audio_storage` es relativa a
+  `backend/uploads/` y usa `/`, por ejemplo `lotes/12/101.mp3` (`lotes/<id_lote>/<id_llamada>.<ext>`).
+
 ### `GET /llamadas/lotes/:id_lote`
 Estado del lote y de cada llamada, para mostrar el avance del procesamiento.
 
@@ -231,3 +247,96 @@ Estado del lote y de cada llamada, para mostrar el avance del procesamiento.
 `estado_procesamiento`: `PENDIENTE`, `PROCESANDO`, `COMPLETADO` o `ERROR` (con `mensaje_error`).
 
 Errores: `404 NO_ENCONTRADO` si el lote no existe o el supervisor no tiene asignado a su agente.
+
+Detalles de la implementación:
+- El lote sigue visible aunque su agente se haya desactivado después de la carga.
+- Mientras no exista el procesamiento automático (contrato de audio con David), las llamadas
+  se quedan en `PENDIENTE` y el lote en `PROCESANDO`.
+
+---
+
+## Detalle de una llamada (propuesto, pendiente de implementar)
+
+Pantalla con el resultado del análisis: puntaje, clasificación, diagnóstico, alertas,
+transcripción por hablante y mapa de sentimiento a lo largo de la llamada. Los nombres
+de los campos son los mismos de las columnas de la base de datos.
+
+### Quién puede ver una llamada
+No depende de un módulo, sino de la relación con la llamada (si no puede verla, `404`,
+para no revelar que existe):
+- **Agente:** solo sus propias llamadas (`TB_Llamada.id_agente` = su id).
+- **Supervisor:** las llamadas de los agentes que tiene asignados (`TB_AsignacionSupervisor`).
+- **SuperAdmin:** todas.
+
+### `GET /llamadas/:id_llamada`
+`200`:
+```json
+{
+  "id_llamada": 101,
+  "id_lote": 12,
+  "codigo_lote": "LOTE-20261022-0012",
+  "nombre_archivo_original": "llamada1.mp3",
+  "agente": { "id_usuario": 7, "nombre_completo": "Ana Torres" },
+  "id_cliente": null,
+  "fecha_inicio": "2026-10-22T15:30:00.000Z",
+  "duracion_segundos": 184,
+  "estado_procesamiento": "COMPLETADO",
+  "mensaje_error": null,
+  "baja_confianza_audio": false,
+  "resultado": {
+    "puntaje_final": 72.5,
+    "clasificacion_final": "POSITIVO",
+    "diagnostico_conflicto": "SIN_CONFLICTO",
+    "score_global_nlp": 0.41,
+    "score_acustico": 0.12
+  },
+  "transcripcion": [
+    {
+      "id_transcripcion": 1,
+      "hablante": "AGENTE",
+      "texto_transcrito": "Buenas tardes, gracias por llamar...",
+      "timestamp_inicio": 0.0,
+      "timestamp_fin": 4.2,
+      "score_sentimiento": 0.6,
+      "nivel_volumen_rms": 62.4,
+      "tono_f0_hz": 180.5
+    }
+  ],
+  "alertas": [
+    {
+      "id_alerta": 3,
+      "tipo_alerta": "EXCESO_VOLUMEN",
+      "origen_evento": "CLIENTE",
+      "timestamp_evento": 95.4,
+      "valor_registrado": "88 dB",
+      "mensaje_sugerencia": "Mantenga un tono calmado y valide la molestia del cliente."
+    }
+  ],
+  "tiene_audio": true
+}
+```
+- `resultado` es `null` mientras `estado_procesamiento` no sea `COMPLETADO`; `transcripcion`
+  y `alertas` llegan vacías en ese caso.
+- `transcripcion` ordenada por `timestamp_inicio`; `alertas` por `timestamp_evento`.
+- Números como números (no texto): el backend ya usa `decimalNumbers: true`.
+- Valores posibles: `clasificacion_final` = `POSITIVO`, `NEUTRO`, `NEGATIVO`, `CRITICO`;
+  `diagnostico_conflicto` = `FALLA_AGENTE`, `CLIENTE_PROBLEMATICO`, `SIN_CONFLICTO`;
+  `tipo_alerta` = `EXCESO_VOLUMEN`, `ALTERACION_TONO`, `VOCABULARIO_INADECUADO`, `OMISION_SCRIPT`.
+
+Errores: `404 NO_ENCONTRADO` (no existe o el usuario no puede verla).
+
+### `GET /llamadas/:id_llamada/audio`
+Devuelve el archivo original (`Content-Type: audio/mpeg` o `audio/wav`) para el reproductor.
+Mismas reglas de visibilidad. El frontend lo pide con el token Bearer y lo reproduce desde
+memoria, por eso no hace falta soporte de `Range`.
+
+Errores: `404 NO_ENCONTRADO` (la llamada no existe, no puede verla o el archivo ya no está en disco).
+
+### De dónde salen los datos (para `docs/contrato_audio.md`)
+El análisis de audio (David) debe producir, por llamada, lo necesario para llenar estos
+campos; el backend (Willy) los guarda en la base de datos:
+- `TB_Transcripcion`: un fragmento por intervención, con `hablante` (AGENTE o CLIENTE),
+  texto, tiempos de inicio y fin, `score_sentimiento` (-1 a 1), volumen RMS y tono F0.
+- `TB_Alerta`: tipo, quién la originó, segundo, valor medido y sugerencia.
+- `TB_Llamada`: `duracion_segundos`, `score_global_nlp`, `score_acustico`, `puntaje_final`
+  (0 a 100), `clasificacion_final`, `diagnostico_conflicto` y `baja_confianza_audio`.
