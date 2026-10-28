@@ -29,8 +29,8 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 | `GET /agentes` | `CARGA_LOTES` leer | Hecho |
 | `POST /llamadas/lotes` | `CARGA_LOTES` escribir | Hecho |
 | `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | Hecho |
-| `GET /llamadas/:id_llamada` | Sesión + visibilidad por rol | **Propuesto, pendiente (Willy)** |
-| `GET /llamadas/:id_llamada/audio` | Igual que el anterior | **Propuesto, pendiente (Willy)** |
+| `GET /llamadas/:id_llamada` | Sesión + visibilidad por rol | Hecho |
+| `GET /llamadas/:id_llamada/audio` | Igual que el anterior | Hecho |
 
 ---
 
@@ -253,7 +253,7 @@ Detalles de la implementación:
 
 ---
 
-## Detalle de una llamada (propuesto, pendiente de implementar)
+## Detalle de una llamada
 
 Pantalla con el resultado del análisis: puntaje, clasificación, diagnóstico, alertas,
 transcripción por hablante y mapa de sentimiento a lo largo de la llamada. Los nombres
@@ -329,6 +329,15 @@ Mismas reglas de visibilidad. El frontend lo pide con el token Bearer y lo repro
 memoria, por eso no hace falta soporte de `Range`.
 
 Errores: `404 NO_ENCONTRADO` (la llamada no existe, no puede verla o el archivo ya no está en disco).
+
+Detalles de la implementación (no cambian el contrato, lo precisan):
+- Un `id_llamada` que no es un número entero positivo responde `400 DATOS_INVALIDOS`, igual que en
+  `GET /llamadas/lotes/:id_lote`.
+- La visibilidad del Supervisor depende de la asignación **actual** (`TB_AsignacionSupervisor`):
+  si un agente cambia de supervisor, el anterior deja de ver sus llamadas.
+- `fecha_inicio` hoy es la fecha de carga del audio (valor por defecto de la columna) hasta que el
+  procesamiento la complete.
+- `tiene_audio` es `false` si el archivo ya no está en disco; en ese caso `/audio` responde `404`.
 
 ### De dónde salen los datos (para `docs/contrato_audio.md`)
 El análisis de audio (David) debe producir, por llamada, lo necesario para llenar estos

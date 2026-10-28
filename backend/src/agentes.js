@@ -36,6 +36,12 @@ export async function puedeVerAgente(usuario, idAgente) {
   return filas.length > 0;
 }
 
+// Para ver una LLAMADA (docs/api.md, "Quien puede ver una llamada"): el agente ve las
+// suyas; el Supervisor, las de sus agentes asignados; el SuperAdmin, todas.
+export async function puedeVerLlamadaDe(usuario, idAgente) {
+  return usuario.id === idAgente || puedeVerAgente(usuario, idAgente);
+}
+
 // Para CARGAR audios: devuelve el agente si el usuario puede verlo y esta activo, o null.
 export async function buscarAgenteVisible(usuario, idAgente) {
   const filas = veTodos(usuario)
