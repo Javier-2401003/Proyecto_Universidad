@@ -63,7 +63,7 @@ Los módulos sin pantalla muestran "En construcción" (`src/modulos.js`).
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 23/10/2026_
+_Última actualización: 02/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -77,18 +77,25 @@ fallan dependencias); no hace falta instalar ffmpeg (PyAV lo trae). Con un audio
 en una laptop sin GPU: **`base` ~1 min, `small` ~1 min 40 s**, 0,6-0,8 GB de RAM.
 openai-whisper tardó lo mismo pero usa el doble de memoria y PyTorch, así que se usa
 faster-whisper. Detalle en `audio-processing/README.md`.
-Rama `david-contrato-audio`: borrador v0.1 de `docs/contrato_audio.md` (PR aparte).
+Rama `david-contrato-audio` (PR #9): borrador v0.1 de `docs/contrato_audio.md`, ya con las
+respuestas de Willy del 28/10: ruta absoluta del audio, variables de `.env`, dBFS y los campos
+acordados para la v0.2. Python calcula también el puntaje final, la clasificación y el diagnóstico.
 
 **En curso:** -
 
 **Pendiente:**
 - Repetir los tiempos con una llamada real (se midió con voz sintética de Windows).
-- v0.2 del contrato: `hablante` (diarización) y `score_sentimiento` (léxico RN-01).
-- Umbrales de alertas de volumen y tono; validar el criterio de `baja_confianza_audio`.
+- Script y contrato v0.2: `hablante` (diarización sin PyTorch) y `score_sentimiento` (léxico
+  RN-01) por segmento; `score_global_nlp`, `score_acustico`, `puntaje_final`,
+  `clasificacion_final` y `diagnostico_conflicto` en el primer nivel. `analizar.py` sigue
+  emitiendo la v0.1.
+- v0.3: alertas de volumen y tono (faltan umbrales); validar el criterio de `baja_confianza_audio`.
 
 **Necesito de otros:**
-- Willy: revisar `docs/contrato_audio.md` y responder sus preguntas (sección 7), sobre todo
-  qué hacer con `hablante` y `score_sentimiento`, que son NOT NULL.
+- Willy: aprobar el PR #9 y responder la pregunta abierta de la sección 7: si una llamada
+  analizada con la v0.1 se marca `COMPLETADO`, la pantalla de detalle mostraría puntaje 0 y
+  `NEUTRO` como si fuera real.
+- Willy o Javier: revisar el PR #8 (`analizar.py`); el procesamiento en el backend depende de él.
 - Reunión: agregar faster-whisper (MIT, gratis) a `docs/herramientas.md`, y aclarar ahí que
   ffmpeg ya no hay que instalarlo aparte.
 
