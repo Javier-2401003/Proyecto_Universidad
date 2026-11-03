@@ -63,7 +63,7 @@ Los módulos sin pantalla muestran "En construcción" (`src/modulos.js`).
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 02/11/2026_
+_Última actualización: 03/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -76,11 +76,12 @@ solo un JSON por stdout; errores en JSON con código de salida 1. Python **3.12*
 fallan dependencias); no hace falta instalar ffmpeg (PyAV lo trae). Con un audio de 4,5 min
 en una laptop sin GPU: **`base` ~1 min, `small` ~1 min 40 s**, 0,6-0,8 GB de RAM.
 openai-whisper tardó lo mismo pero usa el doble de memoria y PyTorch, así que se usa
-faster-whisper. Detalle en `audio-processing/README.md`.
-Rama `david-contrato-audio` (PR #9): borrador v0.1 de `docs/contrato_audio.md`, ya con las
-respuestas de Willy del 28/10: ruta absoluta del audio, variables de `.env`, dBFS y los campos
-acordados para la v0.2. Python calcula también el puntaje final, la clasificación y el diagnóstico.
-Willy lo aprobó el 02/11.
+faster-whisper. Detalle en `audio-processing/README.md`. Willy aprobó el PR #8 el 02/11; falta fusionar.
+Rama `david-contrato-audio` (PR #9): `docs/contrato_audio.md` v0.1 con las decisiones de Willy:
+ruta absoluta del audio, variables de `.env`, dBFS y los campos de la v0.2. Python calcula también
+el puntaje final, la clasificación y el diagnóstico. Si faltan campos de la v0.2, el backend deja
+la llamada en `ERROR` con `CONTRATO_INCOMPLETO`. Willy lo aprobó el 02/11; el 03/11 agregué la regla
+para audios sin voz, que él aún no ha revisado.
 Rama `david-lexico-sentimiento`: `score_sentimiento` por segmento y `score_global_nlp` con un
 léxico según RN-01 (`lexico.py`, `lexico_es.json`), 13 pruebas pasando. RN-01 no define la
 fórmula; la decisión del proyecto está en `audio-processing/README.md`.
@@ -92,13 +93,19 @@ fórmula; la decisión del proyecto está en `audio-processing/README.md`.
 - `score_acustico` (RN-02), `puntaje_final` (RN-03), `clasificacion_final` y `diagnostico_conflicto`.
 - Investigar por qué Whisper casi no transcribió a quien llama en una llamada real de 4 min 44 s
   y repetir la prueba con una muestra de call center (el léxico aún no tiene precisión medida).
-- v0.3: alertas de volumen y tono; validar el criterio de `baja_confianza_audio`.
+- Rendimiento: Willy midió 66-87 s con `base` para una grabación real de 52 s, mucho más que en mi
+  laptop. Repetir las medidas con llamadas reales en la laptop más lenta del equipo.
+- Revisar el umbral de `baja_confianza_audio`: esa grabación dio `true` (-1,142).
+- Notas de Willy en el PR #8: un archivo de 0 bytes devuelve `AUDIO_ILEGIBLE`, no `AUDIO_VACIO`, y
+  el README puede aclarar que Python 3.13.5 también funcionó.
+- Abrir el PR de `david-lexico-sentimiento` cuando el PR #8 esté en `main`.
+- v0.3: alertas de volumen y tono.
 
 **Necesito de otros:**
-- Willy: aclarar la pregunta abierta de la sección 7 del contrato, si no quedó resuelta: si una
-  llamada analizada con la v0.1 se marca `COMPLETADO`, la pantalla de detalle mostraría puntaje 0
-  y `NEUTRO` como si fuera real.
-- Willy o Javier: revisar el PR #8 (`analizar.py`); el procesamiento en el backend depende de él.
+- Willy: revisar en el PR #9 la regla para audios sin voz (sección 5 del contrato) y compartir su
+  grabación de 52 s, para investigar la baja confianza.
+- Javier: dar su revisión de los PRs #8 y #9, o acordar que se fusionen con la aprobación de Willy.
+  El procesamiento en el backend depende de ellos.
 - Javier: confirmar el sentido del odómetro. El Blueprint se contradice: en las páginas 7 y 9,
   100 es bueno y de 0 a 30 es rojo; en la 32, conflicto "ALTO" tiene 78,5 puntos. Propongo seguir
   las páginas 7 y 9, con `puntaje_final = (combinado + 1) × 50`.
