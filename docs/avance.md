@@ -43,7 +43,7 @@ Avance aproximado: **15-20 %** (20/10/2026).
 ---
 
 ## Javier - Frontend
-_Última actualización: 22/10/2026_
+_Última actualización: 03/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] Proyecto React + Vite en `frontend/`.
@@ -69,12 +69,19 @@ clasificación, diagnóstico, puntajes de texto y voz, mapa de sentimiento por h
 alertas, transcripción y reproductor de audio (salta al segundo elegido). Contrato propuesto
 en `docs/api.md` y guía de demo en `docs/demo.md`.
 
-Las dos pantallas funcionan con **datos simulados** (`src/api/simulacion/`) hasta que existan
+Rama `claude/elegant-newton-m1b3dj`: **estadísticas en la página de inicio** (pedido del
+03/11/2026): indicadores (llamadas, analizadas, puntaje promedio, alertas), llamadas por
+estado, sentimiento, alertas por tipo y tabla por agente, con periodo de 7, 30 o 90 días.
+Contrato propuesto en `docs/api.md` ("Estadísticas del inicio", `GET /estadisticas/resumen`).
+
+Las tres pantallas funcionan con **datos simulados** (`src/api/simulacion/`) hasta que existan
 los endpoints; con `VITE_SIMULAR_LLAMADAS=false` usan el backend real.
 
 **En curso:** -
 
 **Necesito de otros:**
+- Willy: revisar e implementar `GET /estadisticas/resumen` según `docs/api.md` (sección
+  "Estadísticas del inicio"). Misma visibilidad por rol que el detalle de una llamada.
 - Willy: los 3 endpoints de carga de lotes **tal como están en `docs/api.md`**
   (`GET /agentes`, `POST /llamadas/lotes`, `GET /llamadas/lotes/:id_lote`). Cuando estén,
   aviso para conectarlos y probar juntos.

@@ -2,7 +2,8 @@
 
 Interfaz web en React + Vite. Por ahora incluye el login, el menú lateral según los
 permisos del usuario, la gestión de usuarios (listar y crear), la carga de audios
-por lotes y el detalle de una llamada (estas dos con datos simulados, ver más abajo).
+por lotes, el detalle de una llamada y las estadísticas de la página de inicio (estas tres
+con datos simulados, ver más abajo).
 
 ## Puesta en marcha
 Requisitos: Node.js 20 o superior y el backend funcionando (ver `README.md` de la raíz).
@@ -45,9 +46,9 @@ src/
 El menú y la protección de la ruta ya dependen de `usuario.permisos`: no hace falta
 tocar nada más. El backend vuelve a comprobar los permisos en cada petición.
 
-## Modo de prueba (carga de lotes y detalle de llamada)
+## Modo de prueba (carga de lotes, detalle de llamada y estadísticas)
 Los contratos están en `docs/api.md`. Mientras el backend no tenga los endpoints de
-`/llamadas`, estas pantallas usan **datos simulados** (`src/api/simulacion/`) y muestran
+`/llamadas` y `/estadisticas`, estas pantallas usan **datos simulados** (`src/api/simulacion/`) y muestran
 el aviso "Modo de prueba". Los archivos no salen de la computadora.
 
 - Para usar el backend real, cree `frontend/.env` con `VITE_SIMULAR_LLAMADAS=false` y
@@ -73,6 +74,15 @@ el aviso "Modo de prueba". Los archivos no salen de la computadora.
   reproductor salta a ese segundo).
 - La simulación alterna tres conversaciones de ejemplo: positiva, cliente problemático
   y falla del agente (con audio de baja confianza).
+
+### Estadísticas de la página de inicio
+- Arriba de las tarjetas de módulos: llamadas por estado, sentimiento de las llamadas
+  analizadas, alertas por tipo y una tabla por agente (primero los de menor puntaje).
+  Se elige el periodo: 7, 30 o 90 días.
+- El Agente ve solo sus llamadas y no ve la tabla por agente. En modo de prueba, un Agente
+  ve los datos de "Ana Torres (prueba)"; el Supervisor y el SuperAdmin ven los tres agentes.
+- Los datos simulados son siempre los mismos (90 días generados con una semilla fija) y no
+  dependen de los lotes cargados en la pantalla de carga.
 
 ## Sesión
 - El token se guarda en `sessionStorage`: sobrevive a una recarga y se borra al

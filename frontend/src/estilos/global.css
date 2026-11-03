@@ -17,6 +17,8 @@
   --aviso: #8a5a00;
   --aviso-suave: #fff4dc;
   --sentimiento-neutro: #a7b1bf;
+  /* Mas claro que --aviso para distinguirlo del rojo critico en los graficos (daltonismo). */
+  --serie-negativo: #d99a2b;
   --menu-fondo: #16202e;
   --menu-texto: #c9d3e0;
   --menu-activo: #2a3a52;
@@ -47,6 +49,7 @@
     --aviso: #f2c063;
     --aviso-suave: #3a2e14;
     --sentimiento-neutro: #5c6878;
+    --serie-negativo: #f2c063;
     --menu-fondo: #0b1017;
     --menu-activo: #1f2b3c;
     --sombra: none;
@@ -358,6 +361,216 @@ h2 {
 .tarjeta svg {
   flex-shrink: 0;
   color: var(--primario);
+}
+
+/* Estadisticas del inicio */
+.inicio {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inicio .encabezado,
+.inicio .alerta,
+.inicio .tarjetas {
+  margin: 0;
+}
+
+.inicio__subtitulo {
+  margin-top: 8px;
+}
+
+/* Las columnas nunca crecen mas que la pantalla (la tabla tiene su propio desplazamiento). */
+.inicio__graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 16px;
+}
+
+.inicio__graficos > *,
+.inicio > .tarjeta-panel {
+  min-width: 0;
+}
+
+.selector-periodo {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--superficie);
+}
+
+.selector-periodo__opcion {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--texto-secundario);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.selector-periodo__opcion:hover {
+  color: var(--texto);
+}
+
+.selector-periodo__opcion--activa {
+  background: var(--primario-suave);
+  color: var(--primario);
+  font-weight: 600;
+}
+
+.indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.indicador {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 18px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--superficie);
+  box-shadow: var(--sombra);
+}
+
+.indicador__etiqueta {
+  color: var(--texto-secundario);
+  font-size: 0.875rem;
+}
+
+.indicador__valor {
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.indicador__detalle {
+  font-size: 0.8125rem;
+}
+
+/* Colores de las series. Los mismos tonos de estado que usa el resto de la aplicacion. */
+.serie--exito { background: var(--exito); }
+.serie--primario { background: var(--primario); }
+.serie--neutro { background: var(--sentimiento-neutro); }
+.serie--negativo { background: var(--serie-negativo); }
+.serie--error { background: var(--error); }
+
+.barra-apilada__pista {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--fondo);
+}
+
+.barra-apilada__tramo {
+  flex-basis: 0;
+  min-width: 3px;
+}
+
+.leyenda {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px 16px;
+  margin: 12px 0 0;
+  padding: 0;
+  font-size: 0.875rem;
+  list-style: none;
+}
+
+.leyenda li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.leyenda i {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.nota-grafico {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 0.8125rem;
+}
+
+.barras {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.barras__fila {
+  display: grid;
+  grid-template-columns: minmax(110px, 150px) minmax(40px, 1fr) 3ch;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.875rem;
+}
+
+.barras__pista {
+  height: 10px;
+}
+
+.barras__relleno {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  background: var(--primario);
+}
+
+.barras__valor {
+  text-align: right;
+}
+
+.tarjeta-panel .tabla-contenedor {
+  border: none;
+}
+
+.tabla--compacta th,
+.tabla--compacta td {
+  padding: 8px 10px;
+}
+
+.tabla .numero {
+  text-align: right;
+}
+
+.medidor {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.medidor__pista {
+  width: 80px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--primario-suave);
+}
+
+.medidor__relleno {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primario);
 }
 
 /* ---------- Gestion de usuarios ---------- */
