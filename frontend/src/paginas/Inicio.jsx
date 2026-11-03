@@ -6,7 +6,7 @@ import { FlaskConical, TriangleAlert } from 'lucide-react';
 import { useSesion } from '../sesion/SesionContexto.jsx';
 import { modulosVisibles } from '../modulos.js';
 import { PERIODOS, obtenerResumen } from '../api/estadisticas.js';
-import { SIMULAR } from '../api/simulacion/activa.js';
+import { SIMULAR_ESTADISTICAS as SIMULAR } from '../api/simulacion/activa.js';
 import { Cargando } from '../componentes/Cargando.jsx';
 
 // Orden y color de cada barra apilada. Los colores son los mismos de las etiquetas

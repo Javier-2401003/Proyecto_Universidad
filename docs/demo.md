@@ -45,6 +45,8 @@ Abra `backend/.env` y complete:
 - `SEED_ADMIN_NOMBRE`, `SEED_ADMIN_CORREO`, `SEED_ADMIN_PASSWORD` (mínimo 8 caracteres): su administrador.
 
 ## 4. Instalar y crear el administrador
+Después de cada `git pull` vuelva a ejecutar `npm install` (por ejemplo, la carga de lotes
+agregó `multer`).
 ```
 npm install
 npm run crear-superadmin
@@ -75,9 +77,21 @@ Abra **http://localhost:5173**. Para apagar, pulse `Ctrl + C` en cada terminal.
 1. Entre con su SuperAdmin (el del `.env`).
 2. En **Gestión de usuarios**, cree un usuario **Supervisor** y otro **Agente**.
 3. Cierre sesión y entre como **Agente**: solo ve "Panel del Agente".
-4. Entre como **Supervisor** y abra **Carga de audios por lotes**: elija un agente de
-   prueba y arrastre 5 audios `.mp3` o `.wav` (modo de prueba: no salen de su computadora).
-   Al terminar, haga clic en una llamada completada para ver su **detalle**.
+4. Asigne el Agente al Supervisor. Hasta que se fusione el PR #11 (que agrega esa opción
+   en Gestión de usuarios), hágalo en phpMyAdmin, pestaña SQL:
+   ```sql
+   INSERT INTO TB_AsignacionSupervisor (id_supervisor, id_agente)
+   SELECT s.id_usuario, a.id_usuario FROM TB_Usuario s, TB_Usuario a
+    WHERE s.correo_electronico = 'correo-del-supervisor' AND a.correo_electronico = 'correo-del-agente';
+   ```
+5. Entre como **Supervisor** y abra **Carga de audios por lotes**: elija el agente y
+   arrastre 5 audios `.mp3` o `.wav`. Se guardan en `backend/uploads/` y quedan en
+   **Pendiente**, porque el análisis de audio todavía no está conectado al backend.
+6. Para mostrar el **detalle de una llamada** antes de eso, cree `frontend/.env` con
+   `VITE_SIMULAR_LLAMADAS=true`, reinicie `npm run dev` del frontend y vuelva a cargar un
+   lote: en modo de prueba las llamadas se completan solas y se puede hacer clic en ellas.
+
+La página de inicio muestra estadísticas **de ejemplo** hasta que exista su endpoint.
 
 ## Si algo falla
 | Mensaje | Solución |

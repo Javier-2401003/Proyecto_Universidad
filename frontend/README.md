@@ -46,20 +46,28 @@ src/
 El menú y la protección de la ruta ya dependen de `usuario.permisos`: no hace falta
 tocar nada más. El backend vuelve a comprobar los permisos en cada petición.
 
-## Modo de prueba (carga de lotes, detalle de llamada y estadísticas)
-Los contratos están en `docs/api.md`. Mientras el backend no tenga los endpoints de
-`/llamadas` y `/estadisticas`, estas pantallas usan **datos simulados** (`src/api/simulacion/`) y muestran
-el aviso "Modo de prueba". Los archivos no salen de la computadora.
+## Backend real y modo de prueba
+Los contratos están en `docs/api.md`. Qué parte usa datos simulados (`src/api/simulacion/`)
+lo decide `src/api/simulacion/activa.js`; las pantallas simuladas muestran el aviso
+"Modo de prueba".
 
-- Para usar el backend real, cree `frontend/.env` con `VITE_SIMULAR_LLAMADAS=false` y
-  reinicie `npm run dev`. Cuando los endpoints estén en `main`, cambie el valor por
-  defecto en `src/api/simulacion/activa.js` a `false`.
-- Los datos simulados viven en memoria: al recargar la página (F5) se pierden y hay que
-  cargar un lote de nuevo.
+| Pantalla | Por defecto | Para cambiarlo (en `frontend/.env`, luego reinicie `npm run dev`) |
+|---|---|---|
+| Carga de lotes y detalle de llamada | **Backend real** | `VITE_SIMULAR_LLAMADAS=true` |
+| Estadísticas del inicio | **Simuladas** (falta `GET /estadisticas/resumen`) | `VITE_SIMULAR_ESTADISTICAS=false` |
+
+- Con el backend real, las llamadas quedan en **Pendiente** hasta que el backend ejecute
+  el análisis de audio (pendiente de Willy). Para mostrar el detalle de una llamada en una
+  demo antes de eso, use `VITE_SIMULAR_LLAMADAS=true`.
+- En modo de prueba los archivos no salen de la computadora y los datos viven en memoria:
+  al recargar la página (F5) se pierden y hay que cargar un lote de nuevo.
 
 ### Carga de audios por lotes
 - Solo el rol **Supervisor** puede cargar lotes (permiso de escritura en `CARGA_LOTES`);
   el SuperAdmin solo puede consultar el módulo.
+- Para cargar, el Supervisor necesita al menos un agente asignado (`GET /agentes` solo
+  devuelve los suyos). Hasta que se fusione el PR #11, la asignación se hace en phpMyAdmin
+  (`TB_AsignacionSupervisor`).
 - La simulación aplica las mismas reglas del contrato: 5, 10 o 15 archivos WAV/MP3 de
   hasta 25 MB, audios duplicados y agente válido.
 - Un archivo cuyo nombre contenga `error` termina en estado ERROR, para probar ese caso.
@@ -67,7 +75,8 @@ el aviso "Modo de prueba". Los archivos no salen de la computadora.
   del detalle de una llamada se sigue viendo.
 
 ### Detalle de una llamada (`/llamadas/:id`)
-- Se abre desde la carga de lotes, haciendo clic en una llamada **Completada**.
+- Se abre desde la carga de lotes, haciendo clic en una llamada **Completada**. Con el
+  backend real se escucha el audio original.
 - Muestra el puntaje final (odómetro de 0 a 100), la clasificación, el diagnóstico, los
   puntajes de texto y voz, el mapa de sentimiento por hablante, las alertas y la
   transcripción. Al hacer clic en un tiempo se resalta la frase (y, con audio real, el

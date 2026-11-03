@@ -1,8 +1,8 @@
 // Detalle de una llamada. Contrato: docs/api.md, seccion "Detalle de una llamada".
-// Mientras el backend no tenga estos endpoints, se usan datos simulados
+// Usa el backend real; con VITE_SIMULAR_LLAMADAS=true usa datos simulados
 // (api/simulacion/llamadas.js); ver api/simulacion/activa.js.
 import { pedir, pedirArchivo } from './cliente.js';
-import { SIMULAR } from './simulacion/activa.js';
+import { SIMULAR_LLAMADAS as SIMULAR } from './simulacion/activa.js';
 import * as simulacion from './simulacion/llamadas.js';
 
 // { id_llamada, agente, estado_procesamiento, resultado, transcripcion, alertas, tiene_audio, ... }

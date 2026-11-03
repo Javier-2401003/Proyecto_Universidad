@@ -1,8 +1,8 @@
 // Carga de audios por lotes. Contrato: docs/api.md, seccion "Carga de audios por lotes".
-// Mientras el backend no tenga estos endpoints, se usan datos simulados
+// Usa el backend real; con VITE_SIMULAR_LLAMADAS=true usa datos simulados
 // (api/simulacion/lotes.js); ver api/simulacion/activa.js.
 import { enviarFormulario, pedir } from './cliente.js';
-import { SIMULAR } from './simulacion/activa.js';
+import { SIMULAR_LLAMADAS as SIMULAR } from './simulacion/activa.js';
 import * as simulacion from './simulacion/lotes.js';
 
 export { SIMULAR };

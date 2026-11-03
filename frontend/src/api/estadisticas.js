@@ -2,7 +2,7 @@
 // Mientras el backend no tenga este endpoint, se usan datos simulados
 // (api/simulacion/estadisticas.js); ver api/simulacion/activa.js.
 import { pedir } from './cliente.js';
-import { SIMULAR } from './simulacion/activa.js';
+import { SIMULAR_ESTADISTICAS as SIMULAR } from './simulacion/activa.js';
 import * as simulacion from './simulacion/estadisticas.js';
 
 // Los mismos valores que acepta el backend.
