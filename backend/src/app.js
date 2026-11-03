@@ -10,6 +10,7 @@ import { rutasAuth } from './routes/auth.js';
 import { rutasUsuarios } from './routes/usuarios.js';
 import { rutasAgentes } from './routes/agentes.js';
 import { rutasLlamadas } from './routes/lotes.js';
+import { rutasDetalleLlamada } from './routes/llamadas.js';
 
 export function crearApp() {
   const app = express();
@@ -43,6 +44,7 @@ export function crearApp() {
   app.use('/api/v1/usuarios', rutasUsuarios);
   app.use('/api/v1/agentes', rutasAgentes);
   app.use('/api/v1/llamadas', rutasLlamadas);
+  app.use('/api/v1/llamadas', rutasDetalleLlamada); // despues: /lotes/... no debe tomarse como un id
 
   app.use((_req, _res, next) => {
     next(new ErrorHttp(404, 'NO_ENCONTRADO', 'La ruta solicitada no existe.'));
