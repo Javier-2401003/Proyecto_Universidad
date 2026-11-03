@@ -85,12 +85,22 @@ para audios sin voz, que él aún no ha revisado.
 Rama `david-lexico-sentimiento`: `score_sentimiento` por segmento y `score_global_nlp` con un
 léxico según RN-01 (`lexico.py`, `lexico_es.json`), 13 pruebas pasando. RN-01 no define la
 fórmula; la decisión del proyecto está en `audio-processing/README.md`.
+Rama `david-score-acustico` (sale de la anterior): `score_acustico` según RN-02 (`acustico.py`,
+`reglas_acusticas.json`), más `puntaje_final` y `clasificacion_final`, 43 pruebas pasando.
+Recalibrado por falsas alarmas: filtro y normalización antes del RMS, 180 % durante 2 s seguidos, y
+la alerta roja exige también texto negativo. Una asesoría que parece tranquila pasó de -0,304 a -0,128
+y queda `NEUTRO`. Los valores están en `reglas_acusticas.json`, y la comparación, en el README.
 
 **En curso:** -
 
 **Pendiente:**
-- `hablante`: diarización sin PyTorch. Sin esto, `analizar.py` sigue emitiendo la v0.1.
-- `score_acustico` (RN-02), `puntaje_final` (RN-03), `clasificacion_final` y `diagnostico_conflicto`.
+- `hablante`: diarización sin PyTorch. Es lo que más urge: sin esto `analizar.py` sigue en la v0.1
+  y el baseline de RN-02 mezcla las dos voces.
+- `diagnostico_conflicto`.
+- Medir con gritos reales: el Blueprint pide 88 % sobre 50 muestras y la recalibración bajó la
+  sensibilidad. Un grito simulado de 3 s al doble de volumen se detecta en 6 de 12 posiciones.
+- Actualizar `docs/contrato_audio.md` en un PR propio: nuevo criterio de `baja_confianza_audio`,
+  puntaje con 100 % texto en E1, y `puntaje_final` y `clasificacion_final` ya emitidos.
 - Investigar por qué Whisper casi no transcribió a quien llama en una llamada real de 4 min 44 s
   y repetir la prueba con una muestra de call center (el léxico aún no tiene precisión medida).
 - Rendimiento: Willy midió 66-87 s con `base` para una grabación real de 52 s, mucho más que en mi
@@ -109,7 +119,10 @@ fórmula; la decisión del proyecto está en `audio-processing/README.md`.
 - Javier: confirmar el sentido del odómetro. El Blueprint se contradice: en las páginas 7 y 9,
   100 es bueno y de 0 a 30 es rojo; en la 32, conflicto "ALTO" tiene 78,5 puntos. Propongo seguir
   las páginas 7 y 9, con `puntaje_final = (combinado + 1) × 50`.
-- Equipo: acordar los cortes numéricos de `clasificacion_final`, que el Blueprint no define.
+- Equipo: confirmar que RN-02 y RN-03 se apartan del Blueprint: 180 % durante 2 s en lugar de 150 %
+  durante 1,5 s, y alerta roja solo con texto negativo. También acordar los cortes provisionales de
+  `clasificacion_final` (35 y 65; alerta roja = `CRITICO`) y si `score_acustico` puede ser positivo:
+  hoy nunca lo es, así que `puntaje_final` llega a 77,5 como máximo.
 - Reunión: agregar faster-whisper (MIT, gratis) a `docs/herramientas.md`, y aclarar ahí que
   ffmpeg ya no hay que instalarlo aparte.
 

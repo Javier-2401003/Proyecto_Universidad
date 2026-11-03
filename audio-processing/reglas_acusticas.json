@@ -1,0 +1,33 @@
+{
+  "rn02": {
+    "segundos_por_tramo": 0.5,
+    "razon_desviacion_f0": 0.4
+  },
+  "rn03": {
+    "peso_nlp": 0.55,
+    "peso_acustico": 0.45,
+    "segundos_subida_continua": 2.0
+  },
+  "recalibracion_falsos_positivos": {
+    "razon_volumen": 1.8,
+    "segundos_volumen_continuos": 2.0,
+    "segundos_pausa_tolerada": 0.5,
+    "umbral_nlp_negativo": -0.3
+  },
+  "decisiones_del_proyecto": {
+    "filtro_hz_minimo": 80.0,
+    "filtro_hz_maximo": 4000.0,
+    "normalizar_a_dbfs": -20.0,
+    "piso_voz_dbfs": -45.0,
+    "margen_voz_db": 10.0,
+    "segundos_baseline": 30.0,
+    "segundos_minimos_baseline": 2.5,
+    "segundos_ventana_tono": 2.0,
+    "segundos_minimos_voz_tono": 0.5,
+    "fraccion_saturacion": 0.25,
+    "snr_ruidoso_db": 15.0,
+    "rango_extremo_db": 12.0,
+    "puntaje_negativo_menor_a": 35.0,
+    "puntaje_positivo_mayor_a": 65.0
+  }
+}
