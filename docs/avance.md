@@ -74,6 +74,11 @@ Rama `claude/elegant-newton-m1b3dj`: **estadísticas en la página de inicio** (
 estado, sentimiento, alertas por tipo y tabla por agente, con periodo de 7, 30 o 90 días.
 Contrato propuesto en `docs/api.md` ("Estadísticas del inicio", `GET /estadisticas/resumen`).
 
+Arreglos que pidió Willy (03/11/2026): la carga de lotes consulta el estado cada 2 s el primer
+minuto y luego cada 10 s, y se detiene a los 30 minutos con un botón "Actualizar" (antes
+consultaba cada 2 s sin fin); el aviso "Se reintentará automáticamente" ya no sale cuando la
+consulta se detuvo. El volumen pasó a **dBFS** en `docs/api.md` y en los datos simulados.
+
 Las tres pantallas funcionan con **datos simulados** (`src/api/simulacion/`) hasta que existan
 los endpoints; con `VITE_SIMULAR_LLAMADAS=false` usan el backend real.
 

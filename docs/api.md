@@ -297,7 +297,7 @@ para no revelar que existe):
       "timestamp_inicio": 0.0,
       "timestamp_fin": 4.2,
       "score_sentimiento": 0.6,
-      "nivel_volumen_rms": 62.4,
+      "nivel_volumen_rms": -20.3,
       "tono_f0_hz": 180.5
     }
   ],
@@ -307,7 +307,7 @@ para no revelar que existe):
       "tipo_alerta": "EXCESO_VOLUMEN",
       "origen_evento": "CLIENTE",
       "timestamp_evento": 95.4,
-      "valor_registrado": "88 dB",
+      "valor_registrado": "-8.5 dBFS",
       "mensaje_sugerencia": "Mantenga un tono calmado y valide la molestia del cliente."
     }
   ],
@@ -318,6 +318,8 @@ para no revelar que existe):
   y `alertas` llegan vacías en ese caso.
 - `transcripcion` ordenada por `timestamp_inicio`; `alertas` por `timestamp_evento`.
 - Números como números (no texto): el backend ya usa `decimalNumbers: true`.
+- El volumen está en **dBFS** (`docs/contrato_audio.md`): `nivel_volumen_rms` es negativo (0 es el
+  máximo digital) y `valor_registrado` de un `EXCESO_VOLUMEN` va como `"-8.5 dBFS"`.
 - Valores posibles: `clasificacion_final` = `POSITIVO`, `NEUTRO`, `NEGATIVO`, `CRITICO`;
   `diagnostico_conflicto` = `FALLA_AGENTE`, `CLIENTE_PROBLEMATICO`, `SIN_CONFLICTO`;
   `tipo_alerta` = `EXCESO_VOLUMEN`, `ALTERACION_TONO`, `VOCABULARIO_INADECUADO`, `OMISION_SCRIPT`.

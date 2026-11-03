@@ -684,6 +684,18 @@ h2 {
   color: var(--aviso);
 }
 
+/* Aviso con un boton a la derecha (baja debajo del texto en pantallas angostas). */
+.alerta--accion {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.alerta--accion > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .campo--corto {
   max-width: 420px;
 }
