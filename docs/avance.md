@@ -80,22 +80,29 @@ faster-whisper. Detalle en `audio-processing/README.md`.
 Rama `david-contrato-audio` (PR #9): borrador v0.1 de `docs/contrato_audio.md`, ya con las
 respuestas de Willy del 28/10: ruta absoluta del audio, variables de `.env`, dBFS y los campos
 acordados para la v0.2. Python calcula también el puntaje final, la clasificación y el diagnóstico.
+Willy lo aprobó el 02/11.
+Rama `david-lexico-sentimiento`: `score_sentimiento` por segmento y `score_global_nlp` con un
+léxico según RN-01 (`lexico.py`, `lexico_es.json`), 13 pruebas pasando. RN-01 no define la
+fórmula; la decisión del proyecto está en `audio-processing/README.md`.
 
 **En curso:** -
 
 **Pendiente:**
-- Repetir los tiempos con una llamada real (se midió con voz sintética de Windows).
-- Script y contrato v0.2: `hablante` (diarización sin PyTorch) y `score_sentimiento` (léxico
-  RN-01) por segmento; `score_global_nlp`, `score_acustico`, `puntaje_final`,
-  `clasificacion_final` y `diagnostico_conflicto` en el primer nivel. `analizar.py` sigue
-  emitiendo la v0.1.
-- v0.3: alertas de volumen y tono (faltan umbrales); validar el criterio de `baja_confianza_audio`.
+- `hablante`: diarización sin PyTorch. Sin esto, `analizar.py` sigue emitiendo la v0.1.
+- `score_acustico` (RN-02), `puntaje_final` (RN-03), `clasificacion_final` y `diagnostico_conflicto`.
+- Investigar por qué Whisper casi no transcribió a quien llama en una llamada real de 4 min 44 s
+  y repetir la prueba con una muestra de call center (el léxico aún no tiene precisión medida).
+- v0.3: alertas de volumen y tono; validar el criterio de `baja_confianza_audio`.
 
 **Necesito de otros:**
-- Willy: aprobar el PR #9 y responder la pregunta abierta de la sección 7: si una llamada
-  analizada con la v0.1 se marca `COMPLETADO`, la pantalla de detalle mostraría puntaje 0 y
-  `NEUTRO` como si fuera real.
+- Willy: aclarar la pregunta abierta de la sección 7 del contrato, si no quedó resuelta: si una
+  llamada analizada con la v0.1 se marca `COMPLETADO`, la pantalla de detalle mostraría puntaje 0
+  y `NEUTRO` como si fuera real.
 - Willy o Javier: revisar el PR #8 (`analizar.py`); el procesamiento en el backend depende de él.
+- Javier: confirmar el sentido del odómetro. El Blueprint se contradice: en las páginas 7 y 9,
+  100 es bueno y de 0 a 30 es rojo; en la 32, conflicto "ALTO" tiene 78,5 puntos. Propongo seguir
+  las páginas 7 y 9, con `puntaje_final = (combinado + 1) × 50`.
+- Equipo: acordar los cortes numéricos de `clasificacion_final`, que el Blueprint no define.
 - Reunión: agregar faster-whisper (MIT, gratis) a `docs/herramientas.md`, y aclarar ahí que
   ffmpeg ya no hay que instalarlo aparte.
 

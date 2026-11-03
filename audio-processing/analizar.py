@@ -140,18 +140,24 @@ def resumir_tramo(f0, rms):
     }
 
 
-def construir_resultado(args, audio, segmentos, info, f0, rms, tiempos, duraciones):
+def construir_resultado(args, audio, segmentos, info, f0, rms, tiempos, duraciones, lexico):
     import numpy as np
 
+    from lexico import analizar_frase, puntaje_global
+
     salida_segmentos = []
+    frases_analizadas = []
     for indice, segmento in enumerate(segmentos):
         tramo = (tiempos >= segmento["inicio"]) & (tiempos < segmento["fin"])
         acustica = resumir_tramo(f0[tramo], rms[tramo])
+        frase = analizar_frase(segmento["texto"], lexico)
+        frases_analizadas.append(frase)
         salida_segmentos.append({
             "indice": indice,
             "inicio": redondear(segmento["inicio"], 3),
             "fin": redondear(segmento["fin"], 3),
             "texto": segmento["texto"],
+            "score_sentimiento": frase[0],
             "f0_hz": acustica["f0_hz"],
             "rms_dbfs": acustica["rms_dbfs"],
             "confianza_logprob": redondear(segmento["confianza_logprob"], 3),
@@ -174,6 +180,7 @@ def construir_resultado(args, audio, segmentos, info, f0, rms, tiempos, duracion
         "modelo": {"motor": "faster-whisper", "nombre": args.modelo, "tipo_calculo": "int8"},
         "baja_confianza_audio": (not segmentos)
         or logprob_promedio < UMBRAL_LOGPROB_BAJA_CONFIANZA,
+        "score_global_nlp": puntaje_global(frases_analizadas),
         "resumen_acustico": {
             "f0_mediana_hz": redondear(np.median(f0_con_voz), 2) if len(f0_con_voz) else None,
             "f0_desviacion_hz": redondear(np.std(f0_con_voz), 2) if len(f0_con_voz) else None,
@@ -190,6 +197,10 @@ def main(argv):
     inicio_total = time.perf_counter()
     args = leer_argumentos(argv)
 
+    from lexico import cargar_lexico
+
+    # Antes de transcribir: si el lexico esta mal, falla sin gastar minutos de CPU.
+    lexico = cargar_lexico()
     audio = cargar_audio(args.ruta_audio)
 
     inicio = time.perf_counter()
@@ -205,7 +216,8 @@ def main(argv):
         "acustico": duracion_acustica,
         "total": time.perf_counter() - inicio_total,
     }
-    escribir_json(construir_resultado(args, audio, segmentos, info, f0, rms, tiempos, duraciones))
+    escribir_json(construir_resultado(args, audio, segmentos, info, f0, rms, tiempos, duraciones,
+                                      lexico))
 
 
 if __name__ == "__main__":
