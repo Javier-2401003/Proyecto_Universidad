@@ -31,6 +31,7 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 | `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | Hecho |
 | `GET /llamadas/:id_llamada` | Sesión + visibilidad por rol | Hecho |
 | `GET /llamadas/:id_llamada/audio` | Igual que el anterior | Hecho |
+| `GET /estadisticas/resumen` | Sesión + visibilidad por rol | **Propuesto, pendiente (Willy)** |
 
 ---
 
@@ -347,3 +348,62 @@ campos; el backend (Willy) los guarda en la base de datos:
 - `TB_Alerta`: tipo, quién la originó, segundo, valor medido y sugerencia.
 - `TB_Llamada`: `duracion_segundos`, `score_global_nlp`, `score_acustico`, `puntaje_final`
   (0 a 100), `clasificacion_final`, `diagnostico_conflicto` y `baja_confianza_audio`.
+
+---
+
+## Estadísticas del inicio (propuesto, pendiente de implementar)
+
+La página de inicio (la primera que se ve al entrar) muestra un resumen de las llamadas
+del periodo: cuántas hay por estado, cómo salió el sentimiento, qué alertas aparecieron
+y cómo le va a cada agente. Propuesto por Javier el 03/11/2026, a revisar por Willy.
+
+### Quién ve qué
+Igual que en "Detalle de una llamada" (sin módulo; lo decide la relación con las llamadas):
+- **Agente:** solo sus propias llamadas.
+- **Supervisor:** las de los agentes que tiene asignados **hoy** (`TB_AsignacionSupervisor`).
+- **SuperAdmin:** todas.
+
+### `GET /estadisticas/resumen?dias=30`
+- `dias`: `7`, `30` o `90` (por defecto `30`). Cuenta las llamadas con `fecha_inicio` en los
+  últimos `dias` días, incluido hoy.
+
+`200`:
+```json
+{
+  "periodo": { "dias": 30, "desde": "2026-10-05", "hasta": "2026-11-03" },
+  "llamadas": {
+    "total": 128,
+    "por_estado": { "PENDIENTE": 4, "PROCESANDO": 1, "COMPLETADO": 117, "ERROR": 6 }
+  },
+  "sentimiento": {
+    "puntaje_promedio": 61.8,
+    "por_clasificacion": { "POSITIVO": 49, "NEUTRO": 33, "NEGATIVO": 25, "CRITICO": 10 },
+    "baja_confianza_audio": 7
+  },
+  "alertas": {
+    "total": 64,
+    "por_tipo": { "EXCESO_VOLUMEN": 21, "ALTERACION_TONO": 14, "VOCABULARIO_INADECUADO": 17, "OMISION_SCRIPT": 12 }
+  },
+  "agentes": [
+    {
+      "id_usuario": 7,
+      "nombre_completo": "Ana Torres",
+      "llamadas_completadas": 40,
+      "puntaje_promedio": 74.2,
+      "llamadas_criticas": 1,
+      "alertas": 9
+    }
+  ]
+}
+```
+- `por_estado`, `por_clasificacion` y `por_tipo` traen **siempre todas las claves**, con `0`
+  si no hay ninguna.
+- `sentimiento` y `alertas` cuentan **solo llamadas `COMPLETADO`**. `puntaje_promedio` es el
+  promedio de `puntaje_final` con 1 decimal, o `null` si no hay llamadas completadas.
+- `agentes`: los agentes visibles con al menos una llamada en el periodo, ordenados por
+  `nombre_completo`. Para un Agente, solo él mismo. `puntaje_promedio` es `null` si el agente
+  no tiene llamadas completadas.
+- Se calcula desde `TB_Llamada` y `TB_Alerta`. `TB_MetricaDiariaAgente` todavía no la llena
+  nadie; si más adelante se mantiene, se puede usar sin cambiar esta respuesta.
+
+Errores: `400 DATOS_INVALIDOS` si `dias` no es `7`, `30` o `90`.
