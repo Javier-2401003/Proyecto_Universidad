@@ -1,8 +1,8 @@
 # Contrato: backend (Node) y análisis de audio (Python)
 
-**Estado: BORRADOR v0.1, con las respuestas de Willy del 28/10/2026 (sección 7).** Lo
-acuerdan David y Willy; es definitivo cuando Willy apruebe el PR. Si alguien necesita un
-cambio, se hace primero aquí, en un PR propio, y se avisa al otro.
+**Estado: v0.1, aprobada por Willy el 02/11/2026 (decisiones en la sección 7).** La v0.2 de la
+sección 5 todavía no está implementada. Si alguien necesita un cambio, se hace primero aquí,
+en un PR propio, y se avisa al otro.
 
 - Script: `audio-processing/analizar.py` (instalación en `audio-processing/README.md`).
 - Quién llama: el backend, después de que `POST /llamadas/lotes` dejó la llamada en
@@ -157,7 +157,11 @@ murió sin JSON, usar `mensaje_error = "PROCESO_FALLIDO: código <n>"` (o `TIMEO
 **Con la v0.1 el backend no guarda `TB_Transcripcion`**, porque `hablante` y
 `score_sentimiento` son NOT NULL y no se creará un script `04_` para dejarlos en NULL.
 Willy deja listo el procesamiento (estados, timeout, una llamada a la vez) y lo prueba
-con la v0.1.
+con la v0.1, **solo en desarrollo**.
+
+**El backend no marca `COMPLETADO` si faltan campos de la v0.2:** la llamada queda en `ERROR`
+con `mensaje_error = "CONTRATO_INCOMPLETO: ..."`. Así nunca se muestran los valores por defecto
+de `TB_Llamada` (puntaje 0, `NEUTRO`) como si fueran un resultado real.
 
 Campos acordados para la **v0.2**. Todos los calcula Python; el backend solo valida y guarda:
 
@@ -171,8 +175,18 @@ Campos acordados para la **v0.2**. Todos los calcula Python; el backend solo val
 | `clasificacion_final` | primer nivel | `"POSITIVO"`, `"NEUTRO"`, `"NEGATIVO"` o `"CRITICO"` | `TB_Llamada.clasificacion_final` |
 | `diagnostico_conflicto` | primer nivel | `"FALLA_AGENTE"`, `"CLIENTE_PROBLEMATICO"` o `"SIN_CONFLICTO"` | `TB_Llamada.diagnostico_conflicto` |
 
-Para la **v0.3** queda `TB_Alerta` (EXCESO_VOLUMEN, ALTERACION_TONO, ...), porque faltan
-los umbrales: arreglo `alertas` con `tipo_alerta`, `origen_evento`, `timestamp_evento`,
+Reglas de la v0.2 para que estos campos nunca vayan nulos, porque las columnas son NOT NULL:
+
+- **`hablante` viene siempre**, aunque la diarización no esté segura: es la mejor estimación
+  entre `"AGENTE"` y `"CLIENTE"`, sin `null` ni un tercer valor.
+- **Audio sin voz o puro ruido (`segmentos: []`):** es un análisis válido, no un error. El JSON
+  trae `baja_confianza_audio: true`, `score_global_nlp: 0.0`, `score_acustico: 0.0`,
+  `clasificacion_final: "NEUTRO"`, `diagnostico_conflicto: "SIN_CONFLICTO"` y `puntaje_final`
+  en el punto neutro de la escala. Ese punto es `50.00` si se confirma que 100 es lo mejor del
+  odómetro (Blueprint, páginas 7 y 9), **pendiente de confirmar con Javier**. El backend marca
+  `COMPLETADO` y no guarda filas en `TB_Transcripcion`.
+
+Para la **v0.3** queda `TB_Alerta` (EXCESO_VOLUMEN, ALTERACION_TONO, ...): arreglo `alertas` con `tipo_alerta`, `origen_evento`, `timestamp_evento`,
 `valor_registrado` y `mensaje_sugerencia`.
 
 Columnas que **no** son del análisis y siguen siendo del backend: `fecha_inicio`,
@@ -181,11 +195,12 @@ Columnas que **no** son del análisis y siguen siendo del backend: `fecha_inicio
 ## 6. Reglas de versión
 
 - Agregar un campo nuevo es compatible: sube la versión menor (`0.1` a `0.2`). El backend
-  acepta cualquier `0.x` e ignora los campos que no conoce.
+  acepta cualquier `0.x` e ignora los campos que no conoce, pero para guardar un resultado
+  exige los campos de la v0.2 (sección 5).
 - Renombrar, quitar o cambiar el tipo de un campo sube la versión mayor (`1.x` a `2.0`) y
   requiere el visto bueno de los dos.
 
-## 7. Decisiones (Willy, 28/10/2026)
+## 7. Decisiones de Willy (28/10/2026 y 02/11/2026)
 
 1. **Variables de `.env`:** se usan los nombres de la sección 1.
 2. **`hablante` y `score_sentimiento`:** se espera a la v0.2 para guardar `TB_Transcripcion`,
@@ -194,9 +209,7 @@ Columnas que **no** son del análisis y siguen siendo del backend: `fecha_inicio
    nivel del JSON (sección 5).
 4. **Volumen:** `rms_dbfs` se guarda en `nivel_volumen_rms`, y `valor_registrado` usa el
    formato `"-8.5 dBFS"`. Javier cambia el ejemplo `"88 dB"` de `docs/api.md` y de los datos simulados.
-
-### Pregunta abierta para Willy
-
-Si el backend marca `COMPLETADO` una llamada analizada con la v0.1, `GET /llamadas/:id_llamada`
-mostraría los valores por defecto de `TB_Llamada` (puntaje 0, `NEUTRO`, `SIN_CONFLICTO`) como si
-fueran un resultado real, y sin transcripción. ¿Dejamos esas pruebas solo en desarrollo hasta la v0.2?
+5. **Pruebas con la v0.1 (02/11):** quedan solo en desarrollo. El backend deja en `ERROR` con
+   `CONTRATO_INCOMPLETO` toda llamada a la que le falten campos de la v0.2 (sección 5).
+6. **Sin nulos en la v0.2 (02/11):** `hablante` viene siempre y los puntajes tienen valor aunque
+   no haya segmentos. Willy pidió definirlo; la regla de la sección 5 es propuesta de David.
