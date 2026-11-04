@@ -88,7 +88,7 @@ los endpoints; con `VITE_SIMULAR_LLAMADAS=false` usan el backend real.
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 02/11/2026_
+_Última actualización: 03/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -97,14 +97,17 @@ _Última actualización: 02/11/2026_
 - [x] Borrador de `docs/contrato_audio.md`.
 
 **Hecho:** rama `david-audio-base`: `analizar.py` (faster-whisper en CPU + librosa) imprime
-solo un JSON por stdout; errores en JSON con código de salida 1. Python **3.12** (con 3.14
-fallan dependencias); no hace falta instalar ffmpeg (PyAV lo trae). Con un audio de 4,5 min
+solo un JSON por stdout; errores en JSON con código de salida 1. Python **3.12** o 3.13 (Willy probó
+3.13.5); no hace falta instalar ffmpeg (PyAV lo trae). Con un audio de 4,5 min
 en una laptop sin GPU: **`base` ~1 min, `small` ~1 min 40 s**, 0,6-0,8 GB de RAM.
 openai-whisper tardó lo mismo pero usa el doble de memoria y PyTorch, así que se usa
 faster-whisper. Detalle en `audio-processing/README.md`.
 Rama `david-contrato-audio` (PR #9): borrador v0.1 de `docs/contrato_audio.md`, ya con las
 respuestas de Willy del 28/10: ruta absoluta del audio, variables de `.env`, dBFS y los campos
 acordados para la v0.2. Python calcula también el puntaje final, la clasificación y el diagnóstico.
+Rama `david-notas-revision`: notas de Willy del PR #8. Un archivo de 0 bytes da `AUDIO_VACIO`,
+README con Python 3.13, faster-whisper en `docs/herramientas.md`, y umbral de `baja_confianza_audio`
+en -1,5, provisional.
 
 **En curso:** -
 
@@ -114,7 +117,8 @@ acordados para la v0.2. Python calcula también el puntaje final, la clasificaci
   RN-01) por segmento; `score_global_nlp`, `score_acustico`, `puntaje_final`,
   `clasificacion_final` y `diagnostico_conflicto` en el primer nivel. `analizar.py` sigue
   emitiendo la v0.1.
-- v0.3: alertas de volumen y tono (faltan umbrales); validar el criterio de `baja_confianza_audio`.
+- Recalibrar `baja_confianza_audio` con grabaciones reales (hoy sale de un audio con ruido agregado).
+- v0.3: alertas de volumen y tono (faltan umbrales).
 
 **Necesito de otros:**
 - Willy: aprobar el PR #9 y responder la pregunta abierta de la sección 7: si una llamada

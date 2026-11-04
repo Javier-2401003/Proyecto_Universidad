@@ -137,10 +137,29 @@ La calidad del texto fue la misma en las dos (por ejemplo, ambas transcriben mal
 como "sal o quién" o "saluquien" en la voz sintética). Por eso el proyecto usa
 **faster-whisper**. La comparación se hizo en un entorno temporal fuera del repositorio.
 
+## Baja confianza
+
+`baja_confianza_audio` es `true` si no hay segmentos o si `confianza_logprob` promedio es menor
+a **-1,5**. El valor anterior, -1,0, marcó como ruidosa una voz real sin problema (-1,142, en la
+revisión de Willy). Para elegirlo se agregó ruido blanco a 2 minutos de una llamada real (modelo
+`base`) y se comparó el texto con el del audio original:
+
+| Relación señal/ruido | Confianza promedio | Palabras que coinciden con el texto original |
+|---|---|---|
+| Sin ruido | -0,33 | 100 % |
+| 20 dB | -0,37 | 90 % |
+| 10 dB | -0,53 | 72 % |
+| 5 dB | -0,71 | 59 % |
+| 0 dB | -1,60 | 32 % |
+| -5 dB | -4,03 | 5 % |
+
+**Es provisional:** sale de un solo audio con ruido agregado y del dato de Willy, no de varias
+grabaciones reales. Hay que repetirlo con grabaciones reales de la laptop de cada integrante,
+incluida la de Willy.
+
 ## Pendiente
 
 - `hablante` (AGENTE/CLIENTE) y `score_sentimiento`: necesitan diarización y el léxico de
   sentimiento; todavía no los calcula el script (ver `docs/contrato_audio.md`).
 - Umbrales de las alertas `EXCESO_VOLUMEN` y `ALTERACION_TONO` a partir de `rms_dbfs` y `f0_hz`.
-- Probar el criterio de `baja_confianza_audio` (`confianza_logprob` promedio < -1,0) con
-  audios ruidosos reales.
+- Recalibrar `baja_confianza_audio` con grabaciones reales.

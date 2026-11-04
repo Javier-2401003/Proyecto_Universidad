@@ -20,8 +20,9 @@ SALTO_MUESTRAS = 320         # 20 ms entre cuadros de analisis acustico
 CUADRO_MUESTRAS = 1024       # 64 ms por cuadro (alcanza para F0 desde 65 Hz)
 F0_MINIMO_HZ = 65.0
 F0_MAXIMO_HZ = 500.0
-# Criterio provisional del flujo E1 (ruido extremo): Whisper poco seguro del texto.
-UMBRAL_LOGPROB_BAJA_CONFIANZA = -1.0
+# Criterio provisional del flujo E1 (ruido extremo): Whisper poco seguro del texto. Con -1.0 una voz
+# real sin problema quedaba marcada (-1.142). Ver "Baja confianza" en el README.
+UMBRAL_LOGPROB_BAJA_CONFIANZA = -1.5
 
 
 class ErrorAnalisis(Exception):
