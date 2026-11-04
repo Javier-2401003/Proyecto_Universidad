@@ -75,6 +75,8 @@ def cargar_audio(ruta_audio):
     if not os.path.isfile(ruta_audio):
         raise ErrorAnalisis("ARCHIVO_NO_ENCONTRADO", "No existe el archivo de audio.",
                             {"ruta": ruta_audio})
+    if os.path.getsize(ruta_audio) == 0:
+        raise ErrorAnalisis("AUDIO_VACIO", "El archivo de audio esta vacio.", {"ruta": ruta_audio})
     try:
         audio = decode_audio(ruta_audio, sampling_rate=FRECUENCIA_MUESTREO)
     except Exception as error:

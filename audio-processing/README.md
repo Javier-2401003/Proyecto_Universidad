@@ -13,9 +13,10 @@ acústico. No usa la API de OpenAI ni ningún servicio en la nube.
 Se necesita Windows 10/11 y unos 2 GB libres en disco (entorno y modelos). No hace
 falta GPU.
 
-### 1. Python 3.12
+### 1. Python 3.12 o 3.13
 
-Use **Python 3.12**. Con 3.13 o 3.14 pueden faltar paquetes ya compilados (numba,
+Se recomienda **Python 3.12**. **Python 3.13 también funciona** (probado con 3.13.5: instala solo con
+paquetes ya compilados). Con versiones más nuevas pueden faltar paquetes compilados (numba,
 ctranslate2) y pip intentaría compilarlos, lo que falla sin Visual C++.
 
 Opción A, instalador oficial:
