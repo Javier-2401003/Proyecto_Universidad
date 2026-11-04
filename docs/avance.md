@@ -127,7 +127,7 @@ acordados para la v0.2. Python calcula también el puntaje final, la clasificaci
 ---
 
 ## Willy - Backend
-_Última actualización: 28/10/2026_
+_Última actualización: 03/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] Carga de audios por lotes: `GET /agentes`, `POST /llamadas/lotes` y `GET /llamadas/lotes/:id_lote` (PR #7, fusionado).
@@ -137,6 +137,9 @@ _Última actualización: 28/10/2026_
 - [ ] Procesamiento de audio en el backend (cuando se aprueben los PRs #8 y #9).
 
 **Hecho:**
+- `GET /api/v1/roles` (`src/routes/roles.js`, `tests/roles.test.js`), con `GESTION_USUARIOS` leer.
+  Javier ya puede dejar de tener la lista de roles fija en el formulario.
+
 - Carga de lotes en `main` (PR #7). Usa `multer` (MIT): después de `git pull` hay que correr
   `npm install` en `backend/`. Los audios quedan en `backend/uploads/lotes/<id_lote>/`.
 - `GET /api/v1/llamadas/:id_llamada` y `/audio` según `docs/api.md` (`src/routes/llamadas.js`).
@@ -154,7 +157,6 @@ _Última actualización: 28/10/2026_
 **Pendiente:**
 - Procesamiento de audio: tomar las llamadas `PENDIENTE` una por una, ejecutar `analizar.py` con
   `execFile` y guardar el resultado según `docs/contrato_audio.md` (después de los PRs #8 y #9).
-- `GET /api/v1/roles` (lo pidió Javier para el formulario de usuarios).
 
 **Necesito de otros:**
 - **David:** la v0.2 del contrato de audio con `hablante` y `score_sentimiento` por segmento, y los
