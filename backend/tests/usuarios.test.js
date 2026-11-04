@@ -15,15 +15,15 @@ const SIN_ADMIN = CORREO_ADMIN && PASSWORD_ADMIN ? false : 'Falta SEED_ADMIN_* e
 const SUFIJO = Date.now();
 const PASSWORD = 'ClaveDePrueba123';
 const CORREOS = {
-  supervisor: `test.supervisor.uno.${SUFIJO}@ejemplo.test`,
-  otroSupervisor: `test.supervisor.dos.${SUFIJO}@ejemplo.test`,
-  supervisorInactivo: `test.supervisor.inactivo.${SUFIJO}@ejemplo.test`,
-  agente: `test.agente.${SUFIJO}@ejemplo.test`,
-  editable: `test.editable.${SUFIJO}@ejemplo.test`,
+  supervisor: `test.usr.supervisor.uno.${SUFIJO}@ejemplo.test`,
+  otroSupervisor: `test.usr.supervisor.dos.${SUFIJO}@ejemplo.test`,
+  supervisorInactivo: `test.usr.supervisor.inactivo.${SUFIJO}@ejemplo.test`,
+  agente: `test.usr.agente.${SUFIJO}@ejemplo.test`,
+  editable: `test.usr.editable.${SUFIJO}@ejemplo.test`,
   // Segundo SuperAdmin: las pruebas de "sobre si mismo" se hacen con el, nunca con el real.
-  otroAdmin: `test.superadmin.${SUFIJO}@ejemplo.test`,
+  otroAdmin: `test.usr.superadmin.${SUFIJO}@ejemplo.test`,
 };
-const CORREO_EDITADO = `test.editado.${SUFIJO}@ejemplo.test`;
+const CORREO_EDITADO = `test.usr.editado.${SUFIJO}@ejemplo.test`;
 
 let servidor;
 let base;
@@ -245,7 +245,7 @@ test('PATCH usuario: edita nombre y correo (el correo se guarda en minusculas)',
 
 test('PATCH usuario: la auditoria guarda solo lo que cambio', { skip: SIN_ADMIN }, async () => {
   // El nombre es el mismo de antes: solo debe auditarse el correo.
-  const correoNuevo = `test.editado.otra.vez.${SUFIJO}@ejemplo.test`;
+  const correoNuevo = `test.usr.editado.otra.vez.${SUFIJO}@ejemplo.test`;
   const { estado } = await editar(ids.editable, { nombre_completo: 'Nombre Editado', correo_electronico: correoNuevo });
   assert.equal(estado, 200);
   assert.deepEqual(await ultimaAuditoria('EDICION_USUARIO', ids.editable), {

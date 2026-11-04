@@ -103,7 +103,7 @@ _Última actualización: 20/10/2026_
 ---
 
 ## Willy - Backend
-_Última actualización: 28/10/2026_
+_Última actualización: 03/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] Carga de audios por lotes: `GET /agentes`, `POST /llamadas/lotes` y `GET /llamadas/lotes/:id_lote` (PR #7, fusionado).
@@ -124,10 +124,16 @@ _Última actualización: 28/10/2026_
 - PR #9 (contrato de audio): respondí las 4 preguntas de David. Esperar a la v0.2 para guardar
   `TB_Transcripcion` (sin script que deje `hablante` y `score_sentimiento` en NULL); el puntaje
   final, la clasificación y el diagnóstico los calcula Python; el volumen se guarda en dBFS.
+- PR #14: revisé el contrato de `GET /estadisticas/resumen` y respondí a Javier. Se puede calcular
+  desde `TB_Llamada` y `TB_Alerta`; las consultas se probaron en MySQL con datos de prueba (roles y
+  bordes del periodo), pero el endpoint no está implementado.
 
 **En curso:** -
 
 **Pendiente:**
+- `GET /estadisticas/resumen` según `docs/api.md` (cuando se fusione el PR #14): `desde` y `hasta` como
+  texto con `DATE_FORMAT`, alertas en una consulta aparte y todas las claves con `0` aunque no haya filas.
+- Revisar en el PR #9 la regla de audios sin voz que David agregó el 03/11.
 - Procesamiento de audio: tomar las llamadas `PENDIENTE` una por una, ejecutar `analizar.py` con
   `execFile` y guardar el resultado según `docs/contrato_audio.md` (después de los PRs #8 y #9).
 - `GET /api/v1/roles` (lo pidió Javier para el formulario de usuarios).
