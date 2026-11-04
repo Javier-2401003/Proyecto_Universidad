@@ -127,18 +127,22 @@ acordados para la v0.2. Python calcula también el puntaje final, la clasificaci
 ---
 
 ## Willy - Backend
-_Última actualización: 28/10/2026_
+_Última actualización: 03/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] Carga de audios por lotes: `GET /agentes`, `POST /llamadas/lotes` y `GET /llamadas/lotes/:id_lote` (PR #7, fusionado).
 - [x] Gestión de usuarios: editar, desactivar y asignar supervisor (PR #11, aprobado; falta fusionar).
 - [x] Detalle de una llamada: `GET /llamadas/:id_llamada` y `/audio` (rama `willy-detalle-llamada`).
 - [x] Responder el borrador de `docs/contrato_audio.md` (PR #9 de David).
-- [ ] Procesamiento de audio en el backend (cuando se aprueben los PRs #8 y #9).
+- [x] Procesamiento de audio en el backend (rama `willy-procesamiento-audio`); falta la v0.2 de David.
 
 **Hecho:**
 - Carga de lotes en `main` (PR #7). Usa `multer` (MIT): después de `git pull` hay que correr
   `npm install` en `backend/`. Los audios quedan en `backend/uploads/lotes/<id_lote>/`.
+- Procesamiento de audio (`src/procesamientoAudio.js`, `tests/procesamiento.test.js`, sin Python):
+  una llamada a la vez con `execFile`, según `docs/contrato_audio.md`. Si `AUDIO_PYTHON` o `AUDIO_SCRIPT`
+  faltan o no existen, no arranca y las llamadas siguen en `PENDIENTE`. Con la v0.1 cada llamada termina
+  en `ERROR` con `CONTRATO_INCOMPLETO`. Solo probado con un ejecutable falso: aquí no hay venv de audio.
 - `GET /api/v1/llamadas/:id_llamada` y `/audio` según `docs/api.md` (`src/routes/llamadas.js`).
   Sin módulo de permisos: el agente ve sus llamadas, el supervisor las de sus agentes asignados
   y el SuperAdmin todas; si no puede verla, `404`. `resultado` es `null` hasta `COMPLETADO`.
@@ -152,8 +156,8 @@ _Última actualización: 28/10/2026_
 **En curso:** -
 
 **Pendiente:**
-- Procesamiento de audio: tomar las llamadas `PENDIENTE` una por una, ejecutar `analizar.py` con
-  `execFile` y guardar el resultado según `docs/contrato_audio.md` (después de los PRs #8 y #9).
+- Probar el procesamiento con `analizar.py` real (hay que instalar el venv de `audio-processing/`).
+- Guardar `TB_Alerta` cuando David entregue la v0.3.
 - `GET /api/v1/roles` (lo pidió Javier para el formulario de usuarios).
 
 **Necesito de otros:**

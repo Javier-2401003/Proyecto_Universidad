@@ -1,6 +1,9 @@
 // Configuracion central. Todo valor que cambie entre computadoras sale de .env.
 import 'dotenv/config';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const CARPETA_BACKEND = fileURLToPath(new URL('../', import.meta.url));
 
 function texto(nombre, defecto) {
   const valor = process.env[nombre];
@@ -24,6 +27,13 @@ function listaEnteros(nombre, defecto) {
     throw new Error(`La variable ${nombre} del archivo .env debe ser una lista de numeros, ej. 5,10,15.`);
   }
   return Object.freeze([...new Set(valores)].sort((a, b) => a - b));
+}
+
+// Una ruta relativa se toma desde backend/, sin importar desde donde se inicie el servidor.
+// Un comando suelto (ej. "python") se deja igual: se busca en el PATH.
+function rutaDesdeBackend(nombre) {
+  const valor = texto(nombre, '');
+  return /[\\/]/.test(valor) ? path.resolve(CARPETA_BACKEND, valor) : valor;
 }
 
 const jwtSecreto = texto('JWT_SECRET', '');
@@ -55,5 +65,12 @@ export const config = Object.freeze({
     tamanosPermitidos: listaEnteros('LOTE_TAMANOS_PERMITIDOS', '5,10,15'),
     audioMaxBytes: entero('AUDIO_MAX_MB', 25) * 1024 * 1024,
     carpetaUploads: fileURLToPath(new URL('../uploads/', import.meta.url)),
+  }),
+  // Analisis de audio (docs/contrato_audio.md). Sin python o script, no se procesa nada.
+  audio: Object.freeze({
+    python: rutaDesdeBackend('AUDIO_PYTHON'),
+    script: rutaDesdeBackend('AUDIO_SCRIPT'),
+    modelo: texto('AUDIO_MODELO_WHISPER', 'base'),
+    timeoutMs: entero('AUDIO_TIMEOUT_SEGUNDOS', 3600) * 1000,
   }),
 });

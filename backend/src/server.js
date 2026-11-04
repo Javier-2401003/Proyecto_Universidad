@@ -2,6 +2,7 @@
 import { config } from './config.js';
 import { consultar } from './db.js';
 import { crearApp } from './app.js';
+import { iniciarProcesamiento } from './procesamientoAudio.js';
 
 try {
   await consultar('SELECT 1');
@@ -13,4 +14,5 @@ try {
 
 crearApp().listen(config.puerto, () => {
   console.log(`API lista en http://localhost:${config.puerto}  (prueba: /health)`);
+  iniciarProcesamiento();
 });
