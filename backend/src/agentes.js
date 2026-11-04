@@ -42,6 +42,17 @@ export async function puedeVerLlamadaDe(usuario, idAgente) {
   return usuario.id === idAgente || puedeVerAgente(usuario, idAgente);
 }
 
+// La misma regla que puedeVerLlamadaDe, como condicion SQL para consultas de muchas llamadas.
+// "c" es el alias de TB_Llamada en la consulta.
+export function filtroLlamadasVisibles(usuario) {
+  if (veTodos(usuario)) return { condicion: '1 = 1', parametros: [] };
+  return {
+    condicion: `(c.id_agente = ? OR EXISTS (SELECT 1 FROM TB_AsignacionSupervisor a
+                  WHERE a.id_agente = c.id_agente AND a.id_supervisor = ?))`,
+    parametros: [usuario.id, usuario.id],
+  };
+}
+
 // Para CARGAR audios: devuelve el agente si el usuario puede verlo y esta activo, o null.
 export async function buscarAgenteVisible(usuario, idAgente) {
   const filas = veTodos(usuario)
