@@ -20,9 +20,10 @@ SALTO_MUESTRAS = 320         # 20 ms entre cuadros de analisis acustico
 CUADRO_MUESTRAS = 1024       # 64 ms por cuadro (alcanza para F0 desde 65 Hz)
 F0_MINIMO_HZ = 65.0
 F0_MAXIMO_HZ = 500.0
-# Criterio provisional de baja confianza: Whisper poco seguro del texto. El otro criterio
-# del flujo E1 (ruido con variaciones extremas) esta en acustico.py.
-UMBRAL_LOGPROB_BAJA_CONFIANZA = -1.0
+# Criterio provisional de baja confianza: Whisper poco seguro del texto. Con -1.0 una voz real sin
+# problema quedaba marcada (-1.142); ver "Baja confianza" en el README. El otro criterio del flujo
+# E1 (ruido con variaciones extremas) esta en acustico.py.
+UMBRAL_LOGPROB_BAJA_CONFIANZA = -1.5
 
 
 class ErrorAnalisis(Exception):
@@ -76,6 +77,8 @@ def cargar_audio(ruta_audio):
     if not os.path.isfile(ruta_audio):
         raise ErrorAnalisis("ARCHIVO_NO_ENCONTRADO", "No existe el archivo de audio.",
                             {"ruta": ruta_audio})
+    if os.path.getsize(ruta_audio) == 0:
+        raise ErrorAnalisis("AUDIO_VACIO", "El archivo de audio esta vacio.", {"ruta": ruta_audio})
     try:
         audio = decode_audio(ruta_audio, sampling_rate=FRECUENCIA_MUESTREO)
     except Exception as error:
