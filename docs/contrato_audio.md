@@ -181,9 +181,8 @@ Reglas de la v0.2 para que estos campos nunca vayan nulos, porque las columnas s
   entre `"AGENTE"` y `"CLIENTE"`, sin `null` ni un tercer valor.
 - **Audio sin voz o puro ruido (`segmentos: []`):** es un análisis válido, no un error. El JSON
   trae `baja_confianza_audio: true`, `score_global_nlp: 0.0`, `score_acustico: 0.0`,
-  `clasificacion_final: "NEUTRO"`, `diagnostico_conflicto: "SIN_CONFLICTO"` y `puntaje_final`
-  en el punto neutro de la escala. Ese punto es `50.00` si se confirma que 100 es lo mejor del
-  odómetro (Blueprint, páginas 7 y 9), **pendiente de confirmar con Javier**. El backend marca
+  `clasificacion_final: "NEUTRO"`, `diagnostico_conflicto: "SIN_CONFLICTO"` y
+  `puntaje_final: 50.00`, el punto neutro de la escala (sección 7). El backend marca
   `COMPLETADO` y no guarda filas en `TB_Transcripcion`.
 
 Para la **v0.3** queda `TB_Alerta` (EXCESO_VOLUMEN, ALTERACION_TONO, ...): arreglo `alertas` con `tipo_alerta`, `origen_evento`, `timestamp_evento`,
@@ -200,7 +199,9 @@ Columnas que **no** son del análisis y siguen siendo del backend: `fecha_inicio
 - Renombrar, quitar o cambiar el tipo de un campo sube la versión mayor (`1.x` a `2.0`) y
   requiere el visto bueno de los dos.
 
-## 7. Decisiones de Willy (28/10/2026 y 02/11/2026)
+## 7. Decisiones del equipo
+
+Las decisiones 1 a 6 son de Willy (28/10/2026 y 02/11/2026); la 7 es de Javier.
 
 1. **Variables de `.env`:** se usan los nombres de la sección 1.
 2. **`hablante` y `score_sentimiento`:** se espera a la v0.2 para guardar `TB_Transcripcion`,
@@ -213,3 +214,4 @@ Columnas que **no** son del análisis y siguen siendo del backend: `fecha_inicio
    `CONTRATO_INCOMPLETO` toda llamada a la que le falten campos de la v0.2 (sección 5).
 6. **Sin nulos en la v0.2 (02/11):** `hablante` viene siempre y los puntajes tienen valor aunque
    no haya segmentos. Willy pidió definirlo; la regla de la sección 5 es propuesta de David.
+7. **Odómetro (Javier):** 100 es lo mejor del odómetro y el puntaje neutro es `50.00`.
