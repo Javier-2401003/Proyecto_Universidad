@@ -77,22 +77,24 @@ Abra **http://localhost:5173**. Para apagar, pulse `Ctrl + C` en cada terminal.
 1. Entre con su SuperAdmin (el del `.env`).
 2. En **Gestión de usuarios**, cree un usuario **Supervisor** y otro **Agente**.
 3. Cierre sesión y entre como **Agente**: solo ve "Panel del Agente".
-4. Asigne el Agente al Supervisor. El backend ya lo permite (`PUT /usuarios/:id_usuario/supervisor`),
-   pero mientras la pantalla de Gestión de usuarios no tenga esa opción, hágalo en phpMyAdmin,
-   pestaña SQL:
-   ```sql
-   INSERT INTO TB_AsignacionSupervisor (id_supervisor, id_agente)
-   SELECT s.id_usuario, a.id_usuario FROM TB_Usuario s, TB_Usuario a
-    WHERE s.correo_electronico = 'correo-del-supervisor' AND a.correo_electronico = 'correo-del-agente';
-   ```
+4. Vuelva como SuperAdmin y, en **Gestión de usuarios**, pulse **Editar** en el Agente y
+   elija su **Supervisor** (también se puede elegir al crear el agente).
 5. Entre como **Supervisor** y abra **Carga de audios por lotes**: elija el agente y
-   arrastre 5 audios `.mp3` o `.wav`. Se guardan en `backend/uploads/` y quedan en
-   **Pendiente**, porque el análisis de audio todavía no está conectado al backend.
-6. Para mostrar el **detalle de una llamada** antes de eso, cree `frontend/.env` con
-   `VITE_SIMULAR_LLAMADAS=true`, reinicie `npm run dev` del frontend y vuelva a cargar un
-   lote: en modo de prueba las llamadas se completan solas y se puede hacer clic en ellas.
+   arrastre 5 audios `.mp3` o `.wav`. Se guardan en `backend/uploads/` y el backend los
+   analiza **de uno en uno** (alrededor de 1 minuto por audio con el modelo `base`): pasan de
+   Pendiente a Procesando y a Completado. Haga clic en una llamada completada para ver su
+   **detalle** (transcripción, puntaje y audio original).
+6. En la **página de inicio** se ven las estadísticas de las llamadas cargadas.
 
-La página de inicio muestra estadísticas **de ejemplo** hasta que exista su endpoint.
+**Para que los audios se analicen** hay que instalar el análisis una vez, siguiendo
+`audio-processing/README.md` (Python y su entorno virtual en `audio-processing/venv`). Las rutas
+de `AUDIO_PYTHON` y `AUDIO_SCRIPT` en `backend/.env` ya apuntan ahí si copió `.env.example`. Si
+falta, el backend avisa al encender ("Procesamiento apagado") y las llamadas se quedan en
+**Pendiente**.
+
+**Demo sin el análisis instalado:** cree `frontend/.env` con `VITE_SIMULAR_LLAMADAS=true` y
+`VITE_SIMULAR_ESTADISTICAS=true`, reinicie `npm run dev` del frontend y vuelva a cargar un lote:
+en modo de prueba las llamadas se completan solas y las estadísticas son de ejemplo.
 
 ## Si algo falla
 | Mensaje | Solución |
@@ -102,5 +104,6 @@ La página de inicio muestra estadísticas **de ejemplo** hasta que exista su en
 | `ER_BAD_DB_ERROR` o `ER_NO_SUCH_TABLE` | Faltan los scripts SQL (paso 2). |
 | `ECONNREFUSED` | MySQL o Wamp está apagado. |
 | "No se pudo conectar con el servidor" en el login | El backend no está encendido. |
+| `[audio] Procesamiento apagado` al encender el backend | Falta instalar el análisis (`audio-processing/README.md`) o revisar `AUDIO_PYTHON` y `AUDIO_SCRIPT` en `backend/.env`. |
 | `Port 5173 is in use` | Ya tiene otro `npm run dev` del frontend abierto. |
 | `npm` no se reconoce | Cierre y abra la terminal, o reinicie Windows. |
