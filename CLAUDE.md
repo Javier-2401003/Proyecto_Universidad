@@ -53,8 +53,17 @@ La única herramienta de pago es la suscripción de Claude. Detalle en `docs/her
 - Nada directo a `main`. Una rama por tarea con formato `persona-tarea`
   (`javier-frontend-base`, `david-audio-base`, `willy-carga-lotes`). Usa guion, no `/`:
   ya existe una rama `javier` y git no permite `javier/...`.
-- PRs pequeños; los revisa otro integrante antes de fusionar.
-- Antes de abrir el PR: `npm test` en `backend/` debe pasar si se tocó el backend.
+- PRs pequeños. Antes de abrir el PR: `npm test` en `backend/` debe pasar si se tocó el backend.
+- **El autor puede fusionar su propio PR sin esperar revisión** (acordado el 05/11/2026) si:
+  - solo toca su carpeta y su propia sección de `docs/avance.md`;
+  - las pruebas de su área pasan;
+  - GitHub no marca conflictos.
+  Al fusionar, deja en el PR un comentario con lo que probó.
+- **Sigue haciendo falta que otro integrante revise antes de fusionar** si el PR:
+  - cambia un contrato (`docs/api.md`, `docs/contrato_audio.md`), `CLAUDE.md` u otro archivo compartido de `docs/`;
+  - cambia el esquema en `database/`;
+  - toca código de otra área.
+  Pide la revisión a quien le afecta el cambio.
 
 ## Comandos
 - Backend: `cd backend`, `npm install`, `npm test`, `npm run dev` (http://localhost:3000/health).
