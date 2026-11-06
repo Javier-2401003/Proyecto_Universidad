@@ -99,8 +99,6 @@ está desactivado se marca para reasignarlo. Probado con el backend real (inclui
 **Necesito de otros:**
 - Willy y David: probar de punta a punta con audios reales ahora que el #15 está en `main`, para
   ver resultados reales en la carga de lotes, el detalle y el inicio.
-- `docs/demo.md` dice que las estadísticas del inicio son de ejemplo y que el supervisor se asigna
-  en phpMyAdmin: ya no es así. Es un archivo compartido; lo corrijo en un PR aparte con revisión.
 
 ---
 
