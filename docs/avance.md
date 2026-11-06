@@ -163,60 +163,48 @@ PR #14 de Javier revisado en lo del volumen: el dBFS de `docs/api.md` coincide c
 ---
 
 ## Willy - Backend
-_Última actualización: 03/11/2026_
+_Última actualización: 05/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] Carga de audios por lotes: `GET /agentes`, `POST /llamadas/lotes` y `GET /llamadas/lotes/:id_lote` (PR #7, fusionado).
-- [x] Gestión de usuarios: editar, desactivar y asignar supervisor (PR #11, aprobado; falta fusionar).
-- [x] Detalle de una llamada: `GET /llamadas/:id_llamada` y `/audio` (rama `willy-detalle-llamada`).
-- [x] Responder el borrador de `docs/contrato_audio.md` (PR #9 de David).
-- [ ] Procesamiento de audio en el backend (cuando se aprueben los PRs #8 y #9).
+- [x] Gestión de usuarios: editar, desactivar y asignar supervisor (PR #11, fusionado).
+- [x] Detalle de una llamada: `GET /llamadas/:id_llamada` y `/audio` (PR #13, fusionado).
+- [x] Estadísticas del inicio: `GET /estadisticas/resumen` (PR #16, fusionado).
+- [x] Roles: `GET /roles` (PR #17) y su contrato en `docs/api.md` (PR #18), fusionados.
+- [x] Revisar el contrato de audio v0.1 (PR #9) y v0.2 (PR #21).
+- [ ] Procesamiento de audio en el backend (PR #15, abierto).
 
 **Hecho:**
-- `GET /api/v1/roles` (`src/routes/roles.js`, `tests/roles.test.js`), con `GESTION_USUARIOS` leer.
-  Javier ya puede dejar de tener la lista de roles fija en el formulario.
+- Carga de lotes (PR #7). Usa `multer` (MIT): después de `git pull` hay que correr `npm install` en
+  `backend/`. Los audios quedan en `backend/uploads/lotes/<id_lote>/`.
+- `GET /api/v1/llamadas/:id_llamada` y `/audio` (PR #13). Sin módulo de permisos: el agente ve sus
+  llamadas, el supervisor las de sus agentes asignados y el SuperAdmin todas; si no puede verla, `404`.
+- `GET /api/v1/estadisticas/resumen` (PR #16), con la misma visibilidad que el detalle. Javier ya puede
+  poner `VITE_SIMULAR_ESTADISTICAS=false`.
+- `GET /api/v1/roles` (PR #17), con `GESTION_USUARIOS` leer; documentado en `docs/api.md` (PR #18).
+- PR #11: los correos de `tests/usuarios.test.js` usan el prefijo `test.usr.` para no chocar con otros
+  archivos de prueba (10 de 10 corridas pasando).
+- Contrato v0.2 (PR #21): aprobado en un comentario del PR. Es compatible con el PR #15: su ejemplo y
+  el caso sin voz quedan `COMPLETADO` en el código real. Las reglas de puntaje quedan como provisionales.
 
-- Carga de lotes en `main` (PR #7). Usa `multer` (MIT): después de `git pull` hay que correr
-  `npm install` en `backend/`. Los audios quedan en `backend/uploads/lotes/<id_lote>/`.
-- `GET /api/v1/llamadas/:id_llamada` y `/audio` según `docs/api.md` (`src/routes/llamadas.js`).
-  Sin módulo de permisos: el agente ve sus llamadas, el supervisor las de sus agentes asignados
-  y el SuperAdmin todas; si no puede verla, `404`. `resultado` es `null` hasta `COMPLETADO`.
-  `tests/llamadas.test.js` (14 pruebas). Probado también con la pantalla de detalle de Javier y el
-  audio descargado desde el navegador.
-- `GET /api/v1/estadisticas/resumen` según el contrato del PR #14 (`src/routes/estadisticas.js`,
-  `tests/estadisticas.test.js`). Javier ya puede poner `VITE_SIMULAR_ESTADISTICAS=false`.
-
-- PR #11: resuelto el conflicto de `docs/api.md` con el `main` nuevo (62 pruebas pasando).
-- PR #9 (contrato de audio): respondí las 4 preguntas de David. Esperar a la v0.2 para guardar
-  `TB_Transcripcion` (sin script que deje `hablante` y `score_sentimiento` en NULL); el puntaje
-  final, la clasificación y el diagnóstico los calcula Python; el volumen se guarda en dBFS.
-- PR #14: revisé el contrato de `GET /estadisticas/resumen` y respondí a Javier. Se puede calcular
-  desde `TB_Llamada` y `TB_Alerta`; las consultas se probaron en MySQL con datos de prueba (roles y
-  bordes del periodo), pero el endpoint no está implementado.
-
-**En curso:** -
+**En curso:**
+- Procesamiento de audio (PR #15: `src/procesamientoAudio.js`, `tests/procesamiento.test.js`, sin
+  Python). Una llamada a la vez con `execFile`, según `docs/contrato_audio.md`. Si `AUDIO_PYTHON` o
+  `AUDIO_SCRIPT` faltan o no existen, no arranca y las llamadas siguen en `PENDIENTE`. Con la v0.2
+  que ya está en `main`, las llamadas pueden llegar a `COMPLETADO`. Solo está probado con un
+  ejecutable falso.
 
 **Pendiente:**
-- `GET /estadisticas/resumen` según `docs/api.md` (cuando se fusione el PR #14): `desde` y `hasta` como
-  texto con `DATE_FORMAT`, alertas en una consulta aparte y todas las claves con `0` aunque no haya filas.
-- Revisar en el PR #9 la regla de audios sin voz que David agregó el 03/11.
-- Procesamiento de audio: tomar las llamadas `PENDIENTE` una por una, ejecutar `analizar.py` con
-  `execFile` y guardar el resultado según `docs/contrato_audio.md` (después de los PRs #8 y #9).
+- Probar el PR #15 con el `analizar.py` real (hay que instalar el venv de `audio-processing/`).
+- Guardar `TB_Alerta` cuando David entregue la v0.3.
 
 **Necesito de otros:**
-- **David:** la v0.2 del contrato de audio con `hablante` y `score_sentimiento` por segmento, y los
-  puntajes (`score_global_nlp`, `score_acustico`, `puntaje_final`, `clasificacion_final`,
-  `diagnostico_conflicto`) en el primer nivel del JSON.
-- **Javier:** fusionar el PR #11. El ejemplo `"88 dB"` de `docs/api.md` y de los datos simulados
-  pasaría a dBFS (por ejemplo, `"-8.5 dBFS"`), según el contrato de audio.
-- **Javier (detalles menores del PR #12, no bloquean):** `CargaLotes.jsx:297` deja de consultar con
-  un 404 pero dice "Se reintentará automáticamente"; la pantalla consulta el lote cada 2 s sin fin
-  mientras las llamadas sigan en `PENDIENTE` (límite: 1000 peticiones / 15 min por IP).
+- **Javier o David:** revisar y fusionar el PR #15.
+- **David** (detalle en el comentario del PR #21; no bloquean):
+  - En la v0.3, usar los valores de `TB_Alerta.tipo_alerta` (`EXCESO_VOLUMEN`, no `ELEVACION_VOLUMEN`).
+  - Anotar en el contrato los mensajes propios del backend y el timeout de 3600 s.
+  - `json.dumps(..., allow_nan=False)` en `analizar.py`.
+  - Cambiar el estado del contrato a "aprobada".
 - **Equipo:** decidir si el SuperAdmin también puede subir lotes. Con los permisos iniciales solo
   lee `CARGA_LOTES`, así que solo el Supervisor puede subir. Si se decide que sí, lo cambio con
   un script `database/04_...sql`.
-- **Javier:** para probar la pantalla de carga con la API real hay que iniciar sesión como
-  Supervisor con al menos un agente asignado. Cuando se fusione el PR #11, la asignación se hace
-  con `PUT /usuarios/:id_usuario/supervisor`; mientras tanto, en phpMyAdmin (`TB_AsignacionSupervisor`).
-- **David:** `ruta_audio_storage` es relativa a `backend/uploads/` (ej. `lotes/12/101.mp3`). Lo
-  agregamos a `docs/contrato_audio.md`.
