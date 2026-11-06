@@ -92,8 +92,6 @@ endpoint (`VITE_SIMULAR_ESTADISTICAS`).
   "Estadísticas del inicio"). Misma visibilidad por rol que el detalle de una llamada.
 - Willy: el procesamiento de audio en el backend (tomar las llamadas `PENDIENTE` y ejecutar
   `analizar.py`), para que la carga de lotes y el detalle muestren resultados reales.
-- Willy: fusionar el PR #11 (editar, desactivar y asignar supervisor) con la base cambiada a
-  `main`. Asignar supervisor hace falta para que `GET /agentes` devuelva agentes al Supervisor.
 - Willy: un endpoint de roles (`GET /api/v1/roles`); hoy la lista de roles del formulario está fija
   en el frontend con los 3 roles base.
 

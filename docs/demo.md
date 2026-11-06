@@ -77,8 +77,9 @@ Abra **http://localhost:5173**. Para apagar, pulse `Ctrl + C` en cada terminal.
 1. Entre con su SuperAdmin (el del `.env`).
 2. En **Gestión de usuarios**, cree un usuario **Supervisor** y otro **Agente**.
 3. Cierre sesión y entre como **Agente**: solo ve "Panel del Agente".
-4. Asigne el Agente al Supervisor. Hasta que se fusione el PR #11 (que agrega esa opción
-   en Gestión de usuarios), hágalo en phpMyAdmin, pestaña SQL:
+4. Asigne el Agente al Supervisor. El backend ya lo permite (`PUT /usuarios/:id_usuario/supervisor`),
+   pero mientras la pantalla de Gestión de usuarios no tenga esa opción, hágalo en phpMyAdmin,
+   pestaña SQL:
    ```sql
    INSERT INTO TB_AsignacionSupervisor (id_supervisor, id_agente)
    SELECT s.id_usuario, a.id_usuario FROM TB_Usuario s, TB_Usuario a

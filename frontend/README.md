@@ -66,8 +66,8 @@ lo decide `src/api/simulacion/activa.js`; las pantallas simuladas muestran el av
 - Solo el rol **Supervisor** puede cargar lotes (permiso de escritura en `CARGA_LOTES`);
   el SuperAdmin solo puede consultar el módulo.
 - Para cargar, el Supervisor necesita al menos un agente asignado (`GET /agentes` solo
-  devuelve los suyos). Hasta que se fusione el PR #11, la asignación se hace en phpMyAdmin
-  (`TB_AsignacionSupervisor`).
+  devuelve los suyos). Mientras la pantalla de Gestión de usuarios no permita asignarlo,
+  se hace en phpMyAdmin (`TB_AsignacionSupervisor`); ver `docs/demo.md`.
 - La simulación aplica las mismas reglas del contrato: 5, 10 o 15 archivos WAV/MP3 de
   hasta 25 MB, audios duplicados y agente válido.
 - Un archivo cuyo nombre contenga `error` termina en estado ERROR, para probar ese caso.
