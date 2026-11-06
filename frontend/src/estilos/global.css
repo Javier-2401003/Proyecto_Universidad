@@ -166,6 +166,16 @@ h2 {
   font-weight: 400;
 }
 
+.campo__ayuda {
+  color: var(--texto-secundario);
+  font-weight: 400;
+}
+
+.campo select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 /* ---------- Avisos ---------- */
 .alerta {
   margin: 12px 0;
@@ -666,6 +676,46 @@ h2 {
 .etiqueta--inactivo {
   background: var(--error-suave);
   color: var(--error);
+}
+
+.boton--chico {
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 0.875rem;
+}
+
+.acciones-fila {
+  display: flex;
+  gap: 6px;
+}
+
+.usuario-celda {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.usuario-celda .texto-secundario {
+  font-size: 0.8125rem;
+}
+
+/* Agente cuyo supervisor fue desactivado: hay que reasignarlo. */
+.supervisor-inactivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.supervisor-inactivo__aviso {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--aviso-suave);
+  color: var(--aviso);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 /* ---------- Carga de lotes ---------- */
