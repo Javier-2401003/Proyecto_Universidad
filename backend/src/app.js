@@ -8,9 +8,11 @@ import { consultar } from './db.js';
 import { ErrorHttp } from './errores.js';
 import { rutasAuth } from './routes/auth.js';
 import { rutasUsuarios } from './routes/usuarios.js';
+import { rutasRoles } from './routes/roles.js';
 import { rutasAgentes } from './routes/agentes.js';
 import { rutasLlamadas } from './routes/lotes.js';
 import { rutasDetalleLlamada } from './routes/llamadas.js';
+import { rutasEstadisticas } from './routes/estadisticas.js';
 
 export function crearApp() {
   const app = express();
@@ -42,9 +44,11 @@ export function crearApp() {
 
   app.use('/api/v1/auth', rutasAuth);
   app.use('/api/v1/usuarios', rutasUsuarios);
+  app.use('/api/v1/roles', rutasRoles);
   app.use('/api/v1/agentes', rutasAgentes);
   app.use('/api/v1/llamadas', rutasLlamadas);
   app.use('/api/v1/llamadas', rutasDetalleLlamada); // despues: /lotes/... no debe tomarse como un id
+  app.use('/api/v1/estadisticas', rutasEstadisticas);
 
   app.use((_req, _res, next) => {
     next(new ErrorHttp(404, 'NO_ENCONTRADO', 'La ruta solicitada no existe.'));

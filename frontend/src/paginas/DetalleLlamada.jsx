@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CircleAlert, FlaskConical, Headphones, TriangleAlert } from 'lucide-react';
 import { obtenerAudio, obtenerLlamada } from '../api/llamadas.js';
-import { SIMULAR } from '../api/simulacion/activa.js';
+import { SIMULAR_LLAMADAS as SIMULAR } from '../api/simulacion/activa.js';
 import { Cargando } from '../componentes/Cargando.jsx';
 
 const CLASIFICACIONES = {

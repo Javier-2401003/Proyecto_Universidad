@@ -5,7 +5,8 @@
 import { ErrorApi } from '../cliente.js';
 import { buscarLlamada } from './lotes.js';
 
-// Cada fragmento: [hablante, texto, duracion en segundos, sentimiento -1..1, volumen RMS, tono F0].
+// Cada fragmento: [hablante, texto, duracion en segundos, sentimiento -1..1, volumen (60 a 90,
+// mas alto = mas fuerte; se convierte a dBFS), tono F0].
 const CONVERSACIONES = [
   {
     resultado: {
@@ -52,7 +53,7 @@ const CONVERSACIONES = [
       ['AGENTE', 'Le dejo registrado el caso y le enviaremos un mensaje cuando se restablezca. Gracias por su paciencia.', 7, 0.5, 60, 132],
     ],
     alertas: [
-      ['EXCESO_VOLUMEN', 'CLIENTE', 6, '84 dB', 'Mantenga un tono calmado y valide la molestia del cliente.'],
+      ['EXCESO_VOLUMEN', 'CLIENTE', 6, '-9.6 dBFS', 'Mantenga un tono calmado y valide la molestia del cliente.'],
       ['VOCABULARIO_INADECUADO', 'CLIENTE', 21, 'Palabra: estafa', 'No responda a la provocacion; enfoquese en la solucion.'],
       ['ALTERACION_TONO', 'CLIENTE', 22, '235 Hz', 'Hable mas despacio y resuma lo que hara a continuacion.'],
     ],
@@ -79,7 +80,7 @@ const CONVERSACIONES = [
     alertas: [
       ['OMISION_SCRIPT', 'AGENTE', 0, 'Sin saludo ni identificacion', 'Salude, diga su nombre y ofrezca ayuda al iniciar la llamada.'],
       ['VOCABULARIO_INADECUADO', 'AGENTE', 22, 'Frase: no me haga perder el tiempo', 'Evite frases que culpen al cliente; ofrezca una alternativa.'],
-      ['EXCESO_VOLUMEN', 'AGENTE', 20, '85 dB', 'Baje el volumen y respire antes de responder.'],
+      ['EXCESO_VOLUMEN', 'AGENTE', 20, '-8.5 dBFS', 'Baje el volumen y respire antes de responder.'],
       ['OMISION_SCRIPT', 'AGENTE', 30, 'Escalamiento a supervisor negado', 'Si el cliente pide un supervisor, transfiera o agende la devolucion de la llamada.'],
     ],
   },
@@ -123,7 +124,8 @@ export async function obtenerLlamada(idLlamada) {
       timestamp_inicio: segundo,
       timestamp_fin: segundo + duracion,
       score_sentimiento: score,
-      nivel_volumen_rms: rms,
+      // dBFS, como en docs/contrato_audio.md: 0 es el maximo y la voz normal ronda -30 a -15.
+      nivel_volumen_rms: Math.round((rms - 95) * 6) / 10,
       tono_f0_hz: f0,
     };
     segundo += duracion + 0.5;

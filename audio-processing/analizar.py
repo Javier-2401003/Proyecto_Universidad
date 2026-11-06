@@ -14,14 +14,16 @@ import os
 import sys
 import time
 
-VERSION_CONTRATO = "0.1"
+VERSION_CONTRATO = "0.2"
 FRECUENCIA_MUESTREO = 16000  # Whisper trabaja a 16 kHz
 SALTO_MUESTRAS = 320         # 20 ms entre cuadros de analisis acustico
 CUADRO_MUESTRAS = 1024       # 64 ms por cuadro (alcanza para F0 desde 65 Hz)
 F0_MINIMO_HZ = 65.0
 F0_MAXIMO_HZ = 500.0
-# Criterio provisional del flujo E1 (ruido extremo): Whisper poco seguro del texto.
-UMBRAL_LOGPROB_BAJA_CONFIANZA = -1.0
+# Criterio provisional de baja confianza: Whisper poco seguro del texto. Con -1.0 una voz real sin
+# problema quedaba marcada (-1.142); ver "Baja confianza" en el README. El otro criterio del flujo
+# E1 (ruido con variaciones extremas) esta en acustico.py.
+UMBRAL_LOGPROB_BAJA_CONFIANZA = -1.5
 
 
 class ErrorAnalisis(Exception):
@@ -75,6 +77,8 @@ def cargar_audio(ruta_audio):
     if not os.path.isfile(ruta_audio):
         raise ErrorAnalisis("ARCHIVO_NO_ENCONTRADO", "No existe el archivo de audio.",
                             {"ruta": ruta_audio})
+    if os.path.getsize(ruta_audio) == 0:
+        raise ErrorAnalisis("AUDIO_VACIO", "El archivo de audio esta vacio.", {"ruta": ruta_audio})
     try:
         audio = decode_audio(ruta_audio, sampling_rate=FRECUENCIA_MUESTREO)
     except Exception as error:
@@ -106,18 +110,23 @@ def transcribir(audio, nombre_modelo, idioma):
     return lista, info
 
 
-def analizar_acustica(audio):
-    """Calcula F0 (pyin) y RMS por cuadro de 20 ms."""
+def analizar_acustica(audio, reglas_acusticas):
+    """Calcula F0 (pyin) y RMS por cuadro de 20 ms, y el RMS del audio preparado para RN-02."""
     import librosa
     import numpy as np
+
+    from acustico import preparar_audio
 
     registrar("Calculando tono (F0) y volumen (RMS)...")
     f0, _, _ = librosa.pyin(audio, fmin=F0_MINIMO_HZ, fmax=F0_MAXIMO_HZ, sr=FRECUENCIA_MUESTREO,
                             frame_length=CUADRO_MUESTRAS, hop_length=SALTO_MUESTRAS)
     rms = librosa.feature.rms(y=audio, frame_length=CUADRO_MUESTRAS, hop_length=SALTO_MUESTRAS)[0]
+    preparado = preparar_audio(audio, FRECUENCIA_MUESTREO, reglas_acusticas)
+    rms_preparado = librosa.feature.rms(y=preparado, frame_length=CUADRO_MUESTRAS,
+                                        hop_length=SALTO_MUESTRAS)[0]
     tiempos = librosa.frames_to_time(np.arange(len(rms)), sr=FRECUENCIA_MUESTREO,
                                      hop_length=SALTO_MUESTRAS)
-    return f0[: len(rms)], rms, tiempos
+    return f0[: len(rms)], rms, rms_preparado, tiempos
 
 
 def rms_a_dbfs(rms):
@@ -140,18 +149,27 @@ def resumir_tramo(f0, rms):
     }
 
 
-def construir_resultado(args, audio, segmentos, info, f0, rms, tiempos, duraciones):
+def construir_resultado(args, audio, segmentos, hablantes, info, f0, rms, rms_preparado, tiempos,
+                        duraciones, lexico, reglas_acusticas):
     import numpy as np
 
+    from acustico import calcular_diagnostico, calcular_puntaje, evaluar
+    from lexico import analizar_frase, puntaje_global
+
     salida_segmentos = []
-    for indice, segmento in enumerate(segmentos):
+    frases_analizadas = []
+    for indice, (segmento, hablante) in enumerate(zip(segmentos, hablantes)):
         tramo = (tiempos >= segmento["inicio"]) & (tiempos < segmento["fin"])
         acustica = resumir_tramo(f0[tramo], rms[tramo])
+        frase = analizar_frase(segmento["texto"], lexico)
+        frases_analizadas.append(frase)
         salida_segmentos.append({
             "indice": indice,
             "inicio": redondear(segmento["inicio"], 3),
             "fin": redondear(segmento["fin"], 3),
+            "hablante": hablante,
             "texto": segmento["texto"],
+            "score_sentimiento": frase[0],
             "f0_hz": acustica["f0_hz"],
             "rms_dbfs": acustica["rms_dbfs"],
             "confianza_logprob": redondear(segmento["confianza_logprob"], 3),
@@ -165,6 +183,19 @@ def construir_resultado(args, audio, segmentos, info, f0, rms, tiempos, duracion
     else:
         logprob_promedio = None
 
+    acustico = evaluar(f0, rms_preparado, SALTO_MUESTRAS / FRECUENCIA_MUESTREO, reglas_acusticas)
+    # Sin segmentos no hay voz que evaluar: el contrato pide 0, aunque el ruido suba y baje.
+    score_acustico = acustico["score_acustico"] if segmentos else 0.0
+    subida_continua = acustico["subida_continua_segundos"] if segmentos else 0.0
+    baja_confianza = bool((not segmentos) or logprob_promedio < UMBRAL_LOGPROB_BAJA_CONFIANZA
+                          or acustico["ruido_extremo"])
+    score_global_nlp = puntaje_global(frases_analizadas)
+    final = calcular_puntaje(score_global_nlp, score_acustico, baja_confianza, subida_continua,
+                             reglas_acusticas)
+    diagnostico = calcular_diagnostico(final["clasificacion_final"], salida_segmentos,
+                                       frases_analizadas, acustico["eventos"], baja_confianza,
+                                       reglas_acusticas)
+
     return {
         "version_contrato": VERSION_CONTRATO,
         "archivo": os.path.basename(args.ruta_audio),
@@ -172,8 +203,12 @@ def construir_resultado(args, audio, segmentos, info, f0, rms, tiempos, duracion
         "idioma": info.language,
         "probabilidad_idioma": redondear(info.language_probability, 3),
         "modelo": {"motor": "faster-whisper", "nombre": args.modelo, "tipo_calculo": "int8"},
-        "baja_confianza_audio": (not segmentos)
-        or logprob_promedio < UMBRAL_LOGPROB_BAJA_CONFIANZA,
+        "baja_confianza_audio": baja_confianza,
+        "score_global_nlp": score_global_nlp,
+        "score_acustico": score_acustico,
+        "puntaje_final": final["puntaje_final"],
+        "clasificacion_final": final["clasificacion_final"],
+        "diagnostico_conflicto": diagnostico,
         "resumen_acustico": {
             "f0_mediana_hz": redondear(np.median(f0_con_voz), 2) if len(f0_con_voz) else None,
             "f0_desviacion_hz": redondear(np.std(f0_con_voz), 2) if len(f0_con_voz) else None,
@@ -190,6 +225,15 @@ def main(argv):
     inicio_total = time.perf_counter()
     args = leer_argumentos(argv)
 
+    from acustico import cargar_reglas
+    from diarizacion import asignar_hablantes, leer_canales
+    from diarizacion import cargar_reglas as cargar_reglas_diarizacion
+    from lexico import cargar_lexico
+
+    # Antes de transcribir: si la configuracion esta mal, falla sin gastar minutos de CPU.
+    lexico = cargar_lexico()
+    reglas_acusticas = cargar_reglas()
+    reglas_diarizacion = cargar_reglas_diarizacion()
     audio = cargar_audio(args.ruta_audio)
 
     inicio = time.perf_counter()
@@ -197,7 +241,10 @@ def main(argv):
     duracion_transcripcion = time.perf_counter() - inicio
 
     inicio = time.perf_counter()
-    f0, rms, tiempos = analizar_acustica(audio)
+    f0, rms, rms_preparado, tiempos = analizar_acustica(audio, reglas_acusticas)
+    hablantes = asignar_hablantes(segmentos, audio, f0, FRECUENCIA_MUESTREO, SALTO_MUESTRAS,
+                                  reglas_diarizacion,
+                                  leer_canales(args.ruta_audio, FRECUENCIA_MUESTREO))
     duracion_acustica = time.perf_counter() - inicio
 
     duraciones = {
@@ -205,7 +252,8 @@ def main(argv):
         "acustico": duracion_acustica,
         "total": time.perf_counter() - inicio_total,
     }
-    escribir_json(construir_resultado(args, audio, segmentos, info, f0, rms, tiempos, duraciones))
+    escribir_json(construir_resultado(args, audio, segmentos, hablantes, info, f0, rms,
+                                      rms_preparado, tiempos, duraciones, lexico, reglas_acusticas))
 
 
 if __name__ == "__main__":
