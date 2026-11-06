@@ -87,11 +87,12 @@ Ejemplo de salida (recortado):
   "idioma": "es",
   "modelo": { "motor": "faster-whisper", "nombre": "base", "tipo_calculo": "int8" },
   "baja_confianza_audio": false,
+  "score_global_nlp": 0.5,
   "resumen_acustico": { "f0_mediana_hz": 213.64, "rms_promedio_dbfs": -20.05, "...": "..." },
   "segmentos": [
     { "indice": 0, "inicio": 0.0, "fin": 7.0,
       "texto": "Buenas tardes, gracias por llamar a servicio al cliente...",
-      "f0_hz": 213.64, "rms_dbfs": -20.25, "confianza_logprob": -0.155, "probabilidad_sin_voz": 0.013 }
+      "score_sentimiento": 0.5, "f0_hz": 213.64, "rms_dbfs": -20.25, "confianza_logprob": -0.155, "probabilidad_sin_voz": 0.013 }
   ]
 }
 ```
@@ -104,6 +105,36 @@ Ejemplo de salida (recortado):
    cuadros de 20 ms.
 4. Para cada segmento de Whisper toma la **mediana del F0** (solo cuadros con voz) y la
    **energía RMS media en dBFS** (0 dBFS es el máximo digital; los valores son negativos).
+5. Puntúa cada segmento con el léxico (`lexico.py`, ver abajo).
+
+## Sentimiento por léxico (RN-01)
+
+Las palabras están en `lexico_es.json`, sin tocar código. RN-01 fija la escala de -1 a +1, los
+umbrales de ±0,3 y 11 palabras clave (`oficial_rn01`). **No define la fórmula**, así que estas
+reglas son una decisión del proyecto, no del Blueprint:
+
+- Cada palabra clave vale ±0,5 y la suma de la frase se limita a ±1. Una sola palabra ya cruza
+  el umbral de ±0,3; una frase sin palabras clave queda en 0.
+- "no", "sin" o "tampoco" hasta 3 palabras antes, sin una coma de por medio, invierten el
+  signo: "no es una estafa" suma, y "no, gracias" sigue siendo positiva.
+- `score_global_nlp` es el promedio de las frases con alguna palabra clave, o 0 si no hay ninguna.
+- `ampliacion_no_oficial` agrega plurales, femeninos y palabras como "molesto" o "terrible".
+  **No está en el Blueprint.** Hay que vaciar esa lista para usar solo RN-01.
+
+Para ejecutar las pruebas, desde `audio-processing/` (no necesitan audio ni instalar nada más):
+```powershell
+.\venv\Scripts\python.exe -m unittest -v
+```
+
+**Límites conocidos:**
+- No detecta sarcasmo ni contexto, aunque RN-07 lo pide para calificar una llamada como crítica.
+- Hay falsos positivos: "nunca tuve problemas" cuenta como negativa, porque RN-01 incluye "nunca",
+  y "no quiero cancelar" cuenta como positiva por la negación.
+- Depende del texto de Whisper: lo que no se transcribe no se puntúa.
+- El global puede engañar con pocas frases. En una llamada de asesoría sobre una deuda (4 min 44 s,
+  modelo `small`), solo dos despedidas tuvieron palabras clave ("Ok, gracias") y `score_global_nlp`
+  dio **+0,75**, porque Whisper casi no transcribió a quien llamaba. Falta validarlo con llamadas
+  de call center etiquetadas; **este resultado no mide precisión**.
 
 ## Tiempos medidos
 
@@ -122,8 +153,13 @@ Lectura rápida: con `base`, un audio de 4,5 min tarda **cerca de 1 minuto** (un
 más rápido que el tiempo real); con `small`, **cerca de 1 min 40 s**. Un lote de 15 llamadas
 de 4-5 min tomaría unos 15 min con `base` y unos 25 min con `small`.
 
-**Cuidado:** la voz sintética es limpia y monótona. Hay que repetir la medida con una
-llamada real (ruido, dos voces, cortes), que puede tardar más.
+**Cuidado:** la voz sintética es limpia y monótona. Con una llamada real de radio de 4 min 44 s,
+`small` tardó unos **85 s** (70 s de transcripción y 12 s de análisis acústico). Falta medir con
+llamadas de call center.
+
+**Problema detectado en esa llamada:** entre los segundos 47 y 126 hay sonido, pero Whisper casi
+no transcribe a quien llama, con o sin filtro de voz. Aún no se sabe la causa ni si pasa en
+otras llamadas.
 
 ### Comparación con openai-whisper
 
@@ -138,8 +174,9 @@ como "sal o quién" o "saluquien" en la voz sintética). Por eso el proyecto usa
 
 ## Pendiente
 
-- `hablante` (AGENTE/CLIENTE) y `score_sentimiento`: necesitan diarización y el léxico de
-  sentimiento; todavía no los calcula el script (ver `docs/contrato_audio.md`).
+- `hablante` (AGENTE/CLIENTE): necesita diarización; todavía no lo calcula el script. Por eso
+  `version_contrato` sigue en `0.1` (ver `docs/contrato_audio.md`).
+- `score_acustico`, `puntaje_final`, `clasificacion_final` y `diagnostico_conflicto`.
 - Umbrales de las alertas `EXCESO_VOLUMEN` y `ALTERACION_TONO` a partir de `rms_dbfs` y `f0_hz`.
 - Probar el criterio de `baja_confianza_audio` (`confianza_logprob` promedio < -1,0) con
   audios ruidosos reales.

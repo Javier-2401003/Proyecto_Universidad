@@ -98,7 +98,7 @@ endpoint (`VITE_SIMULAR_ESTADISTICAS`).
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 02/11/2026_
+_Última actualización: 03/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -111,26 +111,37 @@ solo un JSON por stdout; errores en JSON con código de salida 1. Python **3.12*
 fallan dependencias); no hace falta instalar ffmpeg (PyAV lo trae). Con un audio de 4,5 min
 en una laptop sin GPU: **`base` ~1 min, `small` ~1 min 40 s**, 0,6-0,8 GB de RAM.
 openai-whisper tardó lo mismo pero usa el doble de memoria y PyTorch, así que se usa
-faster-whisper. Detalle en `audio-processing/README.md`.
-Rama `david-contrato-audio` (PR #9): borrador v0.1 de `docs/contrato_audio.md`, ya con las
-respuestas de Willy del 28/10: ruta absoluta del audio, variables de `.env`, dBFS y los campos
-acordados para la v0.2. Python calcula también el puntaje final, la clasificación y el diagnóstico.
+faster-whisper. Detalle en `audio-processing/README.md`. PR #8 ya fusionado en `main`.
+Rama `david-contrato-audio` (PR #9): `docs/contrato_audio.md` v0.1 con las decisiones del equipo:
+ruta absoluta del audio, variables de `.env`, dBFS y los campos de la v0.2. Python calcula también
+el puntaje final, la clasificación y el diagnóstico. Si faltan campos de la v0.2, el backend deja
+la llamada en `ERROR` con `CONTRATO_INCOMPLETO`. Javier confirmó que 100 es lo mejor del odómetro y
+que el puntaje neutro es 50.00. Willy lo aprobó el 02/11; aún no ha revisado la regla para audios sin
+voz que agregué el 03/11.
+Rama `david-lexico-sentimiento`: `score_sentimiento` por segmento y `score_global_nlp` con un
+léxico según RN-01 (`lexico.py`, `lexico_es.json`), 13 pruebas pasando. RN-01 no define la
+fórmula; la decisión del proyecto está en `audio-processing/README.md`.
 
 **En curso:** -
 
 **Pendiente:**
-- Repetir los tiempos con una llamada real (se midió con voz sintética de Windows).
-- Script y contrato v0.2: `hablante` (diarización sin PyTorch) y `score_sentimiento` (léxico
-  RN-01) por segmento; `score_global_nlp`, `score_acustico`, `puntaje_final`,
-  `clasificacion_final` y `diagnostico_conflicto` en el primer nivel. `analizar.py` sigue
-  emitiendo la v0.1.
-- v0.3: alertas de volumen y tono (faltan umbrales); validar el criterio de `baja_confianza_audio`.
+- `hablante`: diarización sin PyTorch. Sin esto, `analizar.py` sigue emitiendo la v0.1.
+- `score_acustico` (RN-02), `puntaje_final` (RN-03), `clasificacion_final` y `diagnostico_conflicto`.
+- Investigar por qué Whisper casi no transcribió a quien llama en una llamada real de 4 min 44 s
+  y repetir la prueba con una muestra de call center (el léxico aún no tiene precisión medida).
+- Rendimiento: Willy midió 66-87 s con `base` para una grabación real de 52 s, mucho más que en mi
+  laptop. Repetir las medidas con llamadas reales en la laptop más lenta del equipo.
+- Revisar el umbral de `baja_confianza_audio`: esa grabación dio `true` (-1,142).
+- Notas de Willy en el PR #8: un archivo de 0 bytes devuelve `AUDIO_ILEGIBLE`, no `AUDIO_VACIO`, y
+  el README puede aclarar que Python 3.13.5 también funcionó.
+- Fusionar el PR del léxico y luego el de `david-score-acustico`, que sale de esa rama.
+- v0.3: alertas de volumen y tono.
 
 **Necesito de otros:**
-- Willy: aprobar el PR #9 y responder la pregunta abierta de la sección 7: si una llamada
-  analizada con la v0.1 se marca `COMPLETADO`, la pantalla de detalle mostraría puntaje 0 y
-  `NEUTRO` como si fuera real.
-- Willy o Javier: revisar el PR #8 (`analizar.py`); el procesamiento en el backend depende de él.
+- Willy: revisar en el PR #9 la regla para audios sin voz (sección 5 del contrato) y compartir su
+  grabación de 52 s, para investigar la baja confianza.
+- Willy o Javier: revisar el PR del léxico.
+- Equipo: acordar los cortes numéricos de `clasificacion_final`, que el Blueprint no define.
 - Reunión: agregar faster-whisper (MIT, gratis) a `docs/herramientas.md`, y aclarar ahí que
   ffmpeg ya no hay que instalarlo aparte.
 

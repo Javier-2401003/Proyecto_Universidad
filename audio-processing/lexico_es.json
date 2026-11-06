@@ -1,0 +1,13 @@
+{
+  "peso_por_palabra": 0.5,
+  "ventana_negacion": 3,
+  "negadores": ["no", "sin", "tampoco"],
+  "oficial_rn01": {
+    "positivas": ["excelente", "gracias", "con gusto", "solucionado", "amable"],
+    "negativas": ["pésimo", "cancelar", "estafa", "incompetente", "queja", "nunca"]
+  },
+  "ampliacion_no_oficial": {
+    "positivas": ["excelentes", "agradezco", "agradecido", "agradecida", "solucionada", "resuelto", "resuelta", "amables", "perfecto"],
+    "negativas": ["pésima", "pésimos", "cancelación", "estafaron", "fraude", "incompetentes", "quejas", "molesto", "molesta", "enojado", "enojada", "terrible", "horrible", "inaceptable", "mentira", "denuncia"]
+  }
+}
