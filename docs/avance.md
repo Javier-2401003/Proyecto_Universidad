@@ -88,14 +88,19 @@ en Pendiente hasta que el backend ejecute el análisis; para una demo con result
 ya está en `main`, así que `VITE_SIMULAR_ESTADISTICAS` pasó a `false` por defecto. Probado con el
 backend real como SuperAdmin, Supervisor y Agente.
 
-**En curso:** pantalla de Gestión de usuarios completa (editar, desactivar, asignar supervisor y
-roles desde `GET /roles`; el backend ya está en `main`).
+**Gestión de usuarios completa** (06/11/2026, rama `javier-gestion-usuarios`): editar nombre,
+correo y rol; activar o desactivar (con confirmación); asignar o quitar supervisor (al editar o al
+crear un agente); roles desde `GET /roles`. Respeta las reglas del contrato: nadie cambia su propio
+rol ni se desactiva a sí mismo, solo se envían los campos que cambian, y un agente cuyo supervisor
+está desactivado se marca para reasignarlo. Probado con el backend real (incluida la auditoría).
+
+**En curso:** -
 
 **Necesito de otros:**
 - Willy y David: probar de punta a punta con audios reales ahora que el #15 está en `main`, para
   ver resultados reales en la carga de lotes, el detalle y el inicio.
-- `docs/demo.md` dice que las estadísticas del inicio son de ejemplo: ya no es así. Es un archivo
-  compartido; lo corrijo en un PR aparte con revisión.
+- `docs/demo.md` dice que las estadísticas del inicio son de ejemplo y que el supervisor se asigna
+  en phpMyAdmin: ya no es así. Es un archivo compartido; lo corrijo en un PR aparte con revisión.
 
 ---
 
