@@ -172,7 +172,7 @@ _Última actualización: 05/11/2026_
 - [x] Estadísticas del inicio: `GET /estadisticas/resumen` (PR #16, fusionado).
 - [x] Roles: `GET /roles` (PR #17) y su contrato en `docs/api.md` (PR #18), fusionados.
 - [x] Revisar el contrato de audio v0.1 (PR #9) y v0.2 (PR #21).
-- [ ] Procesamiento de audio en el backend (PR #15, abierto).
+- [x] Procesamiento de audio en el backend (PR #15, fusionado).
 
 **Hecho:**
 - Carga de lotes (PR #7). Usa `multer` (MIT): después de `git pull` hay que correr `npm install` en
@@ -186,20 +186,21 @@ _Última actualización: 05/11/2026_
   archivos de prueba (10 de 10 corridas pasando).
 - Contrato v0.2 (PR #21): aprobado en un comentario del PR. Es compatible con el PR #15: su ejemplo y
   el caso sin voz quedan `COMPLETADO` en el código real. Las reglas de puntaje quedan como provisionales.
+- Procesamiento de audio en `main` (PR #15: `src/procesamientoAudio.js`, `tests/procesamiento.test.js`,
+  sin Python). Una llamada a la vez con `execFile`, según `docs/contrato_audio.md`. Si `AUDIO_PYTHON` o
+  `AUDIO_SCRIPT` de `backend/.env` faltan o no existen, no arranca y las llamadas siguen en `PENDIENTE`
+  (ver `backend/.env.example`). Solo está probado con un ejecutable falso.
+- Regla nueva en `CLAUDE.md` (PR #24): el autor puede fusionar su propio PR si solo toca su área.
 
-**En curso:**
-- Procesamiento de audio (PR #15: `src/procesamientoAudio.js`, `tests/procesamiento.test.js`, sin
-  Python). Una llamada a la vez con `execFile`, según `docs/contrato_audio.md`. Si `AUDIO_PYTHON` o
-  `AUDIO_SCRIPT` faltan o no existen, no arranca y las llamadas siguen en `PENDIENTE`. Con la v0.2
-  que ya está en `main`, las llamadas pueden llegar a `COMPLETADO`. Solo está probado con un
-  ejecutable falso.
+**En curso:** -
 
 **Pendiente:**
-- Probar el PR #15 con el `analizar.py` real (hay que instalar el venv de `audio-processing/`).
+- Probar el procesamiento con el `analizar.py` real (hay que instalar el venv de `audio-processing/`).
 - Guardar `TB_Alerta` cuando David entregue la v0.3.
 
 **Necesito de otros:**
-- **Javier o David:** revisar y fusionar el PR #15.
+- **Quien tenga el venv de audio:** iniciar el backend con `AUDIO_PYTHON` y `AUDIO_SCRIPT` en su `.env` y
+  avisarme si alguna llamada queda en `ERROR` (con su `mensaje_error`).
 - **David** (detalle en el comentario del PR #21; no bloquean):
   - En la v0.3, usar los valores de `TB_Alerta.tipo_alerta` (`EXCESO_VOLUMEN`, no `ELEVACION_VOLUMEN`).
   - Anotar en el contrato los mensajes propios del backend y el timeout de 3600 s.
