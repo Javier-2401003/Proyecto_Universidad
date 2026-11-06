@@ -82,18 +82,20 @@ consulta se detuvo. El volumen pasó a **dBFS** en `docs/api.md` y en los datos 
 **Carga de lotes y detalle de llamada ya usan el backend real** (03/11/2026): probado de punta
 a punta con MySQL 8 (subida de 5 audios, estados, detalle y audio original). Las llamadas quedan
 en Pendiente hasta que el backend ejecute el análisis; para una demo con resultados está
-`VITE_SIMULAR_LLAMADAS=true`. Las estadísticas del inicio siguen simuladas hasta que exista su
-endpoint (`VITE_SIMULAR_ESTADISTICAS`).
+`VITE_SIMULAR_LLAMADAS=true`.
 
-**En curso:** -
+**Estadísticas del inicio con datos reales** (06/11/2026): `GET /estadisticas/resumen` (PR #16)
+ya está en `main`, así que `VITE_SIMULAR_ESTADISTICAS` pasó a `false` por defecto. Probado con el
+backend real como SuperAdmin, Supervisor y Agente.
+
+**En curso:** pantalla de Gestión de usuarios completa (editar, desactivar, asignar supervisor y
+roles desde `GET /roles`; el backend ya está en `main`).
 
 **Necesito de otros:**
-- Willy: revisar e implementar `GET /estadisticas/resumen` según `docs/api.md` (sección
-  "Estadísticas del inicio"). Misma visibilidad por rol que el detalle de una llamada.
-- Willy: el procesamiento de audio en el backend (tomar las llamadas `PENDIENTE` y ejecutar
-  `analizar.py`), para que la carga de lotes y el detalle muestren resultados reales.
-- Willy: un endpoint de roles (`GET /api/v1/roles`); hoy la lista de roles del formulario está fija
-  en el frontend con los 3 roles base.
+- Willy y David: probar de punta a punta con audios reales ahora que el #15 está en `main`, para
+  ver resultados reales en la carga de lotes, el detalle y el inicio.
+- `docs/demo.md` dice que las estadísticas del inicio son de ejemplo: ya no es así. Es un archivo
+  compartido; lo corrijo en un PR aparte con revisión.
 
 ---
 

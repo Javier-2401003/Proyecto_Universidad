@@ -1,5 +1,5 @@
 // Estadisticas de la pagina de inicio. Contrato: docs/api.md, seccion "Estadisticas del inicio".
-// Mientras el backend no tenga este endpoint, se usan datos simulados
+// Usa el backend real; con VITE_SIMULAR_ESTADISTICAS=true usa datos simulados
 // (api/simulacion/estadisticas.js); ver api/simulacion/activa.js.
 import { pedir } from './cliente.js';
 import { SIMULAR_ESTADISTICAS as SIMULAR } from './simulacion/activa.js';
