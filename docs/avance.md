@@ -107,8 +107,8 @@ _Última actualización: 03/11/2026_
 - [x] Borrador de `docs/contrato_audio.md`.
 
 **Hecho:** rama `david-audio-base`: `analizar.py` (faster-whisper en CPU + librosa) imprime
-solo un JSON por stdout; errores en JSON con código de salida 1. Python **3.12** (con 3.14
-fallan dependencias); no hace falta instalar ffmpeg (PyAV lo trae). Con un audio de 4,5 min
+solo un JSON por stdout; errores en JSON con código de salida 1. Python **3.12** o 3.13 (Willy probó
+3.13.5); no hace falta instalar ffmpeg (PyAV lo trae). Con un audio de 4,5 min
 en una laptop sin GPU: **`base` ~1 min, `small` ~1 min 40 s**, 0,6-0,8 GB de RAM.
 openai-whisper tardó lo mismo pero usa el doble de memoria y PyTorch, así que se usa
 faster-whisper. Detalle en `audio-processing/README.md`. PR #8 ya fusionado en `main`.
@@ -126,37 +126,39 @@ Rama `david-score-acustico` (sale de la anterior): `score_acustico` según RN-02
 Recalibrado por falsas alarmas: filtro y normalización antes del RMS, 180 % durante 2 s seguidos, y
 la alerta roja exige también texto negativo. Una asesoría que parece tranquila pasó de -0,304 a -0,128
 y queda `NEUTRO`. Los valores están en `reglas_acusticas.json`, y la comparación, en el README.
+Rama `david-notas-revision`: notas de Willy del PR #8. Un archivo de 0 bytes da `AUDIO_VACIO`, README
+con Python 3.13, faster-whisper en `docs/herramientas.md`, y umbral de `baja_confianza_audio` en -1,5,
+provisional.
+Rama `david-analizar-v02` (sale de `david-score-acustico` y trae las notas): `analizar.py` emite la
+**v0.2** con `hablante` y `diagnostico_conflicto`, 66 pruebas pasando. La diarización es local y sin
+PyTorch: por canales o por timbre y tono. Con voces sintéticas acierta de 90 a 99 %, y 56,5 % con voces
+casi iguales. En llamadas reales espero de 65 a 85 %, sin medir. Rama `david-contrato-v02`: contrato v0.2.
+PR #14 de Javier revisado en lo del volumen: el dBFS de `docs/api.md` coincide con el contrato.
 
 **En curso:** -
 
 **Pendiente:**
-- `hablante`: diarización sin PyTorch. Es lo que más urge: sin esto `analizar.py` sigue en la v0.1
-  y el baseline de RN-02 mezcla las dos voces.
-- `diagnostico_conflicto`.
+- Medir la diarización con llamadas reales etiquetadas y usar `hablante` en el promedio móvil de RN-02.
+- `diagnostico_conflicto` todavía no revisa si el agente omitió el script o interrumpió.
 - Medir con gritos reales: el Blueprint pide 88 % sobre 50 muestras y la recalibración bajó la
   sensibilidad. Un grito simulado de 3 s al doble de volumen se detecta en 6 de 12 posiciones.
-- Actualizar `docs/contrato_audio.md` en un PR propio: nuevo criterio de `baja_confianza_audio`,
-  puntaje con 100 % texto en E1, y `puntaje_final` y `clasificacion_final` ya emitidos.
 - Investigar por qué Whisper casi no transcribió a quien llama en una llamada real de 4 min 44 s
   y repetir la prueba con una muestra de call center (el léxico aún no tiene precisión medida).
 - Rendimiento: Willy midió 66-87 s con `base` para una grabación real de 52 s, mucho más que en mi
   laptop. Repetir las medidas con llamadas reales en la laptop más lenta del equipo.
-- Revisar el umbral de `baja_confianza_audio`: esa grabación dio `true` (-1,142).
-- Notas de Willy en el PR #8: un archivo de 0 bytes devuelve `AUDIO_ILEGIBLE`, no `AUDIO_VACIO`, y
-  el README puede aclarar que Python 3.13.5 también funcionó.
-- Fusionar el PR del léxico y luego el de `david-score-acustico`, que sale de esa rama.
+- Recalibrar `baja_confianza_audio` con grabaciones reales (hoy sale de un audio con ruido agregado).
+- Orden de fusión: PR #9, léxico, `david-score-acustico`, notas, contrato v0.2 y `david-analizar-v02`.
 - v0.3: alertas de volumen y tono.
 
 **Necesito de otros:**
 - Willy: revisar en el PR #9 la regla para audios sin voz (sección 5 del contrato) y compartir su
   grabación de 52 s, para investigar la baja confianza.
-- Willy o Javier: revisar los PRs del léxico y de `david-score-acustico`.
+- Willy o Javier: revisar los PRs del léxico, `david-score-acustico`, notas y `david-analizar-v02`.
+- Willy: revisar y aprobar el contrato v0.2. Cambia el criterio de `baja_confianza_audio`.
 - Equipo: confirmar que RN-02 y RN-03 se apartan del Blueprint: 180 % durante 2 s en lugar de 150 %
   durante 1,5 s, y alerta roja solo con texto negativo. También acordar los cortes provisionales de
   `clasificacion_final` (35 y 65; alerta roja = `CRITICO`) y si `score_acustico` puede ser positivo:
   hoy nunca lo es, así que `puntaje_final` llega a 77,5 como máximo.
-- Reunión: agregar faster-whisper (MIT, gratis) a `docs/herramientas.md`, y aclarar ahí que
-  ffmpeg ya no hay que instalarlo aparte.
 
 ---
 

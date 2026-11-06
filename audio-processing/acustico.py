@@ -18,6 +18,8 @@ from collections import deque
 import numpy as np
 from scipy.signal import butter, sosfiltfilt
 
+from lexico import puntaje_global
+
 RUTA_REGLAS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reglas_acusticas.json")
 ORDEN_FILTRO = 4
 MUESTRAS_MINIMAS_FILTRO = 1024
@@ -216,3 +218,29 @@ def calcular_puntaje(score_nlp, score_acustico, baja_confianza, subida_continua,
     else:
         clasificacion = "NEUTRO"
     return {"puntaje_final": puntaje, "clasificacion_final": clasificacion}
+
+
+def calcular_diagnostico(clasificacion, segmentos, frases_analizadas, eventos, baja_confianza, reglas):
+    """Origen del conflicto en una llamada mala (Blueprint, 3.3, punto 4).
+
+    Solo se diagnostican llamadas NEGATIVO o CRITICO. Si el agente tiene texto negativo o gritos, es
+    FALLA_AGENTE; si solo los tiene el cliente, CLIENTE_PROBLEMATICO. Con baja confianza no cuenta la
+    voz. Todavia no revisa si el agente omitio el script ni si interrumpio.
+    """
+    if clasificacion not in ("NEGATIVO", "CRITICO"):
+        return "SIN_CONFLICTO"
+
+    def tiene_conflicto(hablante):
+        propios = [(s, f) for s, f in zip(segmentos, frases_analizadas) if s["hablante"] == hablante]
+        if puntaje_global([f for _, f in propios]) < reglas["umbral_nlp_negativo"]:
+            return True
+        if baja_confianza:
+            return False
+        return any(e["tipo"] == "ELEVACION_VOLUMEN" and e["inicio"] < s["fin"] and e["fin"] > s["inicio"]
+                   for s, _ in propios for e in eventos)
+
+    if tiene_conflicto("AGENTE"):
+        return "FALLA_AGENTE"
+    if tiene_conflicto("CLIENTE"):
+        return "CLIENTE_PROBLEMATICO"
+    return "SIN_CONFLICTO"

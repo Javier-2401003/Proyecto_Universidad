@@ -10,11 +10,12 @@ Todo lo demás debe ser gratuito, sin tokens ni créditos.
 | MySQL 8 Community (en Wamp) | Base de datos | GPL | Sí | Usar |
 | phpMyAdmin | Administrar la BD | GPL | Sí | Usar |
 | Git + GitHub (repositorio público) | Control de versiones | GPL / servicio gratuito | Sí | Usar |
-| OpenAI Whisper (local) | Transcripción | MIT | Sí, sin API ni tokens | Usar (modelo `base` o `small`) |
+| faster-whisper (local) | Transcripción | MIT | Sí, sin API ni tokens; descarga el modelo una vez, sin cuenta | Usar (modelo `base` o `small`) |
+| OpenAI Whisper (local) | Transcripción | MIT | Sí, sin API ni tokens | **No usar**: se comparó y tarda lo mismo, pero usa más memoria y necesita PyTorch |
 | librosa (Python) | Análisis acústico: tono (F0) y volumen (RMS) | ISC | Sí | Usar |
 | openSMILE | Análisis acústico | Licencia propia: gratis para investigación, **de pago para uso comercial** | Solo uso académico | **No usar**; librosa cubre lo que pide el Blueprint (RN-02) |
 | Lucide / Font Awesome Free | Iconos | ISC / CC BY 4.0 | Sí | Usar (sin emojis) |
-| ffmpeg | Leer MP3 y convertir audio | LGPL/GPL | Sí | Usar (lo exige Whisper) |
+| ffmpeg | Leer MP3 y convertir audio | LGPL/GPL | Sí | Viene incluido en PyAV, que usa faster-whisper; no hay que instalarlo aparte |
 | Claude (suscripción) | Guía, código, revisión | Servicio | **Pago** (única excepción autorizada) | Usar |
 
 ## Alternativas gratuitas a lo que menciona el Blueprint

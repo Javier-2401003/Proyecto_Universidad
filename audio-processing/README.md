@@ -13,9 +13,10 @@ acústico. No usa la API de OpenAI ni ningún servicio en la nube.
 Se necesita Windows 10/11 y unos 2 GB libres en disco (entorno y modelos). No hace
 falta GPU.
 
-### 1. Python 3.12
+### 1. Python 3.12 o 3.13
 
-Use **Python 3.12**. Con 3.13 o 3.14 pueden faltar paquetes ya compilados (numba,
+Se recomienda **Python 3.12**. **Python 3.13 también funciona** (probado con 3.13.5: instala solo con
+paquetes ya compilados). Con versiones más nuevas pueden faltar paquetes compilados (numba,
 ctranslate2) y pip intentaría compilarlos, lo que falla sin Visual C++.
 
 Opción A, instalador oficial:
@@ -81,7 +82,7 @@ Una vez descargados los modelos, puede trabajar sin internet con
 Ejemplo de salida (recortado):
 ```json
 {
-  "version_contrato": "0.1",
+  "version_contrato": "0.2",
   "archivo": "llamada.wav",
   "duracion_segundos": 268.553,
   "idioma": "es",
@@ -91,9 +92,11 @@ Ejemplo de salida (recortado):
   "score_acustico": 0.0,
   "puntaje_final": 63.75,
   "clasificacion_final": "NEUTRO",
+  "diagnostico_conflicto": "SIN_CONFLICTO",
   "resumen_acustico": { "f0_mediana_hz": 213.64, "rms_promedio_dbfs": -20.05, "...": "..." },
   "segmentos": [
     { "indice": 0, "inicio": 0.0, "fin": 7.0,
+      "hablante": "AGENTE",
       "texto": "Buenas tardes, gracias por llamar a servicio al cliente...",
       "score_sentimiento": 0.5, "f0_hz": 213.64, "rms_dbfs": -20.25, "confianza_logprob": -0.155, "probabilidad_sin_voz": 0.013 }
   ]
@@ -237,12 +240,71 @@ La calidad del texto fue la misma en las dos (por ejemplo, ambas transcriben mal
 como "sal o quién" o "saluquien" en la voz sintética). Por eso el proyecto usa
 **faster-whisper**. La comparación se hizo en un entorno temporal fuera del repositorio.
 
+## Baja confianza
+
+`baja_confianza_audio` es `true` si no hay segmentos, si hay ruido con variaciones extremas (ver
+"Análisis acústico") o si `confianza_logprob` promedio es menor a **-1,5**. El valor anterior, -1,0,
+marcó como ruidosa una voz real (-1,142, en la revisión de Willy). Para elegirlo se agregó ruido blanco a 2 minutos de una llamada real (modelo
+`base`) y se comparó el texto con el del audio original:
+
+| Relación señal/ruido | Confianza promedio | Palabras que coinciden con el texto original |
+|---|---|---|
+| Sin ruido | -0,33 | 100 % |
+| 20 dB | -0,37 | 90 % |
+| 10 dB | -0,53 | 72 % |
+| 5 dB | -0,71 | 59 % |
+| 0 dB | -1,60 | 32 % |
+| -5 dB | -4,03 | 5 % |
+
+**Es provisional:** sale de un solo audio con ruido agregado y del dato de Willy, no de varias
+grabaciones reales. Hay que repetirlo con grabaciones reales de la laptop de cada integrante,
+incluida la de Willy.
+
+## Separación de agente y cliente
+
+`diarizacion.py` no usa pyannote ni PyTorch, y no necesita token. Cada segmento lleva `hablante`, y
+siempre es `AGENTE` o `CLIENTE`, aunque la separación no sea segura:
+
+1. **Por canales:** si el archivo trae dos canales distintos, izquierdo = agente y derecho = cliente
+   (Blueprint, 3.2.1). Un estéreo con la misma mezcla en ambos canales no cuenta.
+2. **Por voz:** si no, reparte ventanas de 1 s en dos grupos, según timbre (MFCC) y tono (F0).
+3. **Quién es el agente:** el grupo con más frases típicas de agente (`reglas_diarizacion.json`); si
+   empatan, quien habla primero.
+
+**Precisión medida** con conversaciones armadas con voces de Windows (unos 100 s cada una), donde se
+sabe quién habla. Es el porcentaje del tiempo con el hablante correcto:
+
+| Caso | Acierto |
+|---|---|
+| Hombre y mujer | 99,6 % y 99,9 % |
+| Dos mujeres | 99,9 % |
+| Misma voz con 4 semitonos de diferencia | 96,8 % |
+| Misma voz con 2 semitonos de diferencia | **56,5 %** (casi al azar) |
+| Habla primero el cliente, hombre y mujer | 97,3 % |
+| Filtro de teléfono y ruido, hombre y mujer | 89,6 % |
+| Filtro de teléfono y ruido, dos mujeres | 93,0 % |
+
+**Precisión esperada en llamadas reales: de 65 a 85 % en audio mono, y por encima de 95 % con canales
+separados.** Es una estimación, no una medida: las voces sintéticas son más fáciles que una llamada
+real. Falta medirla con llamadas etiquetadas.
+
+**Límites conocidos:**
+
+- **Voces parecidas:** dos personas del mismo género y tono casi no se separan.
+- **Roles invertidos:** si no hay frases típicas y el cliente habla primero, se invierten **todos** los
+  hablantes de la llamada, aunque la separación sea buena.
+- **Un hablante por segmento:** si dos personas hablan dentro de un mismo segmento de Whisper, gana
+  quien ocupa más tiempo. En una llamada real hubo segmentos de más de 60 s con muy poco texto.
+- **Una sola voz:** igual se reparte en dos grupos.
+- **Conflicto:** `diagnostico_conflicto` depende de esta separación, y aún no revisa si el agente
+  omitió el script o interrumpió. Con hablantes errados, puede culpar a quien no fue.
+- **RN-02:** el promedio móvil todavía mezcla las dos voces.
+
 ## Pendiente
 
-- `hablante` (AGENTE/CLIENTE): necesita diarización; todavía no lo calcula el script. Por eso
-  `version_contrato` sigue en `0.1` (ver `docs/contrato_audio.md`).
-- `diagnostico_conflicto`.
+- Medir la diarización con llamadas reales etiquetadas.
+- Usar `hablante` para el promedio móvil por hablante de RN-02.
+- Revisar en `diagnostico_conflicto` el script omitido y las interrupciones.
 - Confirmar con el equipo la recalibración de RN-02 y RN-03, y los cortes de `clasificacion_final`.
 - Umbrales de las alertas `EXCESO_VOLUMEN` y `ALTERACION_TONO` a partir de `rms_dbfs` y `f0_hz`.
-- Probar el criterio de `baja_confianza_audio` (`confianza_logprob` promedio < -1,0) con
-  audios ruidosos reales.
+- Recalibrar `baja_confianza_audio` con grabaciones reales.

@@ -1,0 +1,40 @@
+{
+  "segundos_ventana": 1.0,
+  "segundos_salto": 0.5,
+  "fraccion_minima_voz": 0.3,
+  "numero_mfcc": 13,
+  "peso_f0": 2.0,
+  "correlacion_maxima_canales": 0.7,
+  "frases_agente": [
+    "en que le puedo ayudar",
+    "en que puedo ayudarle",
+    "en que le podemos ayudar",
+    "en que te podemos ayudar",
+    "en que te puedo ayudar",
+    "gracias por llamar",
+    "gracias por comunicarse",
+    "mi nombre es",
+    "le atiende",
+    "le habla",
+    "con quien tengo el gusto",
+    "con quien tenemos el gusto",
+    "lamento la situacion",
+    "lamento mucho",
+    "voy a revisar",
+    "su numero de contrato",
+    "algo mas en lo que"
+  ],
+  "frases_cliente": [
+    "quiero cancelar",
+    "voy a cancelar",
+    "quiero poner una queja",
+    "voy a poner una queja",
+    "es la tercera vez",
+    "nadie me da",
+    "llevo tres dias",
+    "mi factura",
+    "mi cuenta",
+    "ya estoy muy molesto",
+    "ya estoy muy molesta"
+  ]
+}
