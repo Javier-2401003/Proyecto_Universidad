@@ -1,7 +1,7 @@
 # Contrato: backend (Node) y análisis de audio (Python)
 
-**Estado: v0.1, aprobada por Willy el 02/11/2026 (decisiones en la sección 7).** La v0.2 de la
-sección 5 todavía no está implementada. Si alguien necesita un cambio, se hace primero aquí,
+**Estado: v0.2, propuesta por David y pendiente de la aprobación de Willy.** La implementa la rama
+`david-analizar-v02`. La v0.1 la aprobó Willy el 02/11/2026 (decisiones en la sección 7). Si alguien necesita un cambio, se hace primero aquí,
 en un PR propio, y se avisa al otro.
 
 - Script: `audio-processing/analizar.py` (instalación en `audio-processing/README.md`).
@@ -58,13 +58,18 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 
 ```json
 {
-  "version_contrato": "0.1",
+  "version_contrato": "0.2",
   "archivo": "llamada_0001.mp3",
   "duracion_segundos": 268.553,
   "idioma": "es",
   "probabilidad_idioma": 1.0,
   "modelo": { "motor": "faster-whisper", "nombre": "base", "tipo_calculo": "int8" },
   "baja_confianza_audio": false,
+  "score_global_nlp": 0.5,
+  "score_acustico": 0.0,
+  "puntaje_final": 63.75,
+  "clasificacion_final": "NEUTRO",
+  "diagnostico_conflicto": "SIN_CONFLICTO",
   "resumen_acustico": {
     "f0_mediana_hz": 213.64,
     "f0_desviacion_hz": 36.43,
@@ -78,7 +83,9 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
       "indice": 0,
       "inicio": 0.0,
       "fin": 7.0,
+      "hablante": "AGENTE",
       "texto": "Buenas tardes, gracias por llamar a servicio al cliente, mi nombre es Carla, en que le puedo ayudar.",
+      "score_sentimiento": 0.5,
       "f0_hz": 213.64,
       "rms_dbfs": -20.25,
       "confianza_logprob": -0.155,
@@ -98,9 +105,14 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 | `idioma` | string | no | Idioma usado (hoy siempre el de `--idioma`). | - |
 | `probabilidad_idioma` | number 0-1 | no | Seguridad de Whisper sobre el idioma. | - |
 | `modelo` | object | no | `motor`, `nombre` y `tipo_calculo` usados. | - (útil para auditoría) |
-| `baja_confianza_audio` | boolean | no | Flujo E1 (ruido extremo). Hoy es `true` si no hubo segmentos o si `confianza_logprob_promedio < -1,0`. Criterio **provisional**. | `TB_Llamada.baja_confianza_audio` (0/1) |
-| `resumen_acustico` | object | no | Ver abajo. | - (lo usará el score acústico) |
-| `tiempos_proceso_segundos` | object | no | `transcripcion`, `acustico`, `total`. | - (registro) |
+| `baja_confianza_audio` | boolean | no | Flujo E1. Es `true` si no hubo segmentos, si `confianza_logprob_promedio < -1,5`, o si hay ruido de fondo con variaciones de volumen extremas. Con `true`, `puntaje_final` usa 100 % el texto. Criterio **provisional**. | `TB_Llamada.baja_confianza_audio` (0/1) |
+| `score_global_nlp` | number (3 dec.) | no | De -1 a +1. Promedio de las frases con palabras clave (RN-01); 0 si no hay ninguna. | `TB_Llamada.score_global_nlp` |
+| `score_acustico` | number (3 dec.) | no | De -1 a 0 por ahora: 0 sin subidas de volumen o tono; nunca es positivo (RN-02). | `TB_Llamada.score_acustico` |
+| `puntaje_final` | number (2 dec.) | no | De 0 a 100; 100 es lo mejor y 50 es neutro (RN-03). Con los pesos actuales, el máximo es 77,5. | `TB_Llamada.puntaje_final` |
+| `clasificacion_final` | string | no | `"POSITIVO"`, `"NEUTRO"`, `"NEGATIVO"` o `"CRITICO"` (reglas en la sección 5). | `TB_Llamada.clasificacion_final` |
+| `diagnostico_conflicto` | string | no | `"FALLA_AGENTE"`, `"CLIENTE_PROBLEMATICO"` o `"SIN_CONFLICTO"` (reglas en la sección 5). | `TB_Llamada.diagnostico_conflicto` |
+| `resumen_acustico` | object | no | Ver abajo. | - |
+| `tiempos_proceso_segundos` | object | no | `transcripcion`, `acustico` (incluye la diarización), `total`. | - (registro) |
 | `segmentos` | array | no (puede ser `[]`) | Fragmentos en orden de tiempo. | una fila de `TB_Transcripcion` cada uno |
 
 ### `resumen_acustico`
@@ -120,7 +132,9 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 | `indice` | integer | no | 0, 1, 2... | - |
 | `inicio` | number (3 dec.) | no | Segundo de inicio | `timestamp_inicio` DECIMAL(8,3) |
 | `fin` | number (3 dec.) | no | Segundo de fin (`>= inicio`) | `timestamp_fin` DECIMAL(8,3) |
+| `hablante` | string | no | `"AGENTE"` o `"CLIENTE"`: siempre uno de los dos, aunque no sea seguro | `hablante` |
 | `texto` | string | no | Texto transcrito, sin espacios al borde | `texto_transcrito` |
+| `score_sentimiento` | number (3 dec.) | no | De -1 a +1, según el léxico (RN-01) | `score_sentimiento` DECIMAL(4,3) |
 | `f0_hz` | number (2 dec.) | **sí** | Mediana del tono en los cuadros con voz | `tono_f0_hz` DECIMAL(6,2) |
 | `rms_dbfs` | number (2 dec.) | sí (casi nunca) | Energía media del tramo | `nivel_volumen_rms` DECIMAL(6,2) |
 | `confianza_logprob` | number (3 dec.) | no | Seguridad de Whisper (cerca de 0 = seguro) | - |
@@ -152,33 +166,38 @@ Qué hace el backend: `estado_procesamiento = 'ERROR'` y
 `mensaje_error = "<codigo>: <mensaje>"`, recortado a 255 caracteres. Si el proceso
 murió sin JSON, usar `mensaje_error = "PROCESO_FALLIDO: código <n>"` (o `TIMEOUT`).
 
-## 5. Columnas que este contrato todavía NO llena
+## 5. Reglas de la v0.2
 
-**Con la v0.1 el backend no guarda `TB_Transcripcion`**, porque `hablante` y
-`score_sentimiento` son NOT NULL y no se creará un script `04_` para dejarlos en NULL.
-Willy deja listo el procesamiento (estados, timeout, una llamada a la vez) y lo prueba
-con la v0.1, **solo en desarrollo**.
+**Con la v0.2 el backend ya puede guardar `TB_Transcripcion`.** Todos los campos los calcula
+Python; el backend solo valida y guarda.
 
 **El backend no marca `COMPLETADO` si faltan campos de la v0.2:** la llamada queda en `ERROR`
 con `mensaje_error = "CONTRATO_INCOMPLETO: ..."`. Así nunca se muestran los valores por defecto
 de `TB_Llamada` (puntaje 0, `NEUTRO`) como si fueran un resultado real.
 
-Campos acordados para la **v0.2**. Todos los calcula Python; el backend solo valida y guarda:
+**Clasificación (cortes provisionales):**
 
-| Campo del JSON | Dónde | Tipo y valores | Columna |
-|---|---|---|---|
-| `hablante` | cada segmento | `"AGENTE"` o `"CLIENTE"` | `TB_Transcripcion.hablante` |
-| `score_sentimiento` | cada segmento | number (3 dec.), de -1 a +1 | `TB_Transcripcion.score_sentimiento` |
-| `score_global_nlp` | primer nivel | number (3 dec.), de -1 a +1 | `TB_Llamada.score_global_nlp` |
-| `score_acustico` | primer nivel | number (3 dec.), de -1 a +1 | `TB_Llamada.score_acustico` |
-| `puntaje_final` | primer nivel | number (2 dec.), de 0 a 100 | `TB_Llamada.puntaje_final` |
-| `clasificacion_final` | primer nivel | `"POSITIVO"`, `"NEUTRO"`, `"NEGATIVO"` o `"CRITICO"` | `TB_Llamada.clasificacion_final` |
-| `diagnostico_conflicto` | primer nivel | `"FALLA_AGENTE"`, `"CLIENTE_PROBLEMATICO"` o `"SIN_CONFLICTO"` | `TB_Llamada.diagnostico_conflicto` |
+| `clasificacion_final` | Cuándo |
+|---|---|
+| `CRITICO` | Alerta roja: subida de volumen de 2 s o más **y** `score_global_nlp < -0,3`, sin baja confianza |
+| `NEGATIVO` | `puntaje_final` menor a 35 |
+| `POSITIVO` | `puntaje_final` mayor a 65 |
+| `NEUTRO` | El resto |
 
-Reglas de la v0.2 para que estos campos nunca vayan nulos, porque las columnas son NOT NULL:
+`puntaje_final = (0,55 × score_global_nlp + 0,45 × score_acustico + 1) × 50`. Con
+`baja_confianza_audio: true`, es `(score_global_nlp + 1) × 50` y no hay `CRITICO`.
+
+**Diagnóstico (provisional).** Solo en llamadas `NEGATIVO` o `CRITICO`; en las demás es
+`SIN_CONFLICTO`. Es `FALLA_AGENTE` si el agente tiene texto negativo (promedio menor a -0,3) o
+subidas de volumen, y `CLIENTE_PROBLEMATICO` si solo los tiene el cliente. Si no se puede atribuir a
+nadie, es `SIN_CONFLICTO`. Con baja confianza no cuentan las subidas de volumen. **Todavía no revisa si
+el agente omitió el script o interrumpió**, y depende de que `hablante` sea correcto.
+
+**Para que los campos nunca vayan nulos**, porque las columnas son NOT NULL:
 
 - **`hablante` viene siempre**, aunque la diarización no esté segura: es la mejor estimación
-  entre `"AGENTE"` y `"CLIENTE"`, sin `null` ni un tercer valor.
+  entre `"AGENTE"` y `"CLIENTE"`, sin `null` ni un tercer valor. Se espera un acierto de 65 a 85 % en
+  audio mono, sin medir aún con llamadas reales (`audio-processing/README.md`).
 - **Audio sin voz o puro ruido (`segmentos: []`):** es un análisis válido, no un error. El JSON
   trae `baja_confianza_audio: true`, `score_global_nlp: 0.0`, `score_acustico: 0.0`,
   `clasificacion_final: "NEUTRO"`, `diagnostico_conflicto: "SIN_CONFLICTO"` y
@@ -215,3 +234,12 @@ Las decisiones 1 a 6 son de Willy (28/10/2026 y 02/11/2026); la 7 es de Javier.
 6. **Sin nulos en la v0.2 (02/11):** `hablante` viene siempre y los puntajes tienen valor aunque
    no haya segmentos. Willy pidió definirlo; la regla de la sección 5 es propuesta de David.
 7. **Odómetro (Javier):** 100 es lo mejor del odómetro y el puntaje neutro es `50.00`.
+
+### Por aprobar en la v0.2
+
+- Umbral de `baja_confianza_audio` en -1,5, en lugar de -1,0, y el criterio de ruido con variaciones
+  extremas.
+- Cortes de 35 y 65, y alerta roja = `CRITICO`.
+- Reglas de `diagnostico_conflicto`.
+- RN-02 y RN-03 se apartan del Blueprint para bajar falsas alarmas: 180 % durante 2 s, en lugar de 150 %
+  durante 1,5 s, y la alerta roja exige también texto negativo.
