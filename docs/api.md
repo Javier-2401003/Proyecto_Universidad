@@ -31,6 +31,7 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 | `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | Hecho |
 | `GET /llamadas/:id_llamada` | Sesión + visibilidad por rol | Hecho |
 | `GET /llamadas/:id_llamada/audio` | Igual que el anterior | Hecho |
+| `GET /estadisticas/resumen` | Sesión + visibilidad por rol | **Propuesto, pendiente (Willy)** |
 
 ---
 
@@ -298,7 +299,7 @@ para no revelar que existe):
       "timestamp_inicio": 0.0,
       "timestamp_fin": 4.2,
       "score_sentimiento": 0.6,
-      "nivel_volumen_rms": 62.4,
+      "nivel_volumen_rms": -20.3,
       "tono_f0_hz": 180.5
     }
   ],
@@ -308,7 +309,7 @@ para no revelar que existe):
       "tipo_alerta": "EXCESO_VOLUMEN",
       "origen_evento": "CLIENTE",
       "timestamp_evento": 95.4,
-      "valor_registrado": "88 dB",
+      "valor_registrado": "-8.5 dBFS",
       "mensaje_sugerencia": "Mantenga un tono calmado y valide la molestia del cliente."
     }
   ],
@@ -319,6 +320,8 @@ para no revelar que existe):
   y `alertas` llegan vacías en ese caso.
 - `transcripcion` ordenada por `timestamp_inicio`; `alertas` por `timestamp_evento`.
 - Números como números (no texto): el backend ya usa `decimalNumbers: true`.
+- El volumen está en **dBFS** (`docs/contrato_audio.md`): `nivel_volumen_rms` es negativo (0 es el
+  máximo digital) y `valor_registrado` de un `EXCESO_VOLUMEN` va como `"-8.5 dBFS"`.
 - Valores posibles: `clasificacion_final` = `POSITIVO`, `NEUTRO`, `NEGATIVO`, `CRITICO`;
   `diagnostico_conflicto` = `FALLA_AGENTE`, `CLIENTE_PROBLEMATICO`, `SIN_CONFLICTO`;
   `tipo_alerta` = `EXCESO_VOLUMEN`, `ALTERACION_TONO`, `VOCABULARIO_INADECUADO`, `OMISION_SCRIPT`.
@@ -337,8 +340,8 @@ Detalles de la implementación (no cambian el contrato, lo precisan):
   `GET /llamadas/lotes/:id_lote`.
 - La visibilidad del Supervisor depende de la asignación **actual** (`TB_AsignacionSupervisor`):
   si un agente cambia de supervisor, el anterior deja de ver sus llamadas.
-- `fecha_inicio` hoy es la fecha de carga del audio (valor por defecto de la columna) hasta que el
-  procesamiento la complete.
+- `fecha_inicio` es la fecha de carga del audio (valor por defecto de la columna). El análisis no
+  conoce la fecha real de la llamada, así que el procesamiento no la cambia.
 - `tiene_audio` es `false` si el archivo ya no está en disco; en ese caso `/audio` responde `404`.
 
 ### De dónde salen los datos (para `docs/contrato_audio.md`)
@@ -349,3 +352,67 @@ campos; el backend (Willy) los guarda en la base de datos:
 - `TB_Alerta`: tipo, quién la originó, segundo, valor medido y sugerencia.
 - `TB_Llamada`: `duracion_segundos`, `score_global_nlp`, `score_acustico`, `puntaje_final`
   (0 a 100), `clasificacion_final`, `diagnostico_conflicto` y `baja_confianza_audio`.
+
+---
+
+## Estadísticas del inicio (propuesto, pendiente de implementar)
+
+La página de inicio (la primera que se ve al entrar) muestra un resumen de las llamadas
+del periodo: cuántas hay por estado, cómo salió el sentimiento, qué alertas aparecieron
+y cómo le va a cada agente. Propuesto por Javier el 03/11/2026, a revisar por Willy.
+
+### Quién ve qué
+Igual que en "Detalle de una llamada" (sin módulo; lo decide la relación con las llamadas):
+- **Agente:** solo sus propias llamadas.
+- **Supervisor:** las de los agentes que tiene asignados **hoy** (`TB_AsignacionSupervisor`).
+- **SuperAdmin:** todas.
+
+### `GET /estadisticas/resumen?dias=30`
+- `dias`: `7`, `30` o `90` (por defecto `30`). Cuenta las llamadas con `fecha_inicio` en los
+  últimos `dias` días, incluido hoy. `fecha_inicio` es la **fecha de carga** del audio, no la de
+  la llamada (ver "Detalle de una llamada").
+
+`200`:
+```json
+{
+  "periodo": { "dias": 30, "desde": "2026-10-05", "hasta": "2026-11-03" },
+  "llamadas": {
+    "total": 128,
+    "por_estado": { "PENDIENTE": 4, "PROCESANDO": 1, "COMPLETADO": 117, "ERROR": 6 }
+  },
+  "sentimiento": {
+    "puntaje_promedio": 61.8,
+    "por_clasificacion": { "POSITIVO": 49, "NEUTRO": 33, "NEGATIVO": 25, "CRITICO": 10 },
+    "baja_confianza_audio": 7
+  },
+  "alertas": {
+    "total": 64,
+    "por_tipo": { "EXCESO_VOLUMEN": 21, "ALTERACION_TONO": 14, "VOCABULARIO_INADECUADO": 17, "OMISION_SCRIPT": 12 }
+  },
+  "agentes": [
+    {
+      "id_usuario": 7,
+      "nombre_completo": "Ana Torres",
+      "llamadas_completadas": 40,
+      "puntaje_promedio": 74.2,
+      "llamadas_criticas": 1,
+      "alertas": 9
+    }
+  ]
+}
+```
+- `por_estado`, `por_clasificacion` y `por_tipo` traen **siempre todas las claves**, con `0`
+  si no hay ninguna.
+- `sentimiento` y `alertas` cuentan **solo llamadas `COMPLETADO`**. `puntaje_promedio` es el
+  promedio de `puntaje_final` con 1 decimal, o `null` si no hay llamadas completadas. Los audios
+  sin voz cuentan con su puntaje neutro (50); `baja_confianza_audio` dice cuántos son.
+- Las alertas llegan con la v0.3 de `docs/contrato_audio.md`. Hasta entonces `alertas.total` es
+  `0`, y el frontend lo explica en lugar de decir que no hubo alertas.
+- `agentes`: los agentes visibles con al menos una llamada en el periodo, ordenados por
+  `nombre_completo`. Para un Agente, solo él mismo. **Incluye agentes desactivados** si tienen
+  llamadas en el periodo (sus resultados siguen contando). `puntaje_promedio` es `null` si el agente
+  no tiene llamadas completadas.
+- Se calcula desde `TB_Llamada` y `TB_Alerta`. `TB_MetricaDiariaAgente` todavía no la llena
+  nadie; si más adelante se mantiene, se puede usar sin cambiar esta respuesta.
+
+Errores: `400 DATOS_INVALIDOS` si `dias` no es `7`, `30` o `90`.

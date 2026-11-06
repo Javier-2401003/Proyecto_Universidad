@@ -43,7 +43,7 @@ Avance aproximado: **15-20 %** (20/10/2026).
 ---
 
 ## Javier - Frontend
-_Última actualización: 22/10/2026_
+_Última actualización: 03/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] Proyecto React + Vite en `frontend/`.
@@ -69,19 +69,29 @@ clasificación, diagnóstico, puntajes de texto y voz, mapa de sentimiento por h
 alertas, transcripción y reproductor de audio (salta al segundo elegido). Contrato propuesto
 en `docs/api.md` y guía de demo en `docs/demo.md`.
 
-Las dos pantallas funcionan con **datos simulados** (`src/api/simulacion/`) hasta que existan
-los endpoints; con `VITE_SIMULAR_LLAMADAS=false` usan el backend real.
+Rama `claude/elegant-newton-m1b3dj`: **estadísticas en la página de inicio** (pedido del
+03/11/2026): indicadores (llamadas, analizadas, puntaje promedio, alertas), llamadas por
+estado, sentimiento, alertas por tipo y tabla por agente, con periodo de 7, 30 o 90 días.
+Contrato propuesto en `docs/api.md` ("Estadísticas del inicio", `GET /estadisticas/resumen`).
+
+Arreglos que pidió Willy (03/11/2026): la carga de lotes consulta el estado cada 2 s el primer
+minuto y luego cada 10 s, y se detiene a los 30 minutos con un botón "Actualizar" (antes
+consultaba cada 2 s sin fin); el aviso "Se reintentará automáticamente" ya no sale cuando la
+consulta se detuvo. El volumen pasó a **dBFS** en `docs/api.md` y en los datos simulados.
+
+**Carga de lotes y detalle de llamada ya usan el backend real** (03/11/2026): probado de punta
+a punta con MySQL 8 (subida de 5 audios, estados, detalle y audio original). Las llamadas quedan
+en Pendiente hasta que el backend ejecute el análisis; para una demo con resultados está
+`VITE_SIMULAR_LLAMADAS=true`. Las estadísticas del inicio siguen simuladas hasta que exista su
+endpoint (`VITE_SIMULAR_ESTADISTICAS`).
 
 **En curso:** -
 
 **Necesito de otros:**
-- Willy: los 3 endpoints de carga de lotes **tal como están en `docs/api.md`**
-  (`GET /agentes`, `POST /llamadas/lotes`, `GET /llamadas/lotes/:id_lote`). Cuando estén,
-  aviso para conectarlos y probar juntos.
-- Willy y David: revisar la sección "Detalle de una llamada" de `docs/api.md` y avisar si
-  algún dato no se puede producir o guardar así.
-- Willy: endpoints para editar, desactivar y asignar supervisor (para completar Gestión de usuarios).
-  Asignar supervisor también hace falta para que `GET /agentes` devuelva agentes al Supervisor.
+- Willy: revisar e implementar `GET /estadisticas/resumen` según `docs/api.md` (sección
+  "Estadísticas del inicio"). Misma visibilidad por rol que el detalle de una llamada.
+- Willy: el procesamiento de audio en el backend (tomar las llamadas `PENDIENTE` y ejecutar
+  `analizar.py`), para que la carga de lotes y el detalle muestren resultados reales.
 - Willy: un endpoint de roles (`GET /api/v1/roles`); hoy la lista de roles del formulario está fija
   en el frontend con los 3 roles base.
 

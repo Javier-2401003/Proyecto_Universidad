@@ -20,7 +20,13 @@ import { LIMITES, SIMULAR, listarAgentes, obtenerLote, subirLote } from '../api/
 import { Cargando } from '../componentes/Cargando.jsx';
 
 const MAX_BYTES = LIMITES.maxMegabytes * 1024 * 1024;
-const INTERVALO_CONSULTA_MS = 2000;
+// Consulta del estado del lote: rapida al principio y luego mas espaciada, porque
+// cada audio tarda alrededor de un minuto y el backend limita a 1000 peticiones
+// cada 15 minutos por IP. Pasado el limite se detiene hasta que el usuario pulse Actualizar.
+const INTERVALO_RAPIDO_MS = 2000;
+const INTERVALO_LENTO_MS = 10000;
+const DURACION_RAPIDA_MS = 60 * 1000;
+const LIMITE_CONSULTA_MS = 30 * 60 * 1000;
 // "5, 10 o 15"
 const TEXTO_TAMANOS = LIMITES.tamanosPermitidos.join(', ').replace(/, (\d+)$/, ' o $1');
 
@@ -272,37 +278,57 @@ const ESTADOS_LOTE = {
   CON_ERRORES: 'Completado con errores',
 };
 
-// Muestra el lote y consulta su estado cada pocos segundos hasta que termina.
+// Muestra el lote y consulta su estado hasta que termina (ver INTERVALO_*).
 // loteInicial es la respuesta de la subida; sin ella (al volver de otra
 // pantalla) el lote se pide al backend.
 function ResultadoLote({ idLote, loteInicial, alTerminar }) {
   const [lote, setLote] = useState(loteInicial);
   const [errorConsulta, setErrorConsulta] = useState('');
+  // detenida: la consulta automatica paro (lote inexistente o limite de tiempo).
+  const [detenida, setDetenida] = useState(null);
+  // Cambiarla vuelve a empezar la consulta (boton Actualizar).
+  const [ronda, setRonda] = useState(0);
   const estado = lote?.estado_lote;
 
   useEffect(() => {
     if (estado && estado !== 'PROCESANDO') return undefined;
     let activo = true;
+    let temporizador;
+    const inicio = Date.now();
+
+    const programar = () => {
+      const transcurrido = Date.now() - inicio;
+      if (transcurrido >= LIMITE_CONSULTA_MS) {
+        setDetenida('LIMITE');
+        return;
+      }
+      temporizador = setTimeout(consultar, transcurrido < DURACION_RAPIDA_MS ? INTERVALO_RAPIDO_MS : INTERVALO_LENTO_MS);
+    };
     const consultar = () =>
       obtenerLote(idLote)
         .then((actual) => {
           if (!activo) return;
           setLote(actual);
           setErrorConsulta('');
+          programar();
         })
         .catch((excepcion) => {
           if (!activo) return;
           setErrorConsulta(excepcion.message);
           // Si el lote no existe, reintentar no sirve de nada.
-          if (excepcion.estado === 404) clearInterval(intervalo);
+          if (excepcion.estado === 404) setDetenida('NO_EXISTE');
+          else programar();
         });
-    if (!estado) consultar();
-    const intervalo = setInterval(consultar, INTERVALO_CONSULTA_MS);
+
+    setDetenida(null);
+    // Sin lote todavia, o al pulsar Actualizar, se consulta de inmediato.
+    if (!estado || ronda > 0) consultar();
+    else programar();
     return () => {
       activo = false;
-      clearInterval(intervalo);
+      clearTimeout(temporizador);
     };
-  }, [idLote, estado]);
+  }, [idLote, estado, ronda]);
 
   if (!lote) {
     return errorConsulta ? (
@@ -353,8 +379,21 @@ function ResultadoLote({ idLote, loteInicial, alTerminar }) {
       {errorConsulta && (
         <p className="alerta alerta--error" role="alert">
           <CircleAlert size={18} aria-hidden="true" />
-          No se pudo actualizar el estado: {errorConsulta} Se reintentara automaticamente.
+          No se pudo actualizar el estado: {errorConsulta}
+          {detenida === null && ' Se reintentara automaticamente.'}
         </p>
+      )}
+      {detenida === 'LIMITE' && (
+        <div className="alerta alerta--aviso alerta--accion">
+          <span>
+            <Clock size={18} aria-hidden="true" />
+            El lote sigue en proceso. La actualizacion automatica se detuvo despues de 30 minutos.
+          </span>
+          <button type="button" className="boton boton--secundario" onClick={() => setRonda((n) => n + 1)}>
+            <RotateCcw size={18} aria-hidden="true" />
+            Actualizar
+          </button>
+        </div>
       )}
 
       <ul className="lista-archivos">
