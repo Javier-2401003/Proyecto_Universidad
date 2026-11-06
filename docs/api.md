@@ -338,8 +338,8 @@ Detalles de la implementación (no cambian el contrato, lo precisan):
   `GET /llamadas/lotes/:id_lote`.
 - La visibilidad del Supervisor depende de la asignación **actual** (`TB_AsignacionSupervisor`):
   si un agente cambia de supervisor, el anterior deja de ver sus llamadas.
-- `fecha_inicio` hoy es la fecha de carga del audio (valor por defecto de la columna) hasta que el
-  procesamiento la complete.
+- `fecha_inicio` es la fecha de carga del audio (valor por defecto de la columna). El análisis no
+  conoce la fecha real de la llamada, así que el procesamiento no la cambia.
 - `tiene_audio` es `false` si el archivo ya no está en disco; en ese caso `/audio` responde `404`.
 
 ### De dónde salen los datos (para `docs/contrato_audio.md`)
@@ -367,7 +367,8 @@ Igual que en "Detalle de una llamada" (sin módulo; lo decide la relación con l
 
 ### `GET /estadisticas/resumen?dias=30`
 - `dias`: `7`, `30` o `90` (por defecto `30`). Cuenta las llamadas con `fecha_inicio` en los
-  últimos `dias` días, incluido hoy.
+  últimos `dias` días, incluido hoy. `fecha_inicio` es la **fecha de carga** del audio, no la de
+  la llamada (ver "Detalle de una llamada").
 
 `200`:
 ```json
@@ -401,9 +402,13 @@ Igual que en "Detalle de una llamada" (sin módulo; lo decide la relación con l
 - `por_estado`, `por_clasificacion` y `por_tipo` traen **siempre todas las claves**, con `0`
   si no hay ninguna.
 - `sentimiento` y `alertas` cuentan **solo llamadas `COMPLETADO`**. `puntaje_promedio` es el
-  promedio de `puntaje_final` con 1 decimal, o `null` si no hay llamadas completadas.
+  promedio de `puntaje_final` con 1 decimal, o `null` si no hay llamadas completadas. Los audios
+  sin voz cuentan con su puntaje neutro (50); `baja_confianza_audio` dice cuántos son.
+- Las alertas llegan con la v0.3 de `docs/contrato_audio.md`. Hasta entonces `alertas.total` es
+  `0`, y el frontend lo explica en lugar de decir que no hubo alertas.
 - `agentes`: los agentes visibles con al menos una llamada en el periodo, ordenados por
-  `nombre_completo`. Para un Agente, solo él mismo. `puntaje_promedio` es `null` si el agente
+  `nombre_completo`. Para un Agente, solo él mismo. **Incluye agentes desactivados** si tienen
+  llamadas en el periodo (sus resultados siguen contando). `puntaje_promedio` es `null` si el agente
   no tiene llamadas completadas.
 - Se calcula desde `TB_Llamada` y `TB_Alerta`. `TB_MetricaDiariaAgente` todavía no la llena
   nadie; si más adelante se mantiene, se puede usar sin cambiar esta respuesta.

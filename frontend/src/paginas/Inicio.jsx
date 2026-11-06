@@ -240,7 +240,12 @@ function BarrasAlertas({ porTipo }) {
   const maximo = Math.max(1, ...filas.map(([, cantidad]) => cantidad));
 
   if (filas.every(([, cantidad]) => cantidad === 0)) {
-    return <p className="texto-secundario">No hubo alertas en este periodo.</p>;
+    // Las alertas llegan con la v0.3 del contrato de audio; hasta entonces siempre seran 0.
+    return (
+      <p className="texto-secundario">
+        Sin alertas registradas. La deteccion automatica de alertas todavia no esta disponible.
+      </p>
+    );
   }
 
   return (
