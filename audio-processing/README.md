@@ -88,6 +88,9 @@ Ejemplo de salida (recortado):
   "modelo": { "motor": "faster-whisper", "nombre": "base", "tipo_calculo": "int8" },
   "baja_confianza_audio": false,
   "score_global_nlp": 0.5,
+  "score_acustico": 0.0,
+  "puntaje_final": 63.75,
+  "clasificacion_final": "NEUTRO",
   "resumen_acustico": { "f0_mediana_hz": 213.64, "rms_promedio_dbfs": -20.05, "...": "..." },
   "segmentos": [
     { "indice": 0, "inicio": 0.0, "fin": 7.0,
@@ -106,6 +109,8 @@ Ejemplo de salida (recortado):
 4. Para cada segmento de Whisper toma la **mediana del F0** (solo cuadros con voz) y la
    **energía RMS media en dBFS** (0 dBFS es el máximo digital; los valores son negativos).
 5. Puntúa cada segmento con el léxico (`lexico.py`, ver abajo).
+6. Busca subidas de volumen y tono en todo el audio y calcula `score_acustico`, `puntaje_final` y
+   `clasificacion_final` (`acustico.py`, ver abajo).
 
 ## Sentimiento por léxico (RN-01)
 
@@ -136,6 +141,66 @@ Para ejecutar las pruebas, desde `audio-processing/` (no necesitan audio ni inst
   dio **+0,75**, porque Whisper casi no transcribió a quien llamaba. Falta validarlo con llamadas
   de call center etiquetadas; **este resultado no mide precisión**.
 
+## Análisis acústico (RN-02)
+
+Los valores están en `reglas_acusticas.json`, separados por su origen:
+
+| Sección | Qué contiene |
+|---|---|
+| `rn02`, `rn03` | Valores del Blueprint: tramos de 500 ms, desviación de F0 del 40 %, pesos 55/45 y subida de 2 s |
+| `recalibracion_falsos_positivos` | **Se apartan del Blueprint a propósito**, para bajar las falsas alarmas |
+| `decisiones_del_proyecto` | Lo que el Blueprint no define: filtro, ventanas, cortes y criterio de ruido |
+
+**Qué se recalibró frente al Blueprint:**
+
+| Regla | Blueprint | Ahora |
+|---|---|---|
+| Elevación de volumen (RN-02) | 150 % del promedio móvil, 1,5 s acumulados | **180 %, 2,0 s seguidos**, tolerando pausas de hasta 0,5 s |
+| Alerta roja (RN-03) | Subida de 2 s, sea cual sea el texto | Subida de volumen de 2 s **y** `score_global_nlp < -0,3` |
+
+**Cómo funciona:**
+
+1. **Preparación del audio:** para medir RN-02, el audio pasa por un filtro de 80 a 4000 Hz y se
+   normaliza. Solo se usa para esta regla: `rms_dbfs` sigue midiendo el audio original.
+2. **Voz y ruido:** se estima el ruido en cada audio, y lo que no llega a voz no entra al promedio móvil.
+3. **`score_acustico`:** es 0 sin eventos y baja hasta -1 cuando los eventos ocupan el 25 % del tiempo
+   con voz. **Nunca es positivo**, porque una voz tranquila no prueba satisfacción. Sin segmentos es 0.
+4. **`puntaje_final`:** `(0,55 × NLP + 0,45 × acústico + 1) × 50`, donde 100 es lo mejor. Con texto
+   neutro o positivo, la voz solo baja este puntaje. Como `score_acustico` nunca es positivo, el máximo
+   es 77,5.
+5. **`clasificacion_final`:** `CRITICO` si hay alerta roja; `NEGATIVO` bajo 35; `POSITIVO` sobre 65;
+   `NEUTRO` en el resto. **Los cortes son provisionales**: el Blueprint no los define.
+6. **Flujo E1:** `baja_confianza_audio` es `true` si no hay segmentos, si Whisper está poco seguro, o si
+   hay ruido de fondo (menos de 15 dB entre voz y ruido) con variaciones extremas (12 dB o más sobre la
+   mediana). Con esa bandera, el puntaje usa **100 % el texto** y no hay alerta roja.
+
+**Resultados de la calibración:** se probó con una sola llamada real (asesoría que parece tranquila,
+4 min 44 s), subiendo la ganancia en 12 posiciones para simular gritos:
+
+| Volumen / duración / pausa | Eventos de volumen falsos | 3 s × 2 | 3 s × 3 | 5 s × 2 | 5 s × 3 |
+|---|---|---|---|---|---|
+| 150 % / 2,0 s / sin pausa | 1 | 8 de 12 | 11 de 12 | 9 de 12 | 12 de 12 |
+| **180 % / 2,0 s / 0,5 s (actual)** | **0** | 6 de 12 | 11 de 12 | 7 de 12 | 12 de 12 |
+| 200 % / 2,5 s / 0,5 s | 0 | 3 de 12 | 8 de 12 | 3 de 12 | 9 de 12 |
+
+Antes esa llamada daba `score_acustico` -0,304, con 15 eventos de volumen. Ahora da **-0,128**, sin
+eventos de volumen, y queda `NEUTRO` con 60,87 puntos. Lo que queda viene de los eventos de tono.
+El filtro y la normalización casi no cambiaron el resultado en esta llamada; lo que más influyó fue
+pasar de acumular a exigir continuidad y subir el umbral.
+
+**Límites conocidos:**
+
+- **La sensibilidad bajó.** Un grito simulado de 3 s al doble de volumen se pierde en la mitad de las
+  posiciones. Eso puede dificultar el 88 % de acierto que exige el Blueprint sobre 50 muestras con
+  gritos, y **ese 88 % sigue sin medirse**: aquí solo hubo ganancias simuladas, no gritos reales.
+- **Calibrado con un solo audio real.** Hay que repetirlo con llamadas de call center antes de darlo
+  por bueno.
+- **Todavía no distingue hablantes.** RN-02 pide comparar con el promedio de cada hablante, pero sin
+  diarización se compara con toda la mezcla. Los eventos de tono pueden ser cambios de voz o errores
+  de `pyin`, y por eso solo el volumen cuenta como subida sostenida para la alerta roja.
+- **E1 con la baja confianza de Whisper:** si Whisper está poco seguro, también se usa 100 % el texto,
+  aunque justo ese texto sea el dudoso. Hay que revisarlo con audios ruidosos reales.
+
 ## Tiempos medidos
 
 Equipo: laptop AMD Ryzen 7 5825U (8 núcleos), 14 GB de RAM, sin GPU, Windows 11.
@@ -154,7 +219,7 @@ más rápido que el tiempo real); con `small`, **cerca de 1 min 40 s**. Un lote 
 de 4-5 min tomaría unos 15 min con `base` y unos 25 min con `small`.
 
 **Cuidado:** la voz sintética es limpia y monótona. Con una llamada real de radio de 4 min 44 s,
-`small` tardó unos **85 s** (70 s de transcripción y 12 s de análisis acústico). Falta medir con
+`base` tardó de **36 a 47 s** y `small` unos **85 s** (70 s de transcripción y 12 s de análisis acústico). Falta medir con
 llamadas de call center.
 
 **Problema detectado en esa llamada:** entre los segundos 47 y 126 hay sonido, pero Whisper casi
@@ -176,7 +241,8 @@ como "sal o quién" o "saluquien" en la voz sintética). Por eso el proyecto usa
 
 - `hablante` (AGENTE/CLIENTE): necesita diarización; todavía no lo calcula el script. Por eso
   `version_contrato` sigue en `0.1` (ver `docs/contrato_audio.md`).
-- `score_acustico`, `puntaje_final`, `clasificacion_final` y `diagnostico_conflicto`.
+- `diagnostico_conflicto`.
+- Confirmar con el equipo la recalibración de RN-02 y RN-03, y los cortes de `clasificacion_final`.
 - Umbrales de las alertas `EXCESO_VOLUMEN` y `ALTERACION_TONO` a partir de `rms_dbfs` y `f0_hz`.
 - Probar el criterio de `baja_confianza_audio` (`confianza_logprob` promedio < -1,0) con
   audios ruidosos reales.
