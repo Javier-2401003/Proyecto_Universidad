@@ -21,6 +21,7 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 |---|---|---|
 | `POST /auth/login` | - | Hecho |
 | `GET /auth/me` | Sesión | Hecho |
+| `GET /roles` | `GESTION_USUARIOS` leer | Hecho (PR #17) |
 | `GET /usuarios` | `GESTION_USUARIOS` leer | Hecho |
 | `POST /usuarios` | `GESTION_USUARIOS` escribir | Hecho |
 | `PUT /usuarios/:id_usuario/supervisor` | `GESTION_USUARIOS` escribir | Hecho |
@@ -57,6 +58,18 @@ Errores: `400 DATOS_INVALIDOS`, `401 CREDENCIALES_INVALIDAS`, `429 DEMASIADOS_IN
 
 Cada permiso: `{ "modulo": "GESTION_USUARIOS", "nombre": "Gestion de Usuarios y Permisos", "leer": true, "escribir": true }`.
 Solo incluye módulos activos. El frontend arma el menú con esta lista.
+
+## Roles
+
+### `GET /roles`
+Roles que existen en `TB_Rol`, para el formulario de usuarios. El valor de `nombre_rol` es el
+que se envía en el campo `rol` de `POST /usuarios`.
+
+`200`: lista ordenada por `nombre_rol`:
+```json
+[ { "id_rol": 1, "nombre_rol": "AGENTE", "descripcion": "..." } ]
+```
+`descripcion` puede ser `null`. Solo tiene los errores comunes (`401`, `403 PROHIBIDO`, `500`).
 
 ## Usuarios
 
