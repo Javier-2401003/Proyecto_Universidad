@@ -157,6 +157,9 @@ _Última actualización: 03/11/2026_
   y el SuperAdmin todas; si no puede verla, `404`. `resultado` es `null` hasta `COMPLETADO`.
   `tests/llamadas.test.js` (14 pruebas). Probado también con la pantalla de detalle de Javier y el
   audio descargado desde el navegador.
+- `GET /api/v1/estadisticas/resumen` según el contrato del PR #14 (`src/routes/estadisticas.js`,
+  `tests/estadisticas.test.js`). Javier ya puede poner `VITE_SIMULAR_ESTADISTICAS=false`.
+
 - PR #11: resuelto el conflicto de `docs/api.md` con el `main` nuevo (62 pruebas pasando).
 - PR #9 (contrato de audio): respondí las 4 preguntas de David. Esperar a la v0.2 para guardar
   `TB_Transcripcion` (sin script que deje `hablante` y `score_sentimiento` en NULL); el puntaje
