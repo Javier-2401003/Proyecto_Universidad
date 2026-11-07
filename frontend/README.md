@@ -55,12 +55,11 @@ lo decide `src/api/simulacion/activa.js`; las pantallas simuladas muestran el av
 |---|---|---|
 | Carga de lotes y detalle de llamada | **Backend real** | `VITE_SIMULAR_LLAMADAS=true` |
 | Estadísticas del inicio | **Backend real** | `VITE_SIMULAR_ESTADISTICAS=true` |
-| Listado de llamadas (Panel del Agente y Búsqueda histórica) | **Simulado** (falta `GET /llamadas`) | `VITE_SIMULAR_LISTADO=false` |
+| Listado de llamadas (Panel del Agente y Búsqueda histórica) | **Backend real** | `VITE_SIMULAR_LISTADO=true` |
 
 - Con el backend real, cada llamada se analiza con `audio-processing/analizar.py` (hace falta
   instalarlo, ver `audio-processing/README.md`); mientras tanto queda en **Pendiente**. Para
-  mostrar resultados en una demo sin el análisis instalado, use `VITE_SIMULAR_LLAMADAS=true`
-  y `VITE_SIMULAR_ESTADISTICAS=true`.
+  mostrar resultados en una demo sin el análisis instalado, ponga las tres variables en `true`.
 - En modo de prueba los archivos no salen de la computadora y los datos viven en memoria:
   al recargar la página (F5) se pierden y hay que cargar un lote de nuevo.
 

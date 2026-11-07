@@ -102,18 +102,18 @@ en el panel.
 
 **Búsqueda histórica** (07/11/2026, rama `javier-busqueda-historica`): filtros por fechas, agente,
 estado, clasificación, diagnóstico y nombre de archivo, con paginación y los filtros en la dirección.
-Comparte la tabla con el Panel del Agente (`src/componentes/ListaLlamadas.jsx`). Usa datos
-simulados hasta que exista `GET /llamadas`. También quité del inicio las tarjetas de módulos, que
+Comparte la tabla con el Panel del Agente (`src/componentes/ListaLlamadas.jsx`). También quité del inicio las tarjetas de módulos, que
 repetían el menú lateral (lo pidió Willy).
+
+**Listado con datos reales** (07/11/2026): `GET /llamadas` ya está en `main` (PR #37), así que
+`VITE_SIMULAR_LISTADO` pasó a `false`. El Panel del Agente y la Búsqueda histórica usan el backend
+real; probado con MySQL 8, incluido el enlace al detalle.
 
 **En curso:** -
 
-**Pendiente:** pantalla de Auditoría (el contrato `GET /auditoria` del PR #29 ya está aprobado;
-falta que Willy lo implemente).
+**Pendiente:** pantalla de Auditoría (`GET /auditoria` ya está en `main`, PR #36).
 
 **Necesito de otros:**
-- Willy: revisar el contrato `GET /llamadas` (PR #30) e implementarlo. Cuando esté en `main`,
-  cambio `VITE_SIMULAR_LISTADO` a `false` por defecto.
 - Willy y David: probar de punta a punta con audios reales ahora que el #15 está en `main`, para
   ver resultados reales en la carga de lotes, el detalle y el inicio.
 
