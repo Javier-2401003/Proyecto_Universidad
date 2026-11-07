@@ -1,5 +1,5 @@
 // Tabla y paginacion de una respuesta de GET /llamadas (docs/api.md, "Listado de llamadas").
-// La usan el Panel del Agente y la Busqueda historica.
+// La usan el Panel del Agente y la Busqueda historica; la Auditoria usa solo la paginacion.
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, TriangleAlert } from 'lucide-react';
 import { SIMULAR_LISTADO } from '../api/simulacion/activa.js';
@@ -128,10 +128,10 @@ export function TablaLlamadas({ llamadas, mostrarAgente = false, mostrarDiagnost
   );
 }
 
-const textoTotal = (total) => (total === 1 ? '1 llamada' : `${total} llamadas`);
-
-export function Paginacion({ respuesta, alCambiar }) {
+// unidades: singular y plural de lo que se cuenta ("1 llamada", "57 llamadas").
+export function Paginacion({ respuesta, alCambiar, unidades = ['llamada', 'llamadas'] }) {
   const { pagina, total_paginas: totalPaginas, total } = respuesta;
+  const textoTotal = (cantidad) => `${cantidad} ${cantidad === 1 ? unidades[0] : unidades[1]}`;
   if (totalPaginas <= 1) {
     return total > 0 ? <p className="texto-secundario paginacion">{textoTotal(total)}</p> : null;
   }
