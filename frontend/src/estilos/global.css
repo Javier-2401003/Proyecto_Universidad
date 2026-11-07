@@ -1322,6 +1322,18 @@ h2 {
   min-height: 38px;
 }
 
+/* ---------- Auditoria ---------- */
+.tabla .auditoria__detalle {
+  min-width: 240px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.auditoria__json {
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
 /* ---------- Pantallas pequenas ---------- */
 @media (max-width: 760px) {
   .disposicion {

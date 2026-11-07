@@ -109,9 +109,14 @@ repetían el menú lateral (lo pidió Willy).
 `VITE_SIMULAR_LISTADO` pasó a `false`. El Panel del Agente y la Búsqueda histórica usan el backend
 real; probado con MySQL 8, incluido el enlace al detalle.
 
+**Registro de auditoría** (07/11/2026, rama `javier-auditoria`): filtros por usuario, acción,
+módulo y fechas, con paginación; cada registro se muestra como una frase legible (nombres en lugar
+de ids) y el análisis de una llamada enlaza a su detalle. Probado con `GET /auditoria` real (PR #36).
+
 **En curso:** -
 
-**Pendiente:** pantalla de Auditoría (`GET /auditoria` ya está en `main`, PR #36).
+**Pendiente:** Dashboard en Tiempo Real y Reportes. Falta definir qué muestran (Blueprint) y sus
+contratos.
 
 **Necesito de otros:**
 - Willy y David: probar de punta a punta con audios reales ahora que el #15 está en `main`, para

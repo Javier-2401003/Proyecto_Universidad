@@ -3,7 +3,7 @@
 Interfaz web en React + Vite. Por ahora incluye el login, el menú lateral según los
 permisos del usuario, la gestión de usuarios (crear, editar, activar o desactivar y asignar
 supervisor), la carga de audios por lotes, el detalle de una llamada y las estadísticas de
-la página de inicio, el Panel del Agente y la Búsqueda histórica.
+la página de inicio, el Panel del Agente, la Búsqueda histórica y el Registro de auditoría.
 
 ## Puesta en marcha
 Requisitos: Node.js 20 o superior y el backend funcionando (ver `README.md` de la raíz).
@@ -109,6 +109,15 @@ lo decide `src/api/simulacion/activa.js`; las pantallas simuladas muestran el av
   al volver del detalle de una llamada se conservan.
 - La tabla y la paginación son las mismas del Panel del Agente (`src/componentes/ListaLlamadas.jsx`).
 - En modo de prueba hay tres agentes de ejemplo; un Agente solo ve los de "Ana Torres (prueba)".
+
+### Registro de auditoría (`/auditoria`)
+- Solo SuperAdmin (módulo `AUDITORIA`), con `GET /auditoria`. Solo lectura.
+- Filtros por usuario, acción, módulo y fechas, 25 por página; quedan en la dirección como en la
+  Búsqueda histórica.
+- El detalle de cada registro se muestra como una frase ("Ana Torres: rol Agente → Supervisor"),
+  con nombres en lugar de ids (salen de `GET /usuarios`, que trae hasta 200). Al pasar el mouse se
+  ve el JSON guardado. Una acción nueva que la pantalla no conozca se muestra como JSON.
+- "Análisis de llamada" enlaza al detalle de la llamada.
 
 ## Sesión
 - El token se guarda en `sessionStorage`: sobrevive a una recarga y se borra al
