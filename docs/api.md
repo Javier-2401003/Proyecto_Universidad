@@ -33,6 +33,7 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 | `GET /llamadas/:id_llamada` | Sesión + visibilidad por rol | Hecho |
 | `GET /llamadas/:id_llamada/audio` | Igual que el anterior | Hecho |
 | `GET /estadisticas/resumen` | Sesión + visibilidad por rol | Hecho (PR #16) |
+| `GET /llamadas` | Sesión + visibilidad por rol | **Propuesto, pendiente (Willy)** |
 | `GET /auditoria` | `AUDITORIA` leer | **Propuesto, pendiente (Willy)** |
 
 ---
@@ -430,6 +431,80 @@ Igual que en "Detalle de una llamada" (sin módulo; lo decide la relación con l
   nadie; si más adelante se mantiene, se puede usar sin cambiar esta respuesta.
 
 Errores: `400 DATOS_INVALIDOS` si `dias` no es `7`, `30` o `90`.
+
+---
+
+## Listado de llamadas (propuesto, pendiente de implementar)
+
+Lista paginada de llamadas con filtros. La usan el **Panel del Agente** (sus llamadas), la
+**Búsqueda histórica** y, más adelante, el Dashboard. Propuesto por Javier el 07/11/2026, a
+revisar por Willy.
+
+### Quién ve qué
+Sin módulo, igual que "Detalle de una llamada": **Agente** sus llamadas, **Supervisor** las de
+sus agentes asignados hoy, **SuperAdmin** todas. Cada pantalla ya se protege con su propio
+módulo en el frontend (`PANEL_AGENTE`, `BUSQUEDA_HISTORICA`).
+
+### `GET /llamadas`
+Todos los parámetros son opcionales y se combinan (todos deben cumplirse):
+
+| Parámetro | Valores | Filtra por |
+|---|---|---|
+| `pagina` | entero desde `1` (por defecto `1`) | - |
+| `tamano_pagina` | entero de `1` a `100` (por defecto `20`) | - |
+| `desde`, `hasta` | `AAAA-MM-DD`, ambos incluidos | `fecha_inicio` (fecha de carga del audio) |
+| `id_agente` | entero | `id_agente` |
+| `id_lote` | entero | `id_lote` |
+| `estado` | `PENDIENTE`, `PROCESANDO`, `COMPLETADO` o `ERROR` | `estado_procesamiento` |
+| `clasificacion` | `POSITIVO`, `NEUTRO`, `NEGATIVO` o `CRITICO` | `clasificacion_final` (solo `COMPLETADO`) |
+| `diagnostico` | `FALLA_AGENTE`, `CLIENTE_PROBLEMATICO` o `SIN_CONFLICTO` | `diagnostico_conflicto` (solo `COMPLETADO`) |
+| `buscar` | texto de 2 a 100 caracteres | parte de `nombre_archivo_original` |
+
+Orden: de la más reciente a la más antigua (`fecha_inicio` y luego `id_llamada`, descendentes).
+
+`200`:
+```json
+{
+  "pagina": 1,
+  "tamano_pagina": 20,
+  "total": 57,
+  "total_paginas": 3,
+  "llamadas": [
+    {
+      "id_llamada": 101,
+      "id_lote": 12,
+      "codigo_lote": "LOTE-20261022-0012",
+      "nombre_archivo_original": "llamada1.mp3",
+      "agente": { "id_usuario": 7, "nombre_completo": "Ana Torres" },
+      "fecha_inicio": "2026-10-22T15:30:00.000Z",
+      "duracion_segundos": 184,
+      "estado_procesamiento": "COMPLETADO",
+      "mensaje_error": null,
+      "baja_confianza_audio": false,
+      "resultado": {
+        "puntaje_final": 72.5,
+        "clasificacion_final": "POSITIVO",
+        "diagnostico_conflicto": "SIN_CONFLICTO"
+      },
+      "total_alertas": 0
+    }
+  ]
+}
+```
+- Paginación igual que en `GET /auditoria`: `total` es la cantidad de llamadas que cumplen los
+  filtros y `total_paginas` cuántas páginas hay (`0` si no hay ninguna); `llamadas` trae solo las
+  de la página pedida. Una página después de la última responde `200` con `llamadas: []`.
+- `resultado` es `null` mientras `estado_procesamiento` no sea `COMPLETADO` (igual que en el
+  detalle); `total_alertas` es `0` en ese caso.
+- Si se filtra por `clasificacion` o `diagnostico`, solo entran llamadas `COMPLETADO`, porque
+  las demás tienen los valores por defecto de la columna.
+- Un `id_agente` o `id_lote` que el usuario no puede ver no es un error: simplemente no hay
+  resultados (no se revela si existe).
+- Índices que ya sirven: `ix_llamada_agente_fecha (id_agente, fecha_inicio)`, `ix_llamada_lote`,
+  `ix_llamada_estado` e `ix_llamada_clasificacion`.
+
+Errores: `400 DATOS_INVALIDOS` si un parámetro no tiene un valor permitido o `desde` es
+posterior a `hasta`.
 
 ---
 

@@ -8,6 +8,7 @@ import { modulosVisibles } from '../modulos.js';
 import { PERIODOS, obtenerResumen } from '../api/estadisticas.js';
 import { SIMULAR_ESTADISTICAS as SIMULAR } from '../api/simulacion/activa.js';
 import { Cargando } from '../componentes/Cargando.jsx';
+import { Indicador } from '../componentes/Indicador.jsx';
 
 // Orden y color de cada barra apilada. Los colores son los mismos de las etiquetas
 // de carga de lotes y del detalle de una llamada.
@@ -189,16 +190,6 @@ function Estadisticas({ resumen, veOtrosAgentes }) {
         </div>
       )}
     </>
-  );
-}
-
-function Indicador({ etiqueta, valor, detalle }) {
-  return (
-    <li className="indicador">
-      <span className="indicador__etiqueta">{etiqueta}</span>
-      <strong className="indicador__valor">{valor}</strong>
-      {detalle && <span className="texto-secundario indicador__detalle">{detalle}</span>}
-    </li>
   );
 }
 

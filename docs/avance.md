@@ -94,9 +94,20 @@ crear un agente); roles desde `GET /roles`. Respeta las reglas del contrato: nad
 rol ni se desactiva a sí mismo, solo se envían los campos que cambian, y un agente cuyo supervisor
 está desactivado se marca para reasignarlo. Probado con el backend real (incluida la auditoría).
 
+**Panel del Agente** (07/11/2026, rama `javier-panel-agente`): resumen de los últimos 30 días
+(estadísticas reales) y "Mis llamadas" con filtros por estado y clasificación y paginación.
+La lista usa datos simulados (`VITE_SIMULAR_LISTADO`) hasta que exista `GET /llamadas`, cuyo
+contrato propuse en el PR #30. `Indicador` pasó a `src/componentes/` para usarlo en el inicio y
+en el panel.
+
 **En curso:** -
 
+**Pendiente:** Búsqueda histórica (usa `GET /llamadas`) y pantalla de Auditoría (cuando se apruebe
+el contrato `GET /auditoria` del PR #29).
+
 **Necesito de otros:**
+- Willy: revisar el contrato `GET /llamadas` (PR #30) e implementarlo. Cuando esté en `main`,
+  cambio `VITE_SIMULAR_LISTADO` a `false` por defecto.
 - Willy y David: probar de punta a punta con audios reales ahora que el #15 está en `main`, para
   ver resultados reales en la carga de lotes, el detalle y el inicio.
 
