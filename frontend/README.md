@@ -3,7 +3,7 @@
 Interfaz web en React + Vite. Por ahora incluye el login, el menú lateral según los
 permisos del usuario, la gestión de usuarios (crear, editar, activar o desactivar y asignar
 supervisor), la carga de audios por lotes, el detalle de una llamada y las estadísticas de
-la página de inicio.
+la página de inicio y el Panel del Agente.
 
 ## Puesta en marcha
 Requisitos: Node.js 20 o superior y el backend funcionando (ver `README.md` de la raíz).
@@ -55,6 +55,7 @@ lo decide `src/api/simulacion/activa.js`; las pantallas simuladas muestran el av
 |---|---|---|
 | Carga de lotes y detalle de llamada | **Backend real** | `VITE_SIMULAR_LLAMADAS=true` |
 | Estadísticas del inicio | **Backend real** | `VITE_SIMULAR_ESTADISTICAS=true` |
+| Listado de llamadas (Panel del Agente) | **Simulado** (falta `GET /llamadas`) | `VITE_SIMULAR_LISTADO=false` |
 
 - Con el backend real, cada llamada se analiza con `audio-processing/analizar.py` (hace falta
   instalarlo, ver `audio-processing/README.md`); mientras tanto queda en **Pendiente**. Para
@@ -93,6 +94,13 @@ lo decide `src/api/simulacion/activa.js`; las pantallas simuladas muestran el av
   ve los datos de "Ana Torres (prueba)"; el Supervisor y el SuperAdmin ven los tres agentes.
 - Los datos simulados son siempre los mismos (90 días generados con una semilla fija) y no
   dependen de los lotes cargados en la pantalla de carga.
+
+### Panel del Agente (`/panel-agente`)
+- Solo para el rol **Agente** (módulo `PANEL_AGENTE`).
+- Arriba, su resumen de los últimos 30 días (`GET /estadisticas/resumen`, backend real).
+- Abajo, **Mis llamadas** (`GET /llamadas`): filtros por estado y clasificación, 10 por página.
+  Una llamada completada abre su detalle. En modo de prueba la lista es de ejemplo (siempre la
+  misma) y no enlaza al detalle, porque esas llamadas no existen en el backend.
 
 ## Sesión
 - El token se guarda en `sessionStorage`: sobrevive a una recarga y se borra al

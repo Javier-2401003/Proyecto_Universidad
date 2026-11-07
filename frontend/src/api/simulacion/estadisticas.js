@@ -23,7 +23,7 @@ const DIAS_GENERADOS = 90;
 const esperar = (ms) => new Promise((resolver) => setTimeout(resolver, ms));
 
 // Generador pseudoaleatorio con semilla (mulberry32): los mismos datos en cada carga.
-function aleatorio(semilla) {
+export function aleatorio(semilla) {
   let estado = semilla;
   return () => {
     estado = (estado + 0x6d2b79f5) | 0;
@@ -33,7 +33,7 @@ function aleatorio(semilla) {
   };
 }
 
-function elegir(azar, probabilidades) {
+export function elegir(azar, probabilidades) {
   let acumulado = 0;
   const valor = azar();
   for (let indice = 0; indice < probabilidades.length; indice += 1) {
