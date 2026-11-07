@@ -258,7 +258,9 @@ El arreglo `alertas` va siempre en el primer nivel, vacío si no hay ninguna, y 
 - **`mensaje_sugerencia`** sale de una tabla fija por tipo y origen, en
   `audio-processing/reglas_alertas.json`. Usa los mismos textos que los datos simulados del frontend.
 - **`ALTERACION_TONO` se mide por hablante** para no confundir el cambio entre dos voces con una
-  alteración. `score_acustico` no cambia: sigue igual que en la v0.2.
+  alteración, y descarta los errores de octava de `pyin`: cuadros con más del doble o menos de la mitad
+  de la mediana de ese hablante. Sin ese filtro, una llamada real tranquila daba 7 alertas falsas.
+  `score_acustico` no cambia: sigue igual que en la v0.2.
 - **`VOCABULARIO_INADECUADO`** no mira la negación: "no es una estafa" también la marca. La lista es
   **provisional**; el Blueprint solo da el ejemplo "estafa".
 
