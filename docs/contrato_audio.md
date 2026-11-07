@@ -1,8 +1,9 @@
 # Contrato: backend (Node) y análisis de audio (Python)
 
-**Estado: v0.2, propuesta por David y pendiente de la aprobación de Willy.** La implementa la rama
-`david-analizar-v02`. La v0.1 la aprobó Willy el 02/11/2026 (decisiones en la sección 7). Si alguien necesita un cambio, se hace primero aquí,
-en un PR propio, y se avisa al otro.
+**Estado: v0.2, aprobada por Willy el 06/11/2026** (PR #21), con los puntos de la sección 7 como
+provisionales. La implementan `audio-processing/analizar.py` y el procesamiento del backend
+(`backend/src/procesamientoAudio.js`). Si alguien necesita un cambio, se hace primero aquí, en un PR
+propio, y se avisa al otro.
 
 - Script: `audio-processing/analizar.py` (instalación en `audio-processing/README.md`).
 - Quién llama: el backend, después de que `POST /llamadas/lotes` dejó la llamada en
@@ -24,7 +25,7 @@ haga el procesamiento):
 | `AUDIO_PYTHON` | `../audio-processing/venv/Scripts/python.exe` | Python del venv (no el del sistema) |
 | `AUDIO_SCRIPT` | `../audio-processing/analizar.py` | Script de análisis |
 | `AUDIO_MODELO_WHISPER` | `base` | `base` o `small` |
-| `AUDIO_TIMEOUT_SEGUNDOS` | `600` | Si se pasa, el backend mata el proceso y marca `ERROR` |
+| `AUDIO_TIMEOUT_SEGUNDOS` | `3600` | Si se pasa, el backend mata el proceso y marca `ERROR`. Una voz real de 52 s tardó hasta 87 s con `base` en la laptop de Willy |
 
 Reglas para el backend:
 1. Usar `child_process.execFile` o `spawn` con los argumentos en un arreglo, **nunca**
@@ -162,9 +163,23 @@ Mismo formato que los errores de la API:
 | `AUDIO_VACIO` | El audio no tiene muestras | No |
 | `ERROR_INTERNO` | Falla inesperada (ver `detalles.causa`) | Sí, una vez |
 
-Qué hace el backend: `estado_procesamiento = 'ERROR'` y
-`mensaje_error = "<codigo>: <mensaje>"`, recortado a 255 caracteres. Si el proceso
-murió sin JSON, usar `mensaje_error = "PROCESO_FALLIDO: código <n>"` (o `TIMEOUT`).
+Qué hace el backend (`backend/src/procesamientoAudio.js`): `estado_procesamiento = 'ERROR'` y
+`mensaje_error = "<codigo>: <mensaje>"`, recortado a 255 caracteres. Con `ERROR_INTERNO` reintenta
+**una vez** antes de marcar `ERROR`.
+
+Mensajes que pone el propio backend, sin que vengan del script:
+
+| `mensaje_error` | Cuándo |
+|---|---|
+| `PROCESO_FALLIDO: código <n>` | El proceso terminó sin JSON válido |
+| `TIMEOUT` | Se pasó de `AUDIO_TIMEOUT_SEGUNDOS` |
+| `CONTRATO_INCOMPLETO: ...` | Falta un campo de la v0.2, o un valor no cabe en su columna (por ejemplo, un tiempo mayor a `DECIMAL(8,3)`) |
+| `CONTRATO_INCOMPATIBLE: version <x>` | `version_contrato` no empieza con `0.` |
+| `ARCHIVO_NO_ENCONTRADO: ...` | La llamada no tiene ruta de audio, o la ruta se sale de `backend/uploads/` |
+| `ERROR_GUARDADO: ...` | El análisis salió bien, pero no se pudo guardar en la base |
+
+Los valores que no caben en su columna se rechazan en lugar de recortarse, porque MySQL sin modo
+estricto los recortaría en silencio y se guardaría un dato falso.
 
 ## 5. Reglas de la v0.2
 
@@ -204,8 +219,9 @@ el agente omitió el script o interrumpió**, y depende de que `hablante` sea co
   `puntaje_final: 50.00`, el punto neutro de la escala (sección 7). El backend marca
   `COMPLETADO` y no guarda filas en `TB_Transcripcion`.
 
-Para la **v0.3** queda `TB_Alerta` (EXCESO_VOLUMEN, ALTERACION_TONO, ...): arreglo `alertas` con `tipo_alerta`, `origen_evento`, `timestamp_evento`,
-`valor_registrado` y `mensaje_sugerencia`.
+Para la **v0.3** queda `TB_Alerta`: arreglo `alertas` con `tipo_alerta`, `origen_evento`,
+`timestamp_evento`, `valor_registrado` y `mensaje_sugerencia`. `tipo_alerta` usa **solo** los valores
+de la columna: `EXCESO_VOLUMEN`, `ALTERACION_TONO`, `VOCABULARIO_INADECUADO` y `OMISION_SCRIPT`.
 
 Columnas que **no** son del análisis y siguen siendo del backend: `fecha_inicio`,
 `fecha_fin`, `estado_procesamiento`, `mensaje_error`, `hash_archivo` y `ruta_audio_storage`.
@@ -220,7 +236,7 @@ Columnas que **no** son del análisis y siguen siendo del backend: `fecha_inicio
 
 ## 7. Decisiones del equipo
 
-Las decisiones 1 a 6 son de Willy (28/10/2026 y 02/11/2026); la 7 es de Javier.
+Las decisiones 1 a 6 y 8 son de Willy (28/10/2026, 02/11/2026 y 06/11/2026); la 7 es de Javier.
 
 1. **Variables de `.env`:** se usan los nombres de la sección 1.
 2. **`hablante` y `score_sentimiento`:** se espera a la v0.2 para guardar `TB_Transcripcion`,
@@ -234,12 +250,19 @@ Las decisiones 1 a 6 son de Willy (28/10/2026 y 02/11/2026); la 7 es de Javier.
 6. **Sin nulos en la v0.2 (02/11):** `hablante` viene siempre y los puntajes tienen valor aunque
    no haya segmentos. Willy pidió definirlo; la regla de la sección 5 es propuesta de David.
 7. **Odómetro (Javier):** 100 es lo mejor del odómetro y el puntaje neutro es `50.00`.
+8. **v0.2 aprobada como provisional (06/11):** se aceptan, para revisarlos con llamadas reales:
+   - el umbral de `baja_confianza_audio` en -1,5, en lugar de -1,0, y el criterio de ruido con
+     variaciones extremas;
+   - los cortes de 35 y 65, y la alerta roja como `CRITICO`;
+   - las reglas de `diagnostico_conflicto`;
+   - RN-02 y RN-03 recalibrados: 180 % durante 2 s en lugar de 150 % durante 1,5 s, y la alerta roja
+     exige también texto negativo.
 
-### Por aprobar en la v0.2
+### Para revisar con llamadas reales
 
-- Umbral de `baja_confianza_audio` en -1,5, en lugar de -1,0, y el criterio de ruido con variaciones
-  extremas.
-- Cortes de 35 y 65, y alerta roja = `CRITICO`.
-- Reglas de `diagnostico_conflicto`.
-- RN-02 y RN-03 se apartan del Blueprint para bajar falsas alarmas: 180 % durante 2 s, en lugar de 150 %
-  durante 1,5 s, y la alerta roja exige también texto negativo.
+Dos efectos de las reglas actuales que señaló Willy:
+
+1. Como `score_acustico` nunca es positivo, el máximo de `puntaje_final` es 77,5, y llegar a
+   `POSITIVO` exige un `score_global_nlp` mayor a 0,545.
+2. Con `baja_confianza_audio`, el puntaje usa solo el texto y puede llegar a 100. Con el mismo texto
+   (0,8), una llamada limpia da 72 y una con ruido da 90: el ruido sube el puntaje.
