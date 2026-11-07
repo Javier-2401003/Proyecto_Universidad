@@ -33,8 +33,8 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 | `GET /llamadas/:id_llamada` | Sesión + visibilidad por rol | Hecho |
 | `GET /llamadas/:id_llamada/audio` | Igual que el anterior | Hecho |
 | `GET /estadisticas/resumen` | Sesión + visibilidad por rol | Hecho (PR #16) |
-| `GET /llamadas` | Sesión + visibilidad por rol | **Propuesto, pendiente (Willy)** |
-| `GET /auditoria` | `AUDITORIA` leer | **Propuesto, pendiente (Willy)** |
+| `GET /llamadas` | Sesión + visibilidad por rol | Hecho (PR #37) |
+| `GET /auditoria` | `AUDITORIA` leer | Hecho (PR #36) |
 
 ---
 
@@ -434,11 +434,11 @@ Errores: `400 DATOS_INVALIDOS` si `dias` no es `7`, `30` o `90`.
 
 ---
 
-## Listado de llamadas (propuesto, pendiente de implementar)
+## Listado de llamadas
 
 Lista paginada de llamadas con filtros. La usan el **Panel del Agente** (sus llamadas), la
-**Búsqueda histórica** y, más adelante, el Dashboard. Propuesto por Javier el 07/11/2026, a
-revisar por Willy.
+**Búsqueda histórica** y, más adelante, el Dashboard. Propuesto por Javier el 07/11/2026,
+aprobado por Willy e implementado en el PR #37.
 
 ### Quién ve qué
 Sin módulo, igual que "Detalle de una llamada": **Agente** sus llamadas, **Supervisor** las de
@@ -508,10 +508,11 @@ posterior a `hasta`.
 
 ---
 
-## Registro de auditoría (propuesto, pendiente de implementar)
+## Registro de auditoría
 
 Pantalla **Auditoría** (`/auditoria`): lista de lo que quedó en `TB_LogAuditoria`, es decir, quién
-hizo qué, cuándo, en qué módulo y desde qué IP. Propuesto por Willy el 06/11/2026, a revisar por Javier.
+hizo qué, cuándo, en qué módulo y desde qué IP. Propuesto por Willy el 06/11/2026, aprobado por
+Javier e implementado en el PR #36.
 
 ### Decisiones
 1. **Permiso:** `AUDITORIA` leer. Con los permisos iniciales solo lo tiene el SuperAdmin; el Supervisor
