@@ -1,7 +1,6 @@
 // Pagina de inicio: estadisticas de las llamadas que el usuario puede ver
-// (contrato en docs/api.md, "Estadisticas del inicio") y accesos a sus modulos.
+// (contrato en docs/api.md, "Estadisticas del inicio"). Los modulos estan en el menu lateral.
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { FlaskConical, TriangleAlert } from 'lucide-react';
 import { useSesion } from '../sesion/SesionContexto.jsx';
 import { modulosVisibles } from '../modulos.js';
@@ -103,20 +102,9 @@ export default function Inicio() {
       {!error && !resumen && <Cargando texto="Cargando estadisticas..." />}
       {resumen && <Estadisticas resumen={resumen} veOtrosAgentes={veOtrosAgentes} />}
 
-      <h2 className="inicio__subtitulo">Sus modulos</h2>
-      {modulos.length === 0 ? (
+      {/* Los modulos solo se muestran en el menu lateral; aqui se avisa si no tiene ninguno. */}
+      {modulos.length === 0 && (
         <p className="alerta">Su usuario no tiene modulos asignados. Contacte al administrador.</p>
-      ) : (
-        <ul className="tarjetas">
-          {modulos.map(({ codigo, ruta, nombre, icono: Icono }) => (
-            <li key={codigo}>
-              <Link to={ruta} className="tarjeta">
-                <Icono size={24} aria-hidden="true" />
-                <span>{nombre}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
       )}
     </section>
   );

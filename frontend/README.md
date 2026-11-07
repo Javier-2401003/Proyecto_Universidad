@@ -87,7 +87,7 @@ lo decide `src/api/simulacion/activa.js`; las pantallas simuladas muestran el av
   y falla del agente (con audio de baja confianza).
 
 ### Estadísticas de la página de inicio
-- Arriba de las tarjetas de módulos: llamadas por estado, sentimiento de las llamadas
+- Indicadores, llamadas por estado, sentimiento de las llamadas
   analizadas, alertas por tipo y una tabla por agente (primero los de menor puntaje).
   Se elige el periodo: 7, 30 o 90 días.
 - El Agente ve solo sus llamadas y no ve la tabla por agente. En modo de prueba, un Agente

@@ -341,38 +341,6 @@ h2 {
 }
 
 /* ---------- Inicio ---------- */
-.tarjetas {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-  margin: 20px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tarjeta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 100%;
-  padding: 18px;
-  border: 1px solid var(--borde);
-  border-radius: var(--radio);
-  background: var(--superficie);
-  color: var(--texto);
-  text-decoration: none;
-  box-shadow: var(--sombra);
-}
-
-.tarjeta:hover {
-  border-color: var(--primario);
-}
-
-.tarjeta svg {
-  flex-shrink: 0;
-  color: var(--primario);
-}
-
 /* Estadisticas del inicio */
 .inicio {
   display: flex;
@@ -381,13 +349,8 @@ h2 {
 }
 
 .inicio .encabezado,
-.inicio .alerta,
-.inicio .tarjetas {
+.inicio .alerta {
   margin: 0;
-}
-
-.inicio__subtitulo {
-  margin-top: 8px;
 }
 
 /* Las columnas nunca crecen mas que la pantalla (la tabla tiene su propio desplazamiento). */
