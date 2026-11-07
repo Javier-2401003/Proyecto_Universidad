@@ -125,7 +125,7 @@ contratos.
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 06/11/2026_
+_Última actualización: 07/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -140,7 +140,8 @@ con una diarización local sin PyTorch. Python 3.12 o 3.13; no hace falta instal
 de 4,5 min en mi laptop, `base` tarda ~1 min. Contrato v0.1 y v0.2 en `main` (PRs #9 y #21); Willy
 aprobó la v0.2 el 06/11 con la sección 7 como provisional. La salida real pasa el esquema del backend
 del #15. Detalle de reglas, calibración y precisión en `audio-processing/README.md`. Los eventos usan
-`EXCESO_VOLUMEN` (el valor de `TB_Alerta`) y la salida rechaza `NaN` (PR #35).
+`EXCESO_VOLUMEN` (el valor de `TB_Alerta`) y la salida rechaza `NaN` (PR #35). Las notas de Willy sobre
+el contrato v0.2 (estado, mensajes del backend, timeout 3600) están en `main` (PR #32).
 
 **Prueba de punta a punta (06/11, en mi laptop, `main` en `188fff8`):** MySQL 8.4 de Wamp (puerto 3309,
 sin modo estricto), base creada con `01` y `02`, backend con `npm start`. Como Supervisor subí un lote
@@ -159,9 +160,15 @@ y la visibilidad del Agente. Las tildes se guardan bien (`utf8mb4`).
 
 Los audios "armados" usan voces de Windows, con hablante conocido; solo la llamada de radio es real.
 
-**En curso:**
-- Rama `david-contrato-notas` (PR #32, espera revisión de Willy): estado de la v0.2, timeout 3600,
-  mensajes propios del backend y los dos efectos que señaló Willy.
+**En curso: v0.3 (alertas).**
+- PR #41, contrato v0.3 (espera revisión de Willy): arreglo `alertas` con los valores exactos de
+  `TB_Alerta`. Detecta `EXCESO_VOLUMEN`, `ALTERACION_TONO` por hablante y `VOCABULARIO_INADECUADO`;
+  `OMISION_SCRIPT` queda para cuando el equipo defina el guion. Incluye las dos precisiones de Willy
+  del #32.
+- Rama `david-alertas-v03`: la implementación, con 81 pruebas pasando. No se fusiona hasta que se
+  apruebe el #41. Con audio: el grito armado da 1 `EXCESO_VOLUMEN` del cliente, la conversación tranquila
+  ninguna, y la llamada real ninguna (daba 7 `ALTERACION_TONO` falsas por errores de octava de `pyin`,
+  que ahora se descartan). La salida sigue pasando el esquema del #15.
 
 **Pendiente:**
 - **Calibración:** el cliente que grita y amenaza con cancelar sale `NEUTRO` (39,8): el texto queda en
@@ -176,10 +183,20 @@ Los audios "armados" usan voces de Windows, con hablante conocido; solo la llama
   (usa solo el texto) y que `POSITIVO` exige `score_global_nlp` mayor a 0,545.
 - Investigar por qué Whisper casi no transcribió a quien llama en una llamada real.
 - `diagnostico_conflicto` todavía no revisa si el agente omitió el script o interrumpió.
-- v0.3: arreglo `alertas` para `TB_Alerta`.
+- Mediciones con llamadas reales (tarea 3): tiempos con `base` en la laptop más lenta, acierto de
+  `hablante`, detección de gritos y umbral de `baja_confianza_audio`. **Bloqueado:** no tengo llamadas
+  reales de call center ni acceso a las otras laptops.
+- `ALTERACION_TONO`: sin los errores de octava, el 40 % de RN-02 no se cumplió en ningún audio; hay que
+  ver con llamadas reales si alguna vez se dispara.
 
 **Necesito de otros:**
-- Willy: revisar el PR #32 y compartir su grabación de 52 s, para investigar la baja confianza.
+- Willy: revisar el PR #41 (contrato v0.3) y anotar aquí los fallos del análisis que encuentres en tu
+  prueba con audios de call center. ¿Me compartes 3 o 4 de esos audios, y tu grabación de 52 s, para
+  medir `hablante` y el umbral de confianza?
+- Willy o Javier: correr `analizar.py` con `base` en su laptop y anotar cuánto tarda, para medir en la
+  más lenta del equipo.
+- Equipo: definir el guion obligatorio para `OMISION_SCRIPT` (por ejemplo, saludo, identificación y
+  despedida).
 - Equipo: confirmar que RN-02 y RN-03 se apartan del Blueprint (180 % durante 2 s en lugar de 150 %
   durante 1,5 s; alerta roja solo con texto negativo) y los cortes provisionales 35 y 65.
 

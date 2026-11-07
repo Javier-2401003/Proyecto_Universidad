@@ -44,7 +44,20 @@ def cargar_lexico(ruta=RUTA_LEXICO):
         "largo_maximo": max(len(frase) for frase in pesos),
         "negadores": {normalizar(n) for n in datos["negadores"]},
         "ventana_negacion": datos["ventana_negacion"],
+        # Lista provisional para VOCABULARIO_INADECUADO (contrato v0.3): el Blueprint solo da "estafa".
+        "inadecuadas": {normalizar(palabra): palabra for palabra in datos.get("vocabulario_inadecuado", [])},
     }
+
+
+def palabras_inadecuadas(texto, lexico):
+    """Palabras de "vocabulario_inadecuado" en el texto, una vez cada una y tal como estan en la lista."""
+    encontradas = []
+    for palabras in separar_clausulas(texto):
+        for palabra in palabras:
+            original = lexico["inadecuadas"].get(palabra)
+            if original is not None and original not in encontradas:
+                encontradas.append(original)
+    return encontradas
 
 
 def buscar_coincidencia(palabras, inicio, lexico):

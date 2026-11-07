@@ -9,5 +9,6 @@
   "ampliacion_no_oficial": {
     "positivas": ["excelentes", "agradezco", "agradecido", "agradecida", "solucionada", "resuelto", "resuelta", "amables", "perfecto"],
     "negativas": ["pésima", "pésimos", "cancelación", "estafaron", "fraude", "incompetentes", "quejas", "molesto", "molesta", "enojado", "enojada", "terrible", "horrible", "inaceptable", "mentira", "denuncia"]
-  }
+  },
+  "vocabulario_inadecuado": ["estafa", "estafadores", "estafaron", "ladrones", "rateros", "fraude", "incompetente", "incompetentes", "inútil", "inútiles", "idiota", "idiotas", "estúpido", "estúpida", "imbécil", "imbéciles", "tonto", "tonta", "maldito", "maldita", "malditos", "basura", "porquería", "mierda", "carajo", "pendejo", "pendeja", "cállese", "cállate"]
 }

@@ -1,0 +1,19 @@
+{
+  "mensajes": {
+    "EXCESO_VOLUMEN": {
+      "AGENTE": "Baje el volumen y respire antes de responder.",
+      "CLIENTE": "Mantenga un tono calmado y valide la molestia del cliente."
+    },
+    "ALTERACION_TONO": {
+      "AGENTE": "Respire, baje el ritmo y vuelva a un tono neutro.",
+      "CLIENTE": "Hable más despacio y resuma lo que hará a continuación."
+    },
+    "VOCABULARIO_INADECUADO": {
+      "AGENTE": "Evite ese lenguaje: mantenga un trato respetuoso con el cliente.",
+      "CLIENTE": "No responda a la provocación; enfóquese en la solución."
+    }
+  },
+  "factor_error_octava": 2.0,
+  "largo_maximo_valor": 100,
+  "largo_maximo_mensaje": 255
+}
