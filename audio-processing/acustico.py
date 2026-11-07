@@ -188,7 +188,8 @@ def evaluar(f0, rms, segundos_por_cuadro, reglas):
         "score_acustico": round(-min(1.0, fraccion / reglas["fraccion_saturacion"]), 3) + 0.0,
         # Solo volumen: la ventana de 2 s del tono hace que un solo cambio de voz ya dure 2 s.
         "subida_continua_segundos": racha_mas_larga(volumen) * tramo,
-        "eventos": a_eventos(volumen, "ELEVACION_VOLUMEN", tramo)
+        # Los tipos son los de TB_Alerta.tipo_alerta, para que la v0.3 los guarde sin traducir.
+        "eventos": a_eventos(volumen, "EXCESO_VOLUMEN", tramo)
         + a_eventos(tono, "ALTERACION_TONO", tramo),
         **medir_ruido(a_dbfs(np.asarray(rms)), niveles_db, voz, reglas),
     }
@@ -236,7 +237,7 @@ def calcular_diagnostico(clasificacion, segmentos, frases_analizadas, eventos, b
             return True
         if baja_confianza:
             return False
-        return any(e["tipo"] == "ELEVACION_VOLUMEN" and e["inicio"] < s["fin"] and e["fin"] > s["inicio"]
+        return any(e["tipo"] == "EXCESO_VOLUMEN" and e["inicio"] < s["fin"] and e["fin"] > s["inicio"]
                    for s, _ in propios for e in eventos)
 
     if tiene_conflicto("AGENTE"):
