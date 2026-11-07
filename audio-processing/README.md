@@ -82,7 +82,7 @@ Una vez descargados los modelos, puede trabajar sin internet con
 Ejemplo de salida (recortado):
 ```json
 {
-  "version_contrato": "0.2",
+  "version_contrato": "0.3",
   "archivo": "llamada.wav",
   "duracion_segundos": 268.553,
   "idioma": "es",
@@ -99,6 +99,10 @@ Ejemplo de salida (recortado):
       "hablante": "AGENTE",
       "texto": "Buenas tardes, gracias por llamar a servicio al cliente...",
       "score_sentimiento": 0.5, "f0_hz": 213.64, "rms_dbfs": -20.25, "confianza_logprob": -0.155, "probabilidad_sin_voz": 0.013 }
+  ],
+  "alertas": [
+    { "tipo_alerta": "EXCESO_VOLUMEN", "origen_evento": "CLIENTE", "timestamp_evento": 9.0,
+      "valor_registrado": "-14.9 dBFS", "mensaje_sugerencia": "Mantenga un tono calmado y valide la molestia del cliente." }
   ]
 }
 ```
@@ -112,7 +116,8 @@ Ejemplo de salida (recortado):
 4. Para cada segmento de Whisper toma la **mediana del F0** (solo cuadros con voz) y la
    **energía RMS media en dBFS** (0 dBFS es el máximo digital; los valores son negativos).
 5. Puntúa cada segmento con el léxico (`lexico.py`, ver abajo).
-6. Busca subidas de volumen y tono en todo el audio y calcula `score_acustico`, `puntaje_final` y
+6. Arma las alertas de `TB_Alerta` (`alertas.py`, ver "Alertas").
+7. Busca subidas de volumen y tono en todo el audio y calcula `score_acustico`, `puntaje_final` y
    `clasificacion_final` (`acustico.py`, ver abajo).
 
 ## Sentimiento por léxico (RN-01)
@@ -203,6 +208,38 @@ pasar de acumular a exigir continuidad y subir el umbral.
   de `pyin`, y por eso solo el volumen cuenta como subida sostenida para la alerta roja.
 - **E1 con la baja confianza de Whisper:** si Whisper está poco seguro, también se usa 100 % el texto,
   aunque justo ese texto sea el dudoso. Hay que revisarlo con audios ruidosos reales.
+
+## Alertas (v0.3)
+
+`alertas.py` arma el arreglo `alertas` del contrato v0.3, con los valores exactos de `TB_Alerta`. Los
+mensajes están en `reglas_alertas.json` y son los mismos textos de los datos simulados del frontend.
+
+| `tipo_alerta` | Cómo se detecta |
+|---|---|
+| `EXCESO_VOLUMEN` | Cada subida de volumen de RN-02, la misma que usa `score_acustico`. El origen es el hablante que ocupa más tiempo en la subida; el valor, el cuadro más fuerte del audio original en dBFS |
+| `ALTERACION_TONO` | RN-02 **por hablante**: dentro de sus propios segmentos, una ventana de 2 s cuyo F0 varía más del 40 % de su media. Antes se descartan los errores de octava de `pyin` (más del doble o menos de la mitad de su mediana) |
+| `VOCABULARIO_INADECUADO` | Una palabra de `vocabulario_inadecuado` en `lexico_es.json` (lista **provisional**); una alerta por palabra y segmento |
+
+Con `baja_confianza_audio` solo salen las de vocabulario. `OMISION_SCRIPT` queda para cuando el equipo
+defina el guion obligatorio.
+
+**Lo que se vio con audio:**
+
+| Audio | Alertas |
+|---|---|
+| Conversación armada en la que el cliente grita (×3) | 1 `EXCESO_VOLUMEN` del cliente, a los 9 s, justo cuando empieza a gritar |
+| Conversación armada tranquila | Ninguna |
+| Llamada real de radio (4 min 44 s) | Ninguna. Sin el filtro de octavas daba **7 `ALTERACION_TONO` falsas**: todas eran errores de `pyin` |
+
+**Límites conocidos:**
+
+- **Solo el primer grito de una racha:** el promedio móvil se adapta, así que un cliente que grita en
+  todos sus turnos da una sola alerta de volumen.
+- **El 40 % de RN-02 casi nunca se cumple con voz real:** sin los errores de octava, ni la llamada real
+  ni los audios armados llegaron a ese nivel. Hay que medirlo con llamadas reales de call center.
+- **Vocabulario sin contexto:** "no es una estafa" también se marca, y la alerta usa el inicio del
+  segmento, porque Whisper no da la hora de cada palabra.
+- **Origen:** depende de `hablante`, así que hereda sus errores.
 
 ## Tiempos medidos
 
@@ -306,5 +343,6 @@ real. Falta medirla con llamadas etiquetadas.
 - Usar `hablante` para el promedio móvil por hablante de RN-02.
 - Revisar en `diagnostico_conflicto` el script omitido y las interrupciones.
 - Confirmar con el equipo la recalibración de RN-02 y RN-03, y los cortes de `clasificacion_final`.
-- Umbrales de las alertas `EXCESO_VOLUMEN` y `ALTERACION_TONO` a partir de `rms_dbfs` y `f0_hz`.
+- `OMISION_SCRIPT`, cuando el equipo defina el guion obligatorio.
+- Medir las alertas con llamadas reales de call center, en especial `ALTERACION_TONO`.
 - Recalibrar `baja_confianza_audio` con grabaciones reales.
