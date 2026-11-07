@@ -23,7 +23,7 @@ def resultado(f0, rms):
 
 
 def eventos_de_volumen(r):
-    return [e for e in r["eventos"] if e["tipo"] == "ELEVACION_VOLUMEN"]
+    return [e for e in r["eventos"] if e["tipo"] == "EXCESO_VOLUMEN"]
 
 
 def voz_con_pausas(segundos, voz, pausa):
