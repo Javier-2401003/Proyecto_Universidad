@@ -450,7 +450,7 @@ Todos los parámetros son opcionales y se combinan (todos deben cumplirse):
 | Parámetro | Valores | Filtra por |
 |---|---|---|
 | `pagina` | entero desde `1` (por defecto `1`) | - |
-| `por_pagina` | `10`, `20` o `50` (por defecto `20`) | - |
+| `tamano_pagina` | entero de `1` a `100` (por defecto `20`) | - |
 | `desde`, `hasta` | `AAAA-MM-DD`, ambos incluidos | `fecha_inicio` (fecha de carga del audio) |
 | `id_agente` | entero | `id_agente` |
 | `id_lote` | entero | `id_lote` |
@@ -465,8 +465,9 @@ Orden: de la más reciente a la más antigua (`fecha_inicio` y luego `id_llamada
 ```json
 {
   "pagina": 1,
-  "por_pagina": 20,
+  "tamano_pagina": 20,
   "total": 57,
+  "total_paginas": 3,
   "llamadas": [
     {
       "id_llamada": 101,
@@ -489,8 +490,9 @@ Orden: de la más reciente a la más antigua (`fecha_inicio` y luego `id_llamada
   ]
 }
 ```
-- `total` es la cantidad de llamadas que cumplen los filtros (para la paginación); `llamadas`
-  trae solo las de la página pedida. Una página después de la última responde `llamadas: []`.
+- Paginación igual que en `GET /auditoria`: `total` es la cantidad de llamadas que cumplen los
+  filtros y `total_paginas` cuántas páginas hay (`0` si no hay ninguna); `llamadas` trae solo las
+  de la página pedida. Una página después de la última responde `200` con `llamadas: []`.
 - `resultado` es `null` mientras `estado_procesamiento` no sea `COMPLETADO` (igual que en el
   detalle); `total_alertas` es `0` en ese caso.
 - Si se filtra por `clasificacion` o `diagnostico`, solo entran llamadas `COMPLETADO`, porque
