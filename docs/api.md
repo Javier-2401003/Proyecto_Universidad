@@ -32,7 +32,9 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 | `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | Hecho |
 | `GET /llamadas/:id_llamada` | Sesión + visibilidad por rol | Hecho |
 | `GET /llamadas/:id_llamada/audio` | Igual que el anterior | Hecho |
-| `GET /estadisticas/resumen` | Sesión + visibilidad por rol | **Propuesto, pendiente (Willy)** |
+| `GET /estadisticas/resumen` | Sesión + visibilidad por rol | Hecho (PR #16) |
+| `GET /llamadas` | Sesión + visibilidad por rol | Hecho (PR #37) |
+| `GET /auditoria` | `AUDITORIA` leer | Hecho (PR #36) |
 
 ---
 
@@ -368,7 +370,7 @@ campos; el backend (Willy) los guarda en la base de datos:
 
 ---
 
-## Estadísticas del inicio (propuesto, pendiente de implementar)
+## Estadísticas del inicio
 
 La página de inicio (la primera que se ve al entrar) muestra un resumen de las llamadas
 del periodo: cuántas hay por estado, cómo salió el sentimiento, qué alertas aparecieron
@@ -429,3 +431,152 @@ Igual que en "Detalle de una llamada" (sin módulo; lo decide la relación con l
   nadie; si más adelante se mantiene, se puede usar sin cambiar esta respuesta.
 
 Errores: `400 DATOS_INVALIDOS` si `dias` no es `7`, `30` o `90`.
+
+---
+
+## Listado de llamadas
+
+Lista paginada de llamadas con filtros. La usan el **Panel del Agente** (sus llamadas), la
+**Búsqueda histórica** y, más adelante, el Dashboard. Propuesto por Javier el 07/11/2026,
+aprobado por Willy e implementado en el PR #37.
+
+### Quién ve qué
+Sin módulo, igual que "Detalle de una llamada": **Agente** sus llamadas, **Supervisor** las de
+sus agentes asignados hoy, **SuperAdmin** todas. Cada pantalla ya se protege con su propio
+módulo en el frontend (`PANEL_AGENTE`, `BUSQUEDA_HISTORICA`).
+
+### `GET /llamadas`
+Todos los parámetros son opcionales y se combinan (todos deben cumplirse):
+
+| Parámetro | Valores | Filtra por |
+|---|---|---|
+| `pagina` | entero desde `1` (por defecto `1`) | - |
+| `tamano_pagina` | entero de `1` a `100` (por defecto `20`) | - |
+| `desde`, `hasta` | `AAAA-MM-DD`, ambos incluidos | `fecha_inicio` (fecha de carga del audio) |
+| `id_agente` | entero | `id_agente` |
+| `id_lote` | entero | `id_lote` |
+| `estado` | `PENDIENTE`, `PROCESANDO`, `COMPLETADO` o `ERROR` | `estado_procesamiento` |
+| `clasificacion` | `POSITIVO`, `NEUTRO`, `NEGATIVO` o `CRITICO` | `clasificacion_final` (solo `COMPLETADO`) |
+| `diagnostico` | `FALLA_AGENTE`, `CLIENTE_PROBLEMATICO` o `SIN_CONFLICTO` | `diagnostico_conflicto` (solo `COMPLETADO`) |
+| `buscar` | texto de 2 a 100 caracteres | parte de `nombre_archivo_original` |
+
+Orden: de la más reciente a la más antigua (`fecha_inicio` y luego `id_llamada`, descendentes).
+
+`200`:
+```json
+{
+  "pagina": 1,
+  "tamano_pagina": 20,
+  "total": 57,
+  "total_paginas": 3,
+  "llamadas": [
+    {
+      "id_llamada": 101,
+      "id_lote": 12,
+      "codigo_lote": "LOTE-20261022-0012",
+      "nombre_archivo_original": "llamada1.mp3",
+      "agente": { "id_usuario": 7, "nombre_completo": "Ana Torres" },
+      "fecha_inicio": "2026-10-22T15:30:00.000Z",
+      "duracion_segundos": 184,
+      "estado_procesamiento": "COMPLETADO",
+      "mensaje_error": null,
+      "baja_confianza_audio": false,
+      "resultado": {
+        "puntaje_final": 72.5,
+        "clasificacion_final": "POSITIVO",
+        "diagnostico_conflicto": "SIN_CONFLICTO"
+      },
+      "total_alertas": 0
+    }
+  ]
+}
+```
+- Paginación igual que en `GET /auditoria`: `total` es la cantidad de llamadas que cumplen los
+  filtros y `total_paginas` cuántas páginas hay (`0` si no hay ninguna); `llamadas` trae solo las
+  de la página pedida. Una página después de la última responde `200` con `llamadas: []`.
+- `resultado` es `null` mientras `estado_procesamiento` no sea `COMPLETADO` (igual que en el
+  detalle); `total_alertas` es `0` en ese caso.
+- Si se filtra por `clasificacion` o `diagnostico`, solo entran llamadas `COMPLETADO`, porque
+  las demás tienen los valores por defecto de la columna.
+- Un `id_agente` o `id_lote` que el usuario no puede ver no es un error: simplemente no hay
+  resultados (no se revela si existe).
+- Índices que ya sirven: `ix_llamada_agente_fecha (id_agente, fecha_inicio)`, `ix_llamada_lote`,
+  `ix_llamada_estado` e `ix_llamada_clasificacion`.
+
+Errores: `400 DATOS_INVALIDOS` si un parámetro no tiene un valor permitido o `desde` es
+posterior a `hasta`.
+
+---
+
+## Registro de auditoría
+
+Pantalla **Auditoría** (`/auditoria`): lista de lo que quedó en `TB_LogAuditoria`, es decir, quién
+hizo qué, cuándo, en qué módulo y desde qué IP. Propuesto por Willy el 06/11/2026, aprobado por
+Javier e implementado en el PR #36.
+
+### Decisiones
+1. **Permiso:** `AUDITORIA` leer. Con los permisos iniciales solo lo tiene el SuperAdmin; el Supervisor
+   y el Agente reciben `403 PROHIBIDO`.
+2. **Solo lectura:** la auditoría no se edita ni se borra desde la API.
+3. **Nunca hay contraseñas ni hashes:** el backend nunca los guarda en `detalle_cambio` (ver
+   `CLAUDE.md`), así que la respuesta tampoco los trae. Del usuario solo se devuelven id, nombre y correo.
+4. **Orden:** del más reciente al más antiguo (`fecha_evento`, y ante empate, `id_log`, ambos descendentes).
+5. **Paginación por número de página**, con el total, para que la pantalla muestre "Página 2 de 7".
+
+### `GET /auditoria`
+Parámetros, todos opcionales y combinables:
+
+| Parámetro | Regla | Ejemplo |
+|---|---|---|
+| `id_usuario` | Entero positivo. Solo los registros que hizo ese usuario. | `7` |
+| `accion` | Texto exacto de `accion_ejecutada`, sin importar mayúsculas (máximo 100 caracteres). | `EDICION_USUARIO` |
+| `modulo` | Texto exacto de `modulo_afectado`, sin importar mayúsculas (máximo 50 caracteres). | `GESTION_USUARIOS` |
+| `desde` | Fecha `AAAA-MM-DD`, incluida. | `2026-11-01` |
+| `hasta` | Fecha `AAAA-MM-DD`, incluida (hasta las 23:59:59 de ese día). | `2026-11-06` |
+| `pagina` | Entero desde 1. Por defecto `1`. | `2` |
+| `tamano_pagina` | Entero de 1 a 100. Por defecto `50`. | `25` |
+
+Ejemplo: `GET /auditoria?modulo=GESTION_USUARIOS&desde=2026-11-01&pagina=2&tamano_pagina=25`
+
+`200`:
+```json
+{
+  "pagina": 2,
+  "tamano_pagina": 25,
+  "total": 134,
+  "total_paginas": 6,
+  "registros": [
+    {
+      "id_log": 812,
+      "fecha_evento": "2026-11-05T21:14:03.000Z",
+      "usuario": { "id_usuario": 1, "nombre_completo": "Willy Admin", "correo_electronico": "admin@vocalanalytics.local" },
+      "accion_ejecutada": "EDICION_USUARIO",
+      "modulo_afectado": "GESTION_USUARIOS",
+      "detalle_cambio": { "id_usuario": 51, "cambios": { "nombre_completo": { "anterior": "Ana", "nuevo": "Ana Torres" } } },
+      "direccion_ip": "127.0.0.1"
+    }
+  ]
+}
+```
+- Si no hay registros, `registros` llega vacío, `total` en `0` y `total_paginas` en `0`. Una `pagina`
+  mayor que `total_paginas` también responde `200` con `registros` vacío.
+- `detalle_cambio` es el JSON tal como se guardó (o `null`): cada acción tiene su propia forma, la que
+  documenta su endpoint. La pantalla puede mostrarlo como texto o con un formato por acción.
+- `fecha_evento` es la hora de MySQL, enviada como fecha ISO; el frontend la muestra en hora local.
+- El usuario siempre existe: `TB_LogAuditoria` no deja borrar a un usuario con registros.
+
+Acciones que existen hoy, para el filtro de la pantalla:
+
+| `accion_ejecutada` | `modulo_afectado` | Cuándo |
+|---|---|---|
+| `CREACION_USUARIO` | `GESTION_USUARIOS` | `POST /usuarios` |
+| `EDICION_USUARIO` | `GESTION_USUARIOS` | `PATCH /usuarios/:id_usuario` |
+| `CAMBIO_ESTADO_USUARIO` | `GESTION_USUARIOS` | `PATCH /usuarios/:id_usuario/estado` |
+| `ASIGNACION_SUPERVISOR` | `GESTION_USUARIOS` | `PUT /usuarios/:id_usuario/supervisor` |
+| `CARGA_LOTE` | `CARGA_LOTES` | `POST /llamadas/lotes` |
+| `PROCESAMIENTO_LLAMADA` | `CARGA_LOTES` | El análisis de una llamada terminó; se atribuye a quien cargó el lote. |
+
+Si más adelante aparecen acciones nuevas, se agregan a esta tabla en el mismo PR que las crea.
+
+Errores: `400 DATOS_INVALIDOS` si algún parámetro no cumple su regla o si `desde` es posterior a
+`hasta` (`detalles` dice qué campo falló).

@@ -109,11 +109,11 @@ class PruebasDiagnostico(unittest.TestCase):
         self.assertEqual(self.diagnostico("NEGATIVO", [(0.5, 1), (-1.0, 2)]), "CLIENTE_PROBLEMATICO")
 
     def test_grito_se_atribuye_a_quien_hablaba(self):
-        grito = {"tipo": "ELEVACION_VOLUMEN", "inicio": 6, "fin": 8}
+        grito = {"tipo": "EXCESO_VOLUMEN", "inicio": 6, "fin": 8}
         self.assertEqual(self.diagnostico("CRITICO", [(0.0, 0), (0.0, 0)], [grito]), "CLIENTE_PROBLEMATICO")
 
     def test_baja_confianza_ignora_la_voz(self):
-        grito = {"tipo": "ELEVACION_VOLUMEN", "inicio": 1, "fin": 3}
+        grito = {"tipo": "EXCESO_VOLUMEN", "inicio": 1, "fin": 3}
         self.assertEqual(self.diagnostico("NEGATIVO", [(0.0, 0), (-0.5, 1)], [grito], True), "CLIENTE_PROBLEMATICO")
 
     def test_negativa_sin_responsable_claro(self):

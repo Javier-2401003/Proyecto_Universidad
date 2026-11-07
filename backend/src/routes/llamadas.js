@@ -11,8 +11,12 @@ import { consultar } from '../db.js';
 import { ErrorHttp, validar } from '../errores.js';
 import { autenticar } from '../middleware/auth.js';
 import { puedeVerLlamadaDe } from '../agentes.js';
+import { listarLlamadas } from './listadoLlamadas.js';
 
 export const rutasDetalleLlamada = Router();
+
+// Listado con filtros (GET /llamadas), con la misma visibilidad por rol que el detalle.
+rutasDetalleLlamada.get('/', autenticar, listarLlamadas);
 
 const { carpetaUploads } = config.lotes;
 

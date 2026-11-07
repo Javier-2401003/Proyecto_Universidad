@@ -1,10 +1,12 @@
-"""Pruebas de los errores de lectura. Ejecutar desde audio-processing/: python -m unittest -v"""
+"""Pruebas de los errores de lectura y de la salida JSON. Ejecutar desde audio-processing/: python -m unittest -v"""
 
+import contextlib
+import io
 import os
 import tempfile
 import unittest
 
-from analizar import ErrorAnalisis, cargar_audio
+from analizar import ErrorAnalisis, cargar_audio, escribir_json
 
 
 class PruebasCargaDeAudio(unittest.TestCase):
@@ -28,6 +30,20 @@ class PruebasCargaDeAudio(unittest.TestCase):
             with open(ruta, "w", encoding="utf-8") as archivo:
                 archivo.write("esto no es audio")
             self.assertEqual(self.codigo_de_error(ruta), "AUDIO_ILEGIBLE")
+
+
+class PruebasSalidaJson(unittest.TestCase):
+    def test_nan_falla_antes_de_escribir(self):
+        salida = io.StringIO()
+        with contextlib.redirect_stdout(salida), self.assertRaises(ValueError):
+            escribir_json({"score_acustico": float("nan")})
+        self.assertEqual(salida.getvalue(), "")
+
+    def test_salida_normal_es_una_linea_en_utf8(self):
+        salida = io.StringIO()
+        with contextlib.redirect_stdout(salida):
+            escribir_json({"texto": "¿En qué le ayudo?"})
+        self.assertEqual(salida.getvalue(), '{"texto": "¿En qué le ayudo?"}\n')
 
 
 if __name__ == "__main__":

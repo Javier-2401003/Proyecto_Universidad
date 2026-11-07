@@ -46,7 +46,9 @@ def registrar(mensaje):
 
 
 def escribir_json(datos):
-    sys.stdout.write(json.dumps(datos, ensure_ascii=False))
+    # allow_nan=False: un NaN saldria como JSON invalido y el backend solo veria PROCESO_FALLIDO.
+    # Asi falla antes de escribir y sale como ERROR_INTERNO, con la causa.
+    sys.stdout.write(json.dumps(datos, ensure_ascii=False, allow_nan=False))
     sys.stdout.write("\n")
     sys.stdout.flush()
 
