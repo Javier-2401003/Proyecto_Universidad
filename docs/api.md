@@ -32,7 +32,8 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 | `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | Hecho |
 | `GET /llamadas/:id_llamada` | Sesión + visibilidad por rol | Hecho |
 | `GET /llamadas/:id_llamada/audio` | Igual que el anterior | Hecho |
-| `GET /estadisticas/resumen` | Sesión + visibilidad por rol | **Propuesto, pendiente (Willy)** |
+| `GET /estadisticas/resumen` | Sesión + visibilidad por rol | Hecho (PR #16) |
+| `GET /auditoria` | `AUDITORIA` leer | **Propuesto, pendiente (Willy)** |
 
 ---
 
@@ -368,7 +369,7 @@ campos; el backend (Willy) los guarda en la base de datos:
 
 ---
 
-## Estadísticas del inicio (propuesto, pendiente de implementar)
+## Estadísticas del inicio
 
 La página de inicio (la primera que se ve al entrar) muestra un resumen de las llamadas
 del periodo: cuántas hay por estado, cómo salió el sentimiento, qué alertas aparecieron
@@ -429,3 +430,77 @@ Igual que en "Detalle de una llamada" (sin módulo; lo decide la relación con l
   nadie; si más adelante se mantiene, se puede usar sin cambiar esta respuesta.
 
 Errores: `400 DATOS_INVALIDOS` si `dias` no es `7`, `30` o `90`.
+
+---
+
+## Registro de auditoría (propuesto, pendiente de implementar)
+
+Pantalla **Auditoría** (`/auditoria`): lista de lo que quedó en `TB_LogAuditoria`, es decir, quién
+hizo qué, cuándo, en qué módulo y desde qué IP. Propuesto por Willy el 06/11/2026, a revisar por Javier.
+
+### Decisiones
+1. **Permiso:** `AUDITORIA` leer. Con los permisos iniciales solo lo tiene el SuperAdmin; el Supervisor
+   y el Agente reciben `403 PROHIBIDO`.
+2. **Solo lectura:** la auditoría no se edita ni se borra desde la API.
+3. **Nunca hay contraseñas ni hashes:** el backend nunca los guarda en `detalle_cambio` (ver
+   `CLAUDE.md`), así que la respuesta tampoco los trae. Del usuario solo se devuelven id, nombre y correo.
+4. **Orden:** del más reciente al más antiguo (`fecha_evento`, y ante empate, `id_log`, ambos descendentes).
+5. **Paginación por número de página**, con el total, para que la pantalla muestre "Página 2 de 7".
+
+### `GET /auditoria`
+Parámetros, todos opcionales y combinables:
+
+| Parámetro | Regla | Ejemplo |
+|---|---|---|
+| `id_usuario` | Entero positivo. Solo los registros que hizo ese usuario. | `7` |
+| `accion` | Texto exacto de `accion_ejecutada`, sin importar mayúsculas (máximo 100 caracteres). | `EDICION_USUARIO` |
+| `modulo` | Texto exacto de `modulo_afectado`, sin importar mayúsculas (máximo 50 caracteres). | `GESTION_USUARIOS` |
+| `desde` | Fecha `AAAA-MM-DD`, incluida. | `2026-11-01` |
+| `hasta` | Fecha `AAAA-MM-DD`, incluida (hasta las 23:59:59 de ese día). | `2026-11-06` |
+| `pagina` | Entero desde 1. Por defecto `1`. | `2` |
+| `tamano_pagina` | Entero de 1 a 100. Por defecto `50`. | `25` |
+
+Ejemplo: `GET /auditoria?modulo=GESTION_USUARIOS&desde=2026-11-01&pagina=2&tamano_pagina=25`
+
+`200`:
+```json
+{
+  "pagina": 2,
+  "tamano_pagina": 25,
+  "total": 134,
+  "total_paginas": 6,
+  "registros": [
+    {
+      "id_log": 812,
+      "fecha_evento": "2026-11-05T21:14:03.000Z",
+      "usuario": { "id_usuario": 1, "nombre_completo": "Willy Admin", "correo_electronico": "admin@vocalanalytics.local" },
+      "accion_ejecutada": "EDICION_USUARIO",
+      "modulo_afectado": "GESTION_USUARIOS",
+      "detalle_cambio": { "id_usuario": 51, "cambios": { "nombre_completo": { "anterior": "Ana", "nuevo": "Ana Torres" } } },
+      "direccion_ip": "127.0.0.1"
+    }
+  ]
+}
+```
+- Si no hay registros, `registros` llega vacío, `total` en `0` y `total_paginas` en `0`. Una `pagina`
+  mayor que `total_paginas` también responde `200` con `registros` vacío.
+- `detalle_cambio` es el JSON tal como se guardó (o `null`): cada acción tiene su propia forma, la que
+  documenta su endpoint. La pantalla puede mostrarlo como texto o con un formato por acción.
+- `fecha_evento` es la hora de MySQL, enviada como fecha ISO; el frontend la muestra en hora local.
+- El usuario siempre existe: `TB_LogAuditoria` no deja borrar a un usuario con registros.
+
+Acciones que existen hoy, para el filtro de la pantalla:
+
+| `accion_ejecutada` | `modulo_afectado` | Cuándo |
+|---|---|---|
+| `CREACION_USUARIO` | `GESTION_USUARIOS` | `POST /usuarios` |
+| `EDICION_USUARIO` | `GESTION_USUARIOS` | `PATCH /usuarios/:id_usuario` |
+| `CAMBIO_ESTADO_USUARIO` | `GESTION_USUARIOS` | `PATCH /usuarios/:id_usuario/estado` |
+| `ASIGNACION_SUPERVISOR` | `GESTION_USUARIOS` | `PUT /usuarios/:id_usuario/supervisor` |
+| `CARGA_LOTE` | `CARGA_LOTES` | `POST /llamadas/lotes` |
+| `PROCESAMIENTO_LLAMADA` | `CARGA_LOTES` | El análisis de una llamada terminó; se atribuye a quien cargó el lote. |
+
+Si más adelante aparecen acciones nuevas, se agregan a esta tabla en el mismo PR que las crea.
+
+Errores: `400 DATOS_INVALIDOS` si algún parámetro no cumple su regla o si `desde` es posterior a
+`hasta` (`detalles` dice qué campo falló).
