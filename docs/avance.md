@@ -100,10 +100,16 @@ La lista usa datos simulados (`VITE_SIMULAR_LISTADO`) hasta que exista `GET /lla
 contrato propuse en el PR #30. `Indicador` pasó a `src/componentes/` para usarlo en el inicio y
 en el panel.
 
+**Búsqueda histórica** (07/11/2026, rama `javier-busqueda-historica`): filtros por fechas, agente,
+estado, clasificación, diagnóstico y nombre de archivo, con paginación y los filtros en la dirección.
+Comparte la tabla con el Panel del Agente (`src/componentes/ListaLlamadas.jsx`). Usa datos
+simulados hasta que exista `GET /llamadas`. También quité del inicio las tarjetas de módulos, que
+repetían el menú lateral (lo pidió Willy).
+
 **En curso:** -
 
-**Pendiente:** Búsqueda histórica (usa `GET /llamadas`) y pantalla de Auditoría (cuando se apruebe
-el contrato `GET /auditoria` del PR #29).
+**Pendiente:** pantalla de Auditoría (el contrato `GET /auditoria` del PR #29 ya está aprobado;
+falta que Willy lo implemente).
 
 **Necesito de otros:**
 - Willy: revisar el contrato `GET /llamadas` (PR #30) e implementarlo. Cuando esté en `main`,

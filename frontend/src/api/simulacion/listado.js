@@ -1,6 +1,6 @@
 // Simulacion de GET /llamadas (docs/api.md, "Listado de llamadas"). Genera 60 dias de
-// llamadas de ejemplo de un agente, siempre las mismas (semilla fija), y aplica los
-// mismos filtros, orden y paginacion que el contrato.
+// llamadas de ejemplo de tres agentes, siempre las mismas (semilla fija), y aplica la
+// misma visibilidad, filtros, orden y paginacion que el contrato.
 import { ErrorApi } from '../cliente.js';
 import { aleatorio, elegir } from './estadisticas.js';
 
@@ -11,11 +11,17 @@ const DIAGNOSTICOS = ['FALLA_AGENTE', 'CLIENTE_PROBLEMATICO', 'SIN_CONFLICTO'];
 const RANGOS_PUNTAJE = { POSITIVO: [65, 77.5], NEUTRO: [35, 65], NEGATIVO: [20, 35], CRITICO: [5, 30] };
 const ALERTAS_MAXIMAS = { POSITIVO: 0, NEUTRO: 1, NEGATIVO: 3, CRITICO: 5 };
 
+// Los mismos agentes de prueba que la simulacion de carga de lotes.
+const AGENTES = [
+  { id_usuario: 901, nombre_completo: 'Ana Torres (prueba)', correo_electronico: 'ana.torres@ejemplo.test' },
+  { id_usuario: 902, nombre_completo: 'Luis Paredes (prueba)', correo_electronico: 'luis.paredes@ejemplo.test' },
+  { id_usuario: 903, nombre_completo: 'Maria Quispe (prueba)', correo_electronico: 'maria.quispe@ejemplo.test' },
+];
+
 const esperar = (ms) => new Promise((resolver) => setTimeout(resolver, ms));
 
 function generarLlamadas() {
   const azar = aleatorio(4242);
-  const agente = { id_usuario: 901, nombre_completo: 'Ana Torres (prueba)' };
   const llamadas = [];
   let idLlamada = 5000;
   // Un lote cada pocos dias; "hace" es cuantos dias atras se cargo. El ultimo es de hoy (0),
@@ -25,6 +31,8 @@ function generarLlamadas() {
   dias.push(0);
   for (const [indice, hace] of dias.entries()) {
     const idLote = 700 + indice;
+    const { id_usuario: idAgente, nombre_completo: nombreAgente } = AGENTES[indice % AGENTES.length];
+    const agente = { id_usuario: idAgente, nombre_completo: nombreAgente };
     const fecha = new Date();
     fecha.setDate(fecha.getDate() - hace);
     fecha.setHours(9 + Math.floor(azar() * 8), Math.floor(azar() * 60), 0, 0);
@@ -70,11 +78,28 @@ function generarLlamadas() {
 
 const LLAMADAS = generarLlamadas();
 
+// Imita la visibilidad del backend: en modo de prueba un Agente "es" Ana Torres.
+function idsVisibles(usuario) {
+  const roles = usuario?.roles ?? [];
+  const todos = roles.includes('SUPERADMIN') || roles.includes('SUPERVISOR');
+  return new Set((todos ? AGENTES : AGENTES.slice(0, 1)).map((agente) => agente.id_usuario));
+}
+
+// Para el filtro por agente en modo de prueba (con el backend real se usa GET /agentes).
+export async function listarAgentes() {
+  await esperar(150);
+  return AGENTES.map(({ id_usuario, nombre_completo, correo_electronico }) => ({
+    id_usuario,
+    nombre_completo,
+    correo_electronico,
+  }));
+}
+
 function invalido(campo, mensaje) {
   return new ErrorApi(400, 'DATOS_INVALIDOS', 'Los datos enviados no son validos.', [{ campo, mensaje }]);
 }
 
-export async function listarLlamadas(filtros = {}) {
+export async function listarLlamadas(filtros = {}, usuario = null) {
   await esperar(300);
   const pagina = Number(filtros.pagina ?? 1);
   const tamanoPagina = Number(filtros.tamano_pagina ?? 20);
@@ -90,9 +115,12 @@ export async function listarLlamadas(filtros = {}) {
     throw invalido('desde', 'La fecha inicial no puede ser posterior a la final.');
   }
 
+  const visibles = idsVisibles(usuario);
   const buscar = filtros.buscar?.toLowerCase();
   const filtradas = LLAMADAS.filter(
     (l) =>
+      visibles.has(l.agente.id_usuario) &&
+      (!filtros.id_agente || l.agente.id_usuario === Number(filtros.id_agente)) &&
       (!filtros.estado || l.estado_procesamiento === filtros.estado) &&
       (!filtros.clasificacion || l.resultado?.clasificacion_final === filtros.clasificacion) &&
       (!filtros.diagnostico || l.resultado?.diagnostico_conflicto === filtros.diagnostico) &&

@@ -5,6 +5,7 @@ import { Activity, FileText, Search, ShieldCheck, Upload, UserRound, Users } fro
 import GestionUsuarios from './paginas/GestionUsuarios.jsx';
 import CargaLotes from './paginas/CargaLotes.jsx';
 import PanelAgente from './paginas/PanelAgente.jsx';
+import BusquedaHistorica from './paginas/BusquedaHistorica.jsx';
 import EnConstruccion from './paginas/EnConstruccion.jsx';
 
 // El orden de esta lista es el orden del menu lateral.
@@ -12,7 +13,7 @@ export const MODULOS = [
   { codigo: 'PANEL_AGENTE', ruta: '/panel-agente', icono: UserRound, pantalla: PanelAgente },
   { codigo: 'DASHBOARD_VIVO', ruta: '/dashboard', icono: Activity, pantalla: EnConstruccion },
   { codigo: 'CARGA_LOTES', ruta: '/carga-lotes', icono: Upload, pantalla: CargaLotes },
-  { codigo: 'BUSQUEDA_HISTORICA', ruta: '/busqueda', icono: Search, pantalla: EnConstruccion },
+  { codigo: 'BUSQUEDA_HISTORICA', ruta: '/busqueda', icono: Search, pantalla: BusquedaHistorica },
   { codigo: 'REPORTES', ruta: '/reportes', icono: FileText, pantalla: EnConstruccion },
   { codigo: 'GESTION_USUARIOS', ruta: '/usuarios', icono: Users, pantalla: GestionUsuarios },
   { codigo: 'AUDITORIA', ruta: '/auditoria', icono: ShieldCheck, pantalla: EnConstruccion },

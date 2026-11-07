@@ -6,14 +6,22 @@ import { pedir, pedirArchivo } from './cliente.js';
 import { SIMULAR_LISTADO, SIMULAR_LLAMADAS as SIMULAR } from './simulacion/activa.js';
 import * as simulacion from './simulacion/llamadas.js';
 import * as simulacionListado from './simulacion/listado.js';
+import { listarAgentes } from './lotes.js';
 
 // filtros: { pagina, tamano_pagina, desde, hasta, id_agente, id_lote, estado, clasificacion,
 // diagnostico, buscar }; los vacios no se envian.
-// Responde { pagina, tamano_pagina, total, total_paginas, llamadas: [...] }.
-export function listarLlamadas(filtros = {}) {
+// Responde { pagina, tamano_pagina, total, total_paginas, llamadas: [...] }. En modo de
+// prueba se necesita el usuario para imitar quien ve que (el backend lo sabe por el token).
+export function listarLlamadas(filtros = {}, usuario = null) {
   const usados = Object.fromEntries(Object.entries(filtros).filter(([, valor]) => valor !== '' && valor != null));
-  if (SIMULAR_LISTADO) return simulacionListado.listarLlamadas(usados);
+  if (SIMULAR_LISTADO) return simulacionListado.listarLlamadas(usados, usuario);
   return pedir(`/api/v1/llamadas?${new URLSearchParams(usados)}`);
+}
+
+// Agentes para el filtro de la Busqueda historica: GET /agentes (SuperAdmin: los activos;
+// Supervisor: los suyos). En modo de prueba, los agentes del listado simulado.
+export function listarAgentesDelListado() {
+  return SIMULAR_LISTADO ? simulacionListado.listarAgentes() : listarAgentes();
 }
 
 // { id_llamada, agente, estado_procesamiento, resultado, transcripcion, alertas, tiene_audio, ... }
