@@ -128,17 +128,35 @@ transcripción con faster-whisper en CPU, `score_sentimiento` y `score_global_nl
 con una diarización local sin PyTorch. Python 3.12 o 3.13; no hace falta instalar ffmpeg. Con un audio
 de 4,5 min en mi laptop, `base` tarda ~1 min. Contrato v0.1 y v0.2 en `main` (PRs #9 y #21); Willy
 aprobó la v0.2 el 06/11 con la sección 7 como provisional. La salida real pasa el esquema del backend
-del #15 (probado con `execFile`; sin MySQL). Detalle de reglas, calibración y precisión en
-`audio-processing/README.md`.
+del #15. Detalle de reglas, calibración y precisión en `audio-processing/README.md`. Los eventos usan
+`EXCESO_VOLUMEN` (el valor de `TB_Alerta`) y la salida rechaza `NaN` (PR #35).
+
+**Prueba de punta a punta (06/11, en mi laptop, `main` en `188fff8`):** MySQL 8.4 de Wamp (puerto 3309,
+sin modo estricto), base creada con `01` y `02`, backend con `npm start`. Como Supervisor subí un lote
+de 5 audios por `POST /llamadas/lotes`. El backend los procesó solo con `analizar.py` (`base`) en
+**206 s**, y las 5 llamadas quedaron `COMPLETADO` con sus filas en `TB_Transcripcion`, el lote
+`COMPLETADO` y la auditoría `PROCESAMIENTO_LLAMADA`. También funcionan `GET /llamadas/:id`, el `/audio`
+y la visibilidad del Agente. Las tildes se guardan bien (`utf8mb4`).
+
+| Audio | Puntaje | Clasificación | `hablante` |
+|---|---|---|---|
+| Llamada real de radio (4 min 44 s) | 60,87 | NEUTRO | sin etiquetas |
+| Sin voz (8 s) | 50 | NEUTRO, baja confianza, sin filas | - |
+| Recorte de la llamada real (90 s) | 50 | NEUTRO | sin etiquetas |
+| Conversación armada tranquila | 49,72 | NEUTRO | 99,7 % de acierto |
+| Conversación armada, cliente grita (×3) y amenaza con cancelar | 39,8 | NEUTRO | 97,0 % de acierto |
+
+Los audios "armados" usan voces de Windows, con hablante conocido; solo la llamada de radio es real.
 
 **En curso:**
 - Rama `david-contrato-notas` (PR #32, espera revisión de Willy): estado de la v0.2, timeout 3600,
   mensajes propios del backend y los dos efectos que señaló Willy.
-- Rama `david-ajustes-alertas`: los eventos usan `EXCESO_VOLUMEN` (el valor de `TB_Alerta`) y
-  `json.dumps(..., allow_nan=False)`.
 
 **Pendiente:**
-- Probar de punta a punta con audios reales junto con Willy y Javier (carga de lotes, detalle e inicio).
+- **Calibración:** el cliente que grita y amenaza con cancelar sale `NEUTRO` (39,8): el texto queda en
+  -0,1 porque se promedia con los "gracias", y `CRITICO` exige texto menor a -0,3. Hay que revisar los
+  cortes y el promedio del léxico con llamadas reales.
+- Repetir la prueba de punta a punta con llamadas reales de call center, junto con Willy y Javier.
 - Medir `hablante` con llamadas reales etiquetadas (espero 65-85 % en mono, sin medir) y usarlo en el
   promedio móvil de RN-02.
 - Medir con gritos reales: el Blueprint pide 88 % sobre 50 muestras y la recalibración bajó la
