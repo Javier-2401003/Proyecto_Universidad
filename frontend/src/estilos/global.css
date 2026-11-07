@@ -1254,6 +1254,77 @@ h2 {
   color: var(--texto);
 }
 
+/* ---------- Panel del Agente ---------- */
+.panel-agente {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel-agente .encabezado,
+.panel-agente .alerta {
+  margin: 0;
+}
+
+.panel-agente__subtitulo {
+  margin-bottom: 8px;
+  color: var(--texto-secundario);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.panel-agente__barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tarjeta-panel .panel-agente__barra h2 {
+  margin-bottom: 0;
+}
+
+.panel-agente .tarjeta-panel > .alerta {
+  margin-bottom: 12px;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.filtros .campo {
+  min-width: 150px;
+}
+
+.clasificacion-celda {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icono-aviso {
+  display: inline-flex;
+  color: var(--aviso);
+}
+
+.paginacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.paginacion__botones {
+  display: flex;
+  gap: 6px;
+}
+
 /* ---------- Pantallas pequenas ---------- */
 @media (max-width: 760px) {
   .disposicion {
