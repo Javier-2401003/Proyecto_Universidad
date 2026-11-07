@@ -3,7 +3,7 @@
 Interfaz web en React + Vite. Por ahora incluye el login, el menú lateral según los
 permisos del usuario, la gestión de usuarios (crear, editar, activar o desactivar y asignar
 supervisor), la carga de audios por lotes, el detalle de una llamada y las estadísticas de
-la página de inicio y el Panel del Agente.
+la página de inicio, el Panel del Agente y la Búsqueda histórica.
 
 ## Puesta en marcha
 Requisitos: Node.js 20 o superior y el backend funcionando (ver `README.md` de la raíz).
@@ -55,12 +55,11 @@ lo decide `src/api/simulacion/activa.js`; las pantallas simuladas muestran el av
 |---|---|---|
 | Carga de lotes y detalle de llamada | **Backend real** | `VITE_SIMULAR_LLAMADAS=true` |
 | Estadísticas del inicio | **Backend real** | `VITE_SIMULAR_ESTADISTICAS=true` |
-| Listado de llamadas (Panel del Agente) | **Simulado** (falta `GET /llamadas`) | `VITE_SIMULAR_LISTADO=false` |
+| Listado de llamadas (Panel del Agente y Búsqueda histórica) | **Backend real** | `VITE_SIMULAR_LISTADO=true` |
 
 - Con el backend real, cada llamada se analiza con `audio-processing/analizar.py` (hace falta
   instalarlo, ver `audio-processing/README.md`); mientras tanto queda en **Pendiente**. Para
-  mostrar resultados en una demo sin el análisis instalado, use `VITE_SIMULAR_LLAMADAS=true`
-  y `VITE_SIMULAR_ESTADISTICAS=true`.
+  mostrar resultados en una demo sin el análisis instalado, ponga las tres variables en `true`.
 - En modo de prueba los archivos no salen de la computadora y los datos viven en memoria:
   al recargar la página (F5) se pierden y hay que cargar un lote de nuevo.
 
@@ -101,6 +100,15 @@ lo decide `src/api/simulacion/activa.js`; las pantallas simuladas muestran el av
 - Abajo, **Mis llamadas** (`GET /llamadas`): filtros por estado y clasificación, 10 por página.
   Una llamada completada abre su detalle. En modo de prueba la lista es de ejemplo (siempre la
   misma) y no enlaza al detalle, porque esas llamadas no existen en el backend.
+
+### Búsqueda histórica (`/busqueda`)
+- Para SuperAdmin y Supervisor (módulo `BUSQUEDA_HISTORICA`), con `GET /llamadas`.
+- Filtros: fechas, agente (de `GET /agentes`), estado, clasificación, diagnóstico y nombre del
+  archivo. Se aplican con **Buscar**; 20 resultados por página.
+- Los filtros y la página quedan en la dirección (`/busqueda?clasificacion=CRITICO&pagina=2`):
+  al volver del detalle de una llamada se conservan.
+- La tabla y la paginación son las mismas del Panel del Agente (`src/componentes/ListaLlamadas.jsx`).
+- En modo de prueba hay tres agentes de ejemplo; un Agente solo ve los de "Ana Torres (prueba)".
 
 ## Sesión
 - El token se guarda en `sessionStorage`: sobrevive a una recarga y se borra al

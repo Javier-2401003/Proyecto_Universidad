@@ -526,6 +526,13 @@ h2 {
   text-align: right;
 }
 
+/* Celdas de texto que pueden ocupar dos lineas para que la tabla quepa. */
+.tabla .celda-ajustable {
+  min-width: 110px;
+  max-width: 160px;
+  white-space: normal;
+}
+
 .medidor {
   display: inline-flex;
   align-items: center;
@@ -1288,6 +1295,33 @@ h2 {
   gap: 6px;
 }
 
+/* ---------- Busqueda historica ---------- */
+.busqueda {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.busqueda .encabezado,
+.busqueda .alerta,
+.busqueda__filtros {
+  margin: 0;
+}
+
+.busqueda__rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px 16px;
+}
+
+.busqueda__texto {
+  grid-column: span 2;
+}
+
+.busqueda__rejilla input[type='date'] {
+  min-height: 38px;
+}
+
 /* ---------- Pantallas pequenas ---------- */
 @media (max-width: 760px) {
   .disposicion {
@@ -1312,6 +1346,10 @@ h2 {
   .resumen-resultado,
   .detalle__columnas {
     grid-template-columns: 1fr;
+  }
+
+  .busqueda__texto {
+    grid-column: auto;
   }
 
   .mapa__fila {
