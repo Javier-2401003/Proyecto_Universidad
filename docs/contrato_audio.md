@@ -158,7 +158,7 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 | `tipo_alerta` | string | no | `"EXCESO_VOLUMEN"`, `"ALTERACION_TONO"`, `"VOCABULARIO_INADECUADO"` u `"OMISION_SCRIPT"`, **exactamente** como el ENUM de la columna | `tipo_alerta` |
 | `origen_evento` | string | no | `"AGENTE"` o `"CLIENTE"`: el `hablante` del segmento donde ocurre | `origen_evento` |
 | `timestamp_evento` | number (3 dec.) | no | Segundo de la llamada en que empieza | `timestamp_evento` DECIMAL(8,3) |
-| `valor_registrado` | string | no | Lo medido, como máximo 100 caracteres: `"-8.5 dBFS"`, `"235 Hz (+46 %)"` o `"Palabra: estafa"` | `valor_registrado` VARCHAR(100) |
+| `valor_registrado` | string | no | Lo medido, como máximo 100 caracteres: `"-8.5 dBFS"`, `"235 Hz (variación 46 %)"` o `"Palabra: estafa"` | `valor_registrado` VARCHAR(100) |
 | `mensaje_sugerencia` | string | no | Orientación para el agente, como máximo 255 caracteres | `mensaje_sugerencia` VARCHAR(255) |
 
 **Sobre las unidades del volumen:** `rms_dbfs` está en **dBFS**: 0 es el máximo digital
@@ -247,7 +247,7 @@ El arreglo `alertas` va siempre en el primer nivel, vacío si no hay ninguna, y 
 | `tipo_alerta` | Cuándo | `origen_evento` y `timestamp_evento` | `valor_registrado` |
 |---|---|---|---|
 | `EXCESO_VOLUMEN` | Cada subida de volumen de RN-02 (más del 180 % del promedio móvil durante 2 s seguidos), la misma que usa `score_acustico` | El hablante con más tiempo dentro de la subida; el segundo en que empieza | El cuadro más fuerte, en dBFS del audio original: `"-8.5 dBFS"` |
-| `ALTERACION_TONO` | Dentro de los segmentos de **un mismo hablante**, una ventana de 2 s cuyo F0 varía más del 40 % de la media de **ese hablante** (RN-02, "media del canal") | Ese hablante; el segundo en que empieza | La mediana del F0 en la ventana y cuánto se aparta de su media: `"235 Hz (+46 %)"` |
+| `ALTERACION_TONO` | Dentro de los segmentos de **un mismo hablante**, una ventana de 2 s cuyo F0 varía más del 40 % de la media de **ese hablante** (RN-02, "media del canal") | Ese hablante; el segundo en que empieza | La mediana del F0 en la ventana y la mayor variación medida (desviación estándar entre la media del hablante): `"235 Hz (variación 46 %)"` |
 | `VOCABULARIO_INADECUADO` | Un segmento que contiene una palabra de la lista `vocabulario_inadecuado` de `audio-processing/lexico_es.json` | El `hablante` del segmento; su `inicio` | `"Palabra: estafa"` |
 
 - **Una alerta por evento:** una subida o una ventana de tono que dura varios segundos da una sola
