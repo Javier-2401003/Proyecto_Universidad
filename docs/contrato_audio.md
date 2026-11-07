@@ -1,9 +1,9 @@
 # Contrato: backend (Node) y análisis de audio (Python)
 
-**Estado: v0.2, aprobada por Willy el 06/11/2026** (PR #21), con los puntos de la sección 7 como
-provisionales. La implementan `audio-processing/analizar.py` y el procesamiento del backend
-(`backend/src/procesamientoAudio.js`). Si alguien necesita un cambio, se hace primero aquí, en un PR
-propio, y se avisa al otro.
+**Estado: v0.3 (alertas), propuesta por David y pendiente de la revisión de Willy.** La v0.2 la aprobó
+Willy el 06/11/2026 (PR #21), con los puntos de la sección 7 como provisionales, y la implementan
+`audio-processing/analizar.py` y el procesamiento del backend (`backend/src/procesamientoAudio.js`).
+Si alguien necesita un cambio, se hace primero aquí, en un PR propio, y se avisa al otro.
 
 - Script: `audio-processing/analizar.py` (instalación en `audio-processing/README.md`).
 - Quién llama: el backend, después de que `POST /llamadas/lotes` dejó la llamada en
@@ -59,7 +59,7 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 
 ```json
 {
-  "version_contrato": "0.2",
+  "version_contrato": "0.3",
   "archivo": "llamada_0001.mp3",
   "duracion_segundos": 268.553,
   "idioma": "es",
@@ -92,6 +92,15 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
       "confianza_logprob": -0.155,
       "probabilidad_sin_voz": 0.013
     }
+  ],
+  "alertas": [
+    {
+      "tipo_alerta": "EXCESO_VOLUMEN",
+      "origen_evento": "CLIENTE",
+      "timestamp_evento": 95.5,
+      "valor_registrado": "-8.5 dBFS",
+      "mensaje_sugerencia": "Mantenga un tono calmado y valide la molestia del cliente."
+    }
   ]
 }
 ```
@@ -115,6 +124,7 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 | `resumen_acustico` | object | no | Ver abajo. | - |
 | `tiempos_proceso_segundos` | object | no | `transcripcion`, `acustico` (incluye la diarización), `total`. | - (registro) |
 | `segmentos` | array | no (puede ser `[]`) | Fragmentos en orden de tiempo. | una fila de `TB_Transcripcion` cada uno |
+| `alertas` | array | no (puede ser `[]`) | **v0.3.** Alertas en orden de `timestamp_evento` (sección 5, "Alertas"). | una fila de `TB_Alerta` cada una |
 
 ### `resumen_acustico`
 
@@ -140,6 +150,16 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 | `rms_dbfs` | number (2 dec.) | sí (casi nunca) | Energía media del tramo | `nivel_volumen_rms` DECIMAL(6,2) |
 | `confianza_logprob` | number (3 dec.) | no | Seguridad de Whisper (cerca de 0 = seguro) | - |
 | `probabilidad_sin_voz` | number 0-1 | no | Probabilidad de que el tramo sea silencio o ruido | - |
+
+### Cada elemento de `alertas` (v0.3)
+
+| Campo | Tipo | Nulo | Descripción | Columna de `TB_Alerta` |
+|---|---|---|---|---|
+| `tipo_alerta` | string | no | `"EXCESO_VOLUMEN"`, `"ALTERACION_TONO"`, `"VOCABULARIO_INADECUADO"` u `"OMISION_SCRIPT"`, **exactamente** como el ENUM de la columna | `tipo_alerta` |
+| `origen_evento` | string | no | `"AGENTE"` o `"CLIENTE"`: el `hablante` del segmento donde ocurre | `origen_evento` |
+| `timestamp_evento` | number (3 dec.) | no | Segundo de la llamada en que empieza | `timestamp_evento` DECIMAL(8,3) |
+| `valor_registrado` | string | no | Lo medido, como máximo 100 caracteres: `"-8.5 dBFS"`, `"235 Hz (+46 %)"` o `"Palabra: estafa"` | `valor_registrado` VARCHAR(100) |
+| `mensaje_sugerencia` | string | no | Orientación para el agente, como máximo 255 caracteres | `mensaje_sugerencia` VARCHAR(255) |
 
 **Sobre las unidades del volumen:** `rms_dbfs` está en **dBFS**: 0 es el máximo digital
 y la voz normal ronda entre -30 y -15. **No** son dB de presión sonora.
@@ -171,9 +191,9 @@ Mensajes que pone el propio backend, sin que vengan del script:
 
 | `mensaje_error` | Cuándo |
 |---|---|
-| `PROCESO_FALLIDO: código <n>` | El proceso terminó sin JSON válido |
-| `TIMEOUT` | Se pasó de `AUDIO_TIMEOUT_SEGUNDOS` |
-| `CONTRATO_INCOMPLETO: ...` | Falta un campo de la v0.2, o un valor no cabe en su columna (por ejemplo, un tiempo mayor a `DECIMAL(8,3)`) |
+| `PROCESO_FALLIDO: código <n>` | El proceso no se pudo iniciar (si falta el venv, `<n>` es `ENOENT`), terminó sin JSON válido, o terminó con un código distinto de 0 y 1 aunque mande JSON |
+| `TIMEOUT` | Se pasó de `AUDIO_TIMEOUT_SEGUNDOS` (3600 s por defecto) |
+| `CONTRATO_INCOMPLETO: ...` | Falta un campo de la v0.2, un valor no cabe en su columna (por ejemplo, un tiempo mayor a `DECIMAL(8,3)`) o está fuera de su rango aunque quepa (por ejemplo, `puntaje_final` de 140 o `score_sentimiento` mayor que 1) |
 | `CONTRATO_INCOMPATIBLE: version <x>` | `version_contrato` no empieza con `0.` |
 | `ARCHIVO_NO_ENCONTRADO: ...` | La llamada no tiene ruta de audio, o la ruta se sale de `backend/uploads/` |
 | `ERROR_GUARDADO: ...` | El análisis salió bien, pero no se pudo guardar en la base |
@@ -219,9 +239,36 @@ el agente omitió el script o interrumpió**, y depende de que `hablante` sea co
   `puntaje_final: 50.00`, el punto neutro de la escala (sección 7). El backend marca
   `COMPLETADO` y no guarda filas en `TB_Transcripcion`.
 
-Para la **v0.3** queda `TB_Alerta`: arreglo `alertas` con `tipo_alerta`, `origen_evento`,
-`timestamp_evento`, `valor_registrado` y `mensaje_sugerencia`. `tipo_alerta` usa **solo** los valores
-de la columna: `EXCESO_VOLUMEN`, `ALTERACION_TONO`, `VOCABULARIO_INADECUADO` y `OMISION_SCRIPT`.
+### Alertas (v0.3)
+
+El arreglo `alertas` va siempre en el primer nivel, vacío si no hay ninguna, y ordenado por
+`timestamp_evento`. Cada alerta es una fila de `TB_Alerta`. Lo que detecta la v0.3:
+
+| `tipo_alerta` | Cuándo | `origen_evento` y `timestamp_evento` | `valor_registrado` |
+|---|---|---|---|
+| `EXCESO_VOLUMEN` | Cada subida de volumen de RN-02 (más del 180 % del promedio móvil durante 2 s seguidos), la misma que usa `score_acustico` | El hablante con más tiempo dentro de la subida; el segundo en que empieza | El cuadro más fuerte, en dBFS del audio original: `"-8.5 dBFS"` |
+| `ALTERACION_TONO` | Dentro de los segmentos de **un mismo hablante**, una ventana de 2 s cuyo F0 varía más del 40 % de la media de **ese hablante** (RN-02, "media del canal") | Ese hablante; el segundo en que empieza | La mediana del F0 en la ventana y cuánto se aparta de su media: `"235 Hz (+46 %)"` |
+| `VOCABULARIO_INADECUADO` | Un segmento que contiene una palabra de la lista `vocabulario_inadecuado` de `audio-processing/lexico_es.json` | El `hablante` del segmento; su `inicio` | `"Palabra: estafa"` |
+
+- **Una alerta por evento:** una subida o una ventana de tono que dura varios segundos da una sola
+  alerta. Una palabra da una alerta por segmento, aunque se repita.
+- **Con `baja_confianza_audio: true`** solo se emite `VOCABULARIO_INADECUADO`, porque las alertas de
+  voz no son confiables con ruido (flujo E1).
+- **Audio sin voz:** `alertas: []`.
+- **`mensaje_sugerencia`** sale de una tabla fija por tipo y origen, en
+  `audio-processing/reglas_alertas.json`. Usa los mismos textos que los datos simulados del frontend.
+- **`ALTERACION_TONO` se mide por hablante** para no confundir el cambio entre dos voces con una
+  alteración. `score_acustico` no cambia: sigue igual que en la v0.2.
+- **`VOCABULARIO_INADECUADO`** no mira la negación: "no es una estafa" también la marca. La lista es
+  **provisional**; el Blueprint solo da el ejemplo "estafa".
+
+**Quedan para después:**
+
+- **`OMISION_SCRIPT`:** necesita que el equipo defina el guion obligatorio (por ejemplo, saludo,
+  identificación y despedida) y cómo se verifica en el texto.
+- **Frases inadecuadas** ("no me haga perder el tiempo") y **sarcasmo** (RN-07): un léxico de palabras
+  sueltas no las detecta.
+- **Interrupciones** del agente: necesitan saber cuándo hablan los dos a la vez.
 
 Columnas que **no** son del análisis y siguen siendo del backend: `fecha_inicio`,
 `fecha_fin`, `estado_procesamiento`, `mensaje_error`, `hash_archivo` y `ruta_audio_storage`.
@@ -231,6 +278,10 @@ Columnas que **no** son del análisis y siguen siendo del backend: `fecha_inicio
 - Agregar un campo nuevo es compatible: sube la versión menor (`0.1` a `0.2`). El backend
   acepta cualquier `0.x` e ignora los campos que no conoce, pero para guardar un resultado
   exige los campos de la v0.2 (sección 5).
+- **Propuesta para la v0.3:** si viene `alertas`, el backend las valida como el resto (tipos y orígenes
+  del ENUM, tiempo dentro de `DECIMAL(8,3)`, textos dentro de su largo) y las guarda en la misma
+  transacción que la llamada; si una no es válida, la llamada queda en `ERROR` con
+  `CONTRATO_INCOMPLETO`. Si no viene (v0.2), la llamada se guarda sin alertas.
 - Renombrar, quitar o cambiar el tipo de un campo sube la versión mayor (`1.x` a `2.0`) y
   requiere el visto bueno de los dos.
 
@@ -257,6 +308,13 @@ Las decisiones 1 a 6 y 8 son de Willy (28/10/2026, 02/11/2026 y 06/11/2026); la 
    - las reglas de `diagnostico_conflicto`;
    - RN-02 y RN-03 recalibrados: 180 % durante 2 s en lugar de 150 % durante 1,5 s, y la alerta roja
      exige también texto negativo.
+
+### Por aprobar en la v0.3
+
+- El arreglo `alertas` y las tres alertas que detecta (sección 5, "Alertas").
+- La lista provisional de `vocabulario_inadecuado` y los mensajes de `reglas_alertas.json`.
+- Que `OMISION_SCRIPT` espere a que el equipo defina el guion.
+- La validación de las alertas en el backend (sección 6).
 
 ### Para revisar con llamadas reales
 
