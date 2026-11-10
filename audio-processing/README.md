@@ -297,7 +297,11 @@ real. Falta medirla con llamadas etiquetadas.
   quien ocupa más tiempo. En una llamada real hubo segmentos de más de 60 s con muy poco texto.
 - **Una sola voz:** igual se reparte en dos grupos.
 - **Conflicto:** `diagnostico_conflicto` depende de esta separación, y aún no revisa si el agente
-  omitió el script o interrumpió. Con hablantes errados, puede culpar a quien no fue.
+  omitió el script o interrumpió. Con hablantes errados, puede culpar a quien no fue. Cada subida de
+  volumen cuenta solo para quien más tiempo habla dentro de ella: los eventos se miden en tramos de
+  0,5 s y Whisper pega un turno con el siguiente, así que un grito del cliente suele rozar unas décimas
+  el final del turno del agente (antes eso bastaba para dar `FALLA_AGENTE`). Si el agente repite
+  palabras del cliente ("registro su queja"), su texto cuenta como negativo y se le culpa a él.
 - **RN-02:** el promedio móvil todavía mezcla las dos voces.
 
 ## Pendiente

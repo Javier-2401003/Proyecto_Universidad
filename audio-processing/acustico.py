@@ -221,24 +221,38 @@ def calcular_puntaje(score_nlp, score_acustico, baja_confianza, subida_continua,
     return {"puntaje_final": puntaje, "clasificacion_final": clasificacion}
 
 
+def hablante_del_evento(evento, segmentos):
+    """Hablante con mas tiempo dentro del evento, o None si el evento no toca ningun segmento.
+
+    No basta con que se crucen: el volumen se mide en tramos de 0.5 s y Whisper pega un turno con el
+    siguiente, asi que un grito del cliente suele rozar unas decimas el final del turno del agente.
+    Es el mismo criterio con que alertas.py (v0.3) llena origen_evento.
+    """
+    tiempos = {}
+    for segmento in segmentos:
+        traslape = min(evento["fin"], segmento["fin"]) - max(evento["inicio"], segmento["inicio"])
+        if traslape > 0:
+            tiempos[segmento["hablante"]] = tiempos.get(segmento["hablante"], 0.0) + traslape
+    return max(tiempos, key=tiempos.get) if tiempos else None
+
+
 def calcular_diagnostico(clasificacion, segmentos, frases_analizadas, eventos, baja_confianza, reglas):
     """Origen del conflicto en una llamada mala (Blueprint, 3.3, punto 4).
 
     Solo se diagnostican llamadas NEGATIVO o CRITICO. Si el agente tiene texto negativo o gritos, es
-    FALLA_AGENTE; si solo los tiene el cliente, CLIENTE_PROBLEMATICO. Con baja confianza no cuenta la
-    voz. Todavia no revisa si el agente omitio el script ni si interrumpio.
+    FALLA_AGENTE; si solo los tiene el cliente, CLIENTE_PROBLEMATICO. Cada grito es de quien mas
+    tiempo habla dentro de el. Con baja confianza no cuenta la voz. Todavia no revisa si el agente
+    omitio el script ni si interrumpio.
     """
     if clasificacion not in ("NEGATIVO", "CRITICO"):
         return "SIN_CONFLICTO"
 
+    gritones = set() if baja_confianza else {
+        hablante_del_evento(e, segmentos) for e in eventos if e["tipo"] == "EXCESO_VOLUMEN"}
+
     def tiene_conflicto(hablante):
-        propios = [(s, f) for s, f in zip(segmentos, frases_analizadas) if s["hablante"] == hablante]
-        if puntaje_global([f for _, f in propios]) < reglas["umbral_nlp_negativo"]:
-            return True
-        if baja_confianza:
-            return False
-        return any(e["tipo"] == "EXCESO_VOLUMEN" and e["inicio"] < s["fin"] and e["fin"] > s["inicio"]
-                   for s, _ in propios for e in eventos)
+        propias = [f for s, f in zip(segmentos, frases_analizadas) if s["hablante"] == hablante]
+        return puntaje_global(propias) < reglas["umbral_nlp_negativo"] or hablante in gritones
 
     if tiene_conflicto("AGENTE"):
         return "FALLA_AGENTE"

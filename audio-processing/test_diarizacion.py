@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-from acustico import calcular_diagnostico, cargar_reglas as cargar_reglas_acusticas
+from acustico import calcular_diagnostico, cargar_reglas as cargar_reglas_acusticas, hablante_del_evento
 from diarizacion import (AGENTE, CLIENTE, agrupar, asignar_hablantes, canales_distintos,
                          cargar_reglas, grupo_del_agente, grupo_por_segmento, hablante_por_canal)
 
@@ -111,6 +111,25 @@ class PruebasDiagnostico(unittest.TestCase):
     def test_grito_se_atribuye_a_quien_hablaba(self):
         grito = {"tipo": "EXCESO_VOLUMEN", "inicio": 6, "fin": 8}
         self.assertEqual(self.diagnostico("CRITICO", [(0.0, 0), (0.0, 0)], [grito]), "CLIENTE_PROBLEMATICO")
+
+    def test_grito_que_roza_el_final_del_agente_es_del_cliente(self):
+        # Llamada 07 de las muestras: el evento empieza 0.5 s antes de que acabe el turno del agente.
+        grito = {"tipo": "EXCESO_VOLUMEN", "inicio": 4.5, "fin": 8}
+        self.assertEqual(self.diagnostico("CRITICO", [(0.0, 0), (-0.5, 1)], [grito]), "CLIENTE_PROBLEMATICO")
+
+    def test_grito_del_agente_que_se_pasa_al_cliente_es_del_agente(self):
+        grito = {"tipo": "EXCESO_VOLUMEN", "inicio": 2, "fin": 5.5}
+        self.assertEqual(self.diagnostico("CRITICO", [(0.0, 0), (-0.5, 1)], [grito]), "FALLA_AGENTE")
+
+    def test_grito_fuera_de_los_segmentos_no_es_de_nadie(self):
+        grito = {"tipo": "EXCESO_VOLUMEN", "inicio": 11, "fin": 12}
+        self.assertEqual(self.diagnostico("NEGATIVO", [(0.0, 0), (0.0, 0)], [grito]), "SIN_CONFLICTO")
+
+    def test_el_evento_suma_todos_los_turnos_de_cada_hablante(self):
+        segmentos = [{"hablante": AGENTE, "inicio": 0, "fin": 1}, {"hablante": CLIENTE, "inicio": 1, "fin": 2},
+                     {"hablante": AGENTE, "inicio": 2, "fin": 3}]
+        # Agente: 0.5 + 0.8 s; cliente: 1 s.
+        self.assertEqual(hablante_del_evento({"inicio": 0.5, "fin": 2.8}, segmentos), AGENTE)
 
     def test_baja_confianza_ignora_la_voz(self):
         grito = {"tipo": "EXCESO_VOLUMEN", "inicio": 1, "fin": 3}
