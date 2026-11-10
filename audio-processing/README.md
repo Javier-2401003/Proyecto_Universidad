@@ -300,8 +300,11 @@ real. Falta medirla con llamadas etiquetadas.
   omitió el script o interrumpió. Con hablantes errados, puede culpar a quien no fue. Cada subida de
   volumen cuenta solo para quien más tiempo habla dentro de ella: los eventos se miden en tramos de
   0,5 s y Whisper pega un turno con el siguiente, así que un grito del cliente suele rozar unas décimas
-  el final del turno del agente (antes eso bastaba para dar `FALLA_AGENTE`). Si el agente repite
-  palabras del cliente ("registro su queja"), su texto cuenta como negativo y se le culpa a él.
+  el final del turno del agente (antes eso bastaba para dar `FALLA_AGENTE`). Al agente no le cuentan
+  las palabras negativas que el cliente ya dijo antes, comparadas por familia (las 5 primeras letras:
+  "cancelar" y "cancelación"), para no culparlo por "registro su queja". Por eso, si el cliente dijo
+  "nunca" y el agente contesta con otro "nunca" grosero, ese tampoco cuenta. Esto solo cambia el
+  diagnóstico: el puntaje y el `score_sentimiento` de cada frase siguen igual.
 - **RN-02:** el promedio móvil todavía mezcla las dos voces.
 
 ## Pendiente

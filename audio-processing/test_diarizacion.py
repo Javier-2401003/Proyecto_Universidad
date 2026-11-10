@@ -7,9 +7,11 @@ import numpy as np
 from acustico import calcular_diagnostico, cargar_reglas as cargar_reglas_acusticas, hablante_del_evento
 from diarizacion import (AGENTE, CLIENTE, agrupar, asignar_hablantes, canales_distintos,
                          cargar_reglas, grupo_del_agente, grupo_por_segmento, hablante_por_canal)
+from lexico import analizar_frase, cargar_lexico
 
 REGLAS = cargar_reglas()
 REGLAS_ACUSTICAS = cargar_reglas_acusticas()
+LEXICO = cargar_lexico()
 FRECUENCIA = 16000
 SALTO = 320
 
@@ -96,8 +98,30 @@ class PruebasAsignacion(unittest.TestCase):
 
 class PruebasDiagnostico(unittest.TestCase):
     def diagnostico(self, clasificacion, frases, eventos=(), baja_confianza=False):
-        segmentos = [{"hablante": AGENTE, "inicio": 0, "fin": 5}, {"hablante": CLIENTE, "inicio": 5, "fin": 10}]
+        segmentos = [{"hablante": AGENTE, "inicio": 0, "fin": 5, "texto": ""},
+                     {"hablante": CLIENTE, "inicio": 5, "fin": 10, "texto": ""}]
         return calcular_diagnostico(clasificacion, segmentos, frases, list(eventos), baja_confianza, REGLAS_ACUSTICAS)
+
+    def diagnostico_de_turnos(self, *turnos):
+        """Llamada NEGATIVO sin gritos, con un turno de 5 s por cada (hablante, texto)."""
+        segmentos = [{"hablante": h, "inicio": 5 * i, "fin": 5 * i + 5, "texto": t} for i, (h, t) in enumerate(turnos)]
+        frases = [analizar_frase(t, LEXICO) for _, t in turnos]
+        return calcular_diagnostico("NEGATIVO", segmentos, frases, [], False, REGLAS_ACUSTICAS, LEXICO)
+
+    def test_agente_que_repite_la_queja_del_cliente_no_es_su_falla(self):
+        self.assertEqual(self.diagnostico_de_turnos(
+            (CLIENTE, "Quiero cancelar el servicio y poner una queja."),
+            (AGENTE, "Dejo registrada su queja y su solicitud de cancelación.")), "CLIENTE_PROBLEMATICO")
+
+    def test_agente_que_dice_queja_antes_que_el_cliente_si_es_su_falla(self):
+        self.assertEqual(self.diagnostico_de_turnos(
+            (AGENTE, "Su queja no me importa, nunca hacemos devoluciones."),
+            (CLIENTE, "Entonces voy a poner una queja.")), "FALLA_AGENTE")
+
+    def test_palabras_negativas_nuevas_del_agente_siguen_contando(self):
+        self.assertEqual(self.diagnostico_de_turnos(
+            (CLIENTE, "Quiero poner una queja."),
+            (AGENTE, "Su queja es una pésima idea, nunca devolvemos nada.")), "FALLA_AGENTE")
 
     def test_llamada_buena_no_tiene_conflicto(self):
         self.assertEqual(self.diagnostico("NEUTRO", [(-1.0, 2), (-1.0, 2)]), "SIN_CONFLICTO")

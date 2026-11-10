@@ -4,7 +4,7 @@ import os
 import tempfile
 import unittest
 
-from lexico import RUTA_LEXICO, analizar_frase, cargar_lexico, puntaje_global
+from lexico import RUTA_LEXICO, analizar_frase, cargar_lexico, puntaje_global, raices_negativas
 
 LEXICO = cargar_lexico()
 
@@ -49,6 +49,20 @@ class PruebasFrase(unittest.TestCase):
     def test_expresion_de_dos_palabras_cuenta_una_vez(self):
         self.assertEqual(analizar_frase("con gusto", LEXICO), (0.5, 1))
         self.assertEqual(analizar_frase("voy con mi gusto", LEXICO), (0.0, 0))
+
+
+class PruebasFamilias(unittest.TestCase):
+    def test_raices_de_las_negativas_aunque_esten_negadas(self):
+        self.assertEqual(raices_negativas("Quiero cancelar, no es una queja. Gracias", LEXICO), {"cance", "queja"})
+
+    def test_la_familia_ignorada_no_cuenta(self):
+        self.assertEqual(analizar_frase("Registro su queja y su cancelación", LEXICO, {"queja", "cance"}), (0.0, 0))
+
+    def test_las_demas_palabras_siguen_contando(self):
+        self.assertEqual(analizar_frase("Su queja es pésima, nunca", LEXICO, {"queja"}), (-1.0, 2))
+
+    def test_solo_ignora_negativas(self):
+        self.assertEqual(analizar_frase("excelente", LEXICO, {"excel"}), (0.5, 1))
 
 
 class PruebasCarga(unittest.TestCase):

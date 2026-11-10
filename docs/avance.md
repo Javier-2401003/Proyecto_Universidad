@@ -125,7 +125,7 @@ contratos.
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 07/11/2026_
+_Última actualización: 10/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -133,12 +133,16 @@ _Última actualización: 07/11/2026_
 - [x] Tiempo de un audio de 3 a 5 min con los modelos `base` y `small`.
 - [x] Borrador de `docs/contrato_audio.md`.
 
-**Diagnóstico corregido (rama `david-diagnostico-solapamiento`, 07/11):** un grito se le atribuía a
-cualquiera cuyo turno rozara, aunque fuera 0,2 s, así que un cliente que gritaba al empezar su turno
-salía `FALLA_AGENTE`. Ahora cuenta para quien más tiempo habla dentro del grito, igual que
-`origen_evento` en la v0.3. Con 15 llamadas armadas de call center, la que fallaba pasa a
-`CLIENTE_PROBLEMATICO` y las otras 14 no cambian; 72 pruebas pasando. Queda otro caso: si el agente
-repite palabras del cliente ("registro su queja"), su texto cuenta como negativo y se le culpa a él.
+**Diagnóstico corregido:** dos casos culpaban al agente sin razón.
+- Gritos (07/11, PR #43, en `main`): un grito se le atribuía a cualquiera cuyo turno rozara, aunque
+  fuera 0,2 s. Ahora cuenta para quien más tiempo habla dentro del grito, igual que `origen_evento` en
+  la v0.3.
+- Palabras repetidas (10/11, rama `david-diagnostico-repeticion`): "Dejo registrada su queja y su
+  solicitud de cancelación" daba `FALLA_AGENTE`. Ahora al agente no le cuentan las palabras negativas
+  que el cliente ya dijo antes, de la misma familia ("cancelar" y "cancelación"). Solo cambia el
+  diagnóstico, no el puntaje.
+- Con 15 llamadas armadas de call center y 2 más que repiten palabras, las que fallaban pasan a
+  `CLIENTE_PROBLEMATICO` y el resto no cambia; 79 pruebas pasando.
 
 **Hecho (en `main`):** `analizar.py` emite la **v0.2** del contrato (PRs #8, #19, #20, #22 y #23):
 transcripción con faster-whisper en CPU, `score_sentimiento` y `score_global_nlp` por léxico (RN-01),
