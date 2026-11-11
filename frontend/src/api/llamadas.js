@@ -18,6 +18,21 @@ export function listarLlamadas(filtros = {}, usuario = null) {
   return pedir(`/api/v1/llamadas?${new URLSearchParams(usados)}`);
 }
 
+// Todas las llamadas que cumplen los filtros, pidiendo GET /llamadas pagina por pagina (100 por
+// pagina, el maximo del contrato), hasta `limite`. Responde { total, llamadas, recortado }: si hay
+// mas de `limite`, recortado es true y llamadas trae solo las `limite` mas recientes.
+export async function listarTodasLasLlamadas(filtros = {}, usuario = null, limite = 2000) {
+  const llamadas = [];
+  let total = 0;
+  for (let pagina = 1; llamadas.length < limite; pagina += 1) {
+    const respuesta = await listarLlamadas({ ...filtros, pagina, tamano_pagina: 100 }, usuario);
+    total = respuesta.total;
+    llamadas.push(...respuesta.llamadas);
+    if (pagina >= respuesta.total_paginas) break;
+  }
+  return { total, llamadas: llamadas.slice(0, limite), recortado: total > limite };
+}
+
 // Agentes para el filtro de la Busqueda historica: GET /agentes (SuperAdmin: los activos;
 // Supervisor: los suyos). En modo de prueba, los agentes del listado simulado.
 export function listarAgentesDelListado() {

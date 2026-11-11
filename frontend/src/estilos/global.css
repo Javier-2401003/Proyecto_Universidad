@@ -1475,6 +1475,70 @@ h2 {
   font-size: 0.875rem;
 }
 
+/* ---------- Reportes ---------- */
+/* Tablas con muchas columnas numericas: los titulos pueden ocupar dos lineas. */
+.tabla--titulos-ajustables th {
+  white-space: normal;
+  vertical-align: bottom;
+}
+
+.reporte__generado {
+  font-size: 0.8125rem;
+}
+
+.reporte__nota {
+  margin: -6px 0 10px;
+  font-size: 0.875rem;
+}
+
+.reporte__barra {
+  margin-top: 16px;
+}
+
+.reporte h3 {
+  margin: 0 0 8px;
+  font-size: 0.9375rem;
+}
+
+.reporte__definiciones {
+  font-size: 0.875rem;
+}
+
+.reporte__definiciones ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+/* Guardar PDF = imprimir solo el reporte: sin menu, barra superior, filtros ni botones. */
+@media print {
+  .menu,
+  .barra-superior,
+  .solo-pantalla {
+    display: none !important;
+  }
+
+  .disposicion,
+  .disposicion__principal {
+    display: block;
+  }
+
+  body,
+  .contenido {
+    padding: 0;
+    background: #fff;
+  }
+
+  .tarjeta-panel,
+  .indicador {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+
+  .tabla-contenedor {
+    overflow: visible;
+  }
+}
+
 /* ---------- Pantallas pequenas ---------- */
 @media (max-width: 760px) {
   .disposicion {

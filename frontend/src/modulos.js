@@ -8,6 +8,7 @@ import PanelAgente from './paginas/PanelAgente.jsx';
 import BusquedaHistorica from './paginas/BusquedaHistorica.jsx';
 import Auditoria from './paginas/Auditoria.jsx';
 import Dashboard from './paginas/Dashboard.jsx';
+import Reportes from './paginas/Reportes.jsx';
 import EnConstruccion from './paginas/EnConstruccion.jsx';
 
 // El orden de esta lista es el orden del menu lateral.
@@ -16,7 +17,7 @@ export const MODULOS = [
   { codigo: 'DASHBOARD_VIVO', ruta: '/dashboard', icono: Activity, pantalla: Dashboard },
   { codigo: 'CARGA_LOTES', ruta: '/carga-lotes', icono: Upload, pantalla: CargaLotes },
   { codigo: 'BUSQUEDA_HISTORICA', ruta: '/busqueda', icono: Search, pantalla: BusquedaHistorica },
-  { codigo: 'REPORTES', ruta: '/reportes', icono: FileText, pantalla: EnConstruccion },
+  { codigo: 'REPORTES', ruta: '/reportes', icono: FileText, pantalla: Reportes },
   { codigo: 'GESTION_USUARIOS', ruta: '/usuarios', icono: Users, pantalla: GestionUsuarios },
   { codigo: 'AUDITORIA', ruta: '/auditoria', icono: ShieldCheck, pantalla: Auditoria },
 ];
