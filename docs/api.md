@@ -421,8 +421,8 @@ Igual que en "Detalle de una llamada" (sin módulo; lo decide la relación con l
 - `sentimiento` y `alertas` cuentan **solo llamadas `COMPLETADO`**. `puntaje_promedio` es el
   promedio de `puntaje_final` con 1 decimal, o `null` si no hay llamadas completadas. Los audios
   sin voz cuentan con su puntaje neutro (50); `baja_confianza_audio` dice cuántos son.
-- Las alertas llegan con la v0.3 de `docs/contrato_audio.md`. Hasta entonces `alertas.total` es
-  `0`, y el frontend lo explica en lugar de decir que no hubo alertas.
+- Las alertas salen de la v0.3 de `docs/contrato_audio.md` (PRs #42 y #44). `OMISION_SCRIPT`
+  todavía no se detecta, así que su conteo es `0`; el frontend lo aclara.
 - `agentes`: los agentes visibles con al menos una llamada en el periodo, ordenados por
   `nombre_completo`. Para un Agente, solo él mismo. **Incluye agentes desactivados** si tienen
   llamadas en el periodo (sus resultados siguen contando). `puntaje_promedio` es `null` si el agente
