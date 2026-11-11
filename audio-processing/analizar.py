@@ -14,7 +14,7 @@ import os
 import sys
 import time
 
-VERSION_CONTRATO = "0.2"
+VERSION_CONTRATO = "0.3"
 FRECUENCIA_MUESTREO = 16000  # Whisper trabaja a 16 kHz
 SALTO_MUESTRAS = 320         # 20 ms entre cuadros de analisis acustico
 CUADRO_MUESTRAS = 1024       # 64 ms por cuadro (alcanza para F0 desde 65 Hz)
@@ -152,10 +152,11 @@ def resumir_tramo(f0, rms):
 
 
 def construir_resultado(args, audio, segmentos, hablantes, info, f0, rms, rms_preparado, tiempos,
-                        duraciones, lexico, reglas_acusticas):
+                        duraciones, lexico, reglas_acusticas, reglas_alertas):
     import numpy as np
 
     from acustico import calcular_diagnostico, calcular_puntaje, evaluar
+    from alertas import generar_alertas
     from lexico import analizar_frase, puntaje_global
 
     salida_segmentos = []
@@ -197,6 +198,9 @@ def construir_resultado(args, audio, segmentos, hablantes, info, f0, rms, rms_pr
     diagnostico = calcular_diagnostico(final["clasificacion_final"], salida_segmentos,
                                        frases_analizadas, acustico["eventos"], baja_confianza,
                                        reglas_acusticas)
+    alertas = generar_alertas(salida_segmentos, acustico["eventos"], f0, rms, tiempos,
+                              SALTO_MUESTRAS / FRECUENCIA_MUESTREO, baja_confianza, lexico,
+                              reglas_acusticas, reglas_alertas)
 
     return {
         "version_contrato": VERSION_CONTRATO,
@@ -220,6 +224,7 @@ def construir_resultado(args, audio, segmentos, hablantes, info, f0, rms, rms_pr
         },
         "tiempos_proceso_segundos": {k: redondear(v, 2) for k, v in duraciones.items()},
         "segmentos": salida_segmentos,
+        "alertas": alertas,
     }
 
 
@@ -228,6 +233,7 @@ def main(argv):
     args = leer_argumentos(argv)
 
     from acustico import cargar_reglas
+    from alertas import cargar_reglas as cargar_reglas_alertas
     from diarizacion import asignar_hablantes, leer_canales
     from diarizacion import cargar_reglas as cargar_reglas_diarizacion
     from lexico import cargar_lexico
@@ -236,6 +242,7 @@ def main(argv):
     lexico = cargar_lexico()
     reglas_acusticas = cargar_reglas()
     reglas_diarizacion = cargar_reglas_diarizacion()
+    reglas_alertas = cargar_reglas_alertas()
     audio = cargar_audio(args.ruta_audio)
 
     inicio = time.perf_counter()
@@ -255,7 +262,8 @@ def main(argv):
         "total": time.perf_counter() - inicio_total,
     }
     escribir_json(construir_resultado(args, audio, segmentos, hablantes, info, f0, rms,
-                                      rms_preparado, tiempos, duraciones, lexico, reglas_acusticas))
+                                      rms_preparado, tiempos, duraciones, lexico, reglas_acusticas,
+                                      reglas_alertas))
 
 
 if __name__ == "__main__":
