@@ -13,7 +13,7 @@ Avance aproximado: **75-80 %** (11/11/2026).
 | Gestión de usuarios (crear, editar, desactivar, asignar supervisor) | Willy y Javier | Hecho |
 | Carga de audios por lotes | Willy y Javier | Hecho |
 | Análisis de audio v0.3 (Whisper, sentimiento, puntaje, hablante, alertas) | David | Hecho; falta calibrar con llamadas reales |
-| Procesamiento en el backend (análisis automático, alertas en `TB_Alerta`) | Willy | Hecho; probado de punta a punta el 06/11 |
+| Procesamiento en el backend (análisis automático, alertas en `TB_Alerta`) | Willy | Hecho; probado de punta a punta el 06/11 (laptop de David, sin alertas) y el 10/11 (laptop de Willy, v0.3 con alertas: 10 llamadas `COMPLETADO`) |
 | Inicio con estadísticas, detalle de llamada, panel del agente, búsqueda histórica, auditoría | Javier (endpoints de Willy) | Hecho |
 | Dashboard en tiempo real | Javier y Willy | Por definir (Blueprint) |
 | Reportes | Javier y Willy | Por definir (Blueprint) |
