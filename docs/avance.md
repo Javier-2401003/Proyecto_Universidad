@@ -59,7 +59,7 @@ Avance aproximado: **75-80 %** (11/11/2026).
 ---
 
 ## Javier - Frontend
-_Última actualización: 03/11/2026_
+_Última actualización: 11/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] Proyecto React + Vite en `frontend/`.
@@ -129,10 +129,15 @@ real; probado con MySQL 8, incluido el enlace al detalle.
 módulo y fechas, con paginación; cada registro se muestra como una frase legible (nombres en lugar
 de ids) y el análisis de una llamada enlaza a su detalle. Probado con `GET /auditoria` real (PR #36).
 
-**En curso:** -
+**Dashboard en Tiempo Real** (11/11/2026, rama `javier-dashboard`): se actualiza solo cada 10 s con
+`GET /llamadas` (sin WebSocket ni endpoints nuevos). Muestra lo que se está analizando y lo de hoy:
+indicadores, "Requieren atención", cola de análisis, sentimiento y tabla; aviso con sonido ante una
+crítica nueva y estado de conexión. Decidido priorizar lo que ya tenemos sobre la guía de Dashboard
+y Reportes del Blueprint (no hay llamadas en vivo).
 
-**Pendiente:** Dashboard en Tiempo Real y Reportes. Falta definir qué muestran (Blueprint) y sus
-contratos.
+**En curso:** Reportes, con los mismos endpoints.
+
+**Pendiente:** -
 
 **Necesito de otros:**
 - Willy y David: probar de punta a punta con audios reales ahora que el #15 está en `main`, para

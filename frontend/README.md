@@ -3,7 +3,8 @@
 Interfaz web en React + Vite. Por ahora incluye el login, el menú lateral según los
 permisos del usuario, la gestión de usuarios (crear, editar, activar o desactivar y asignar
 supervisor), la carga de audios por lotes, el detalle de una llamada y las estadísticas de
-la página de inicio, el Panel del Agente, la Búsqueda histórica y el Registro de auditoría.
+la página de inicio, el Panel del Agente, la Búsqueda histórica, el Registro de auditoría y el
+Dashboard en Tiempo Real.
 
 ## Puesta en marcha
 Requisitos: Node.js 20 o superior y el backend funcionando (ver `README.md` de la raíz).
@@ -118,6 +119,21 @@ lo decide `src/api/simulacion/activa.js`; las pantallas simuladas muestran el av
   con nombres en lugar de ids (salen de `GET /usuarios`, que trae hasta 200). Al pasar el mouse se
   ve el JSON guardado. Una acción nueva que la pantalla no conozca se muestra como JSON.
 - "Análisis de llamada" enlaza al detalle de la llamada.
+
+### Dashboard en Tiempo Real (`/dashboard`)
+- Para SuperAdmin y Supervisor (módulo `DASHBOARD_VIVO`). El sistema analiza grabaciones por lotes,
+  no llamadas en vivo: el dashboard muestra lo que se está analizando y lo analizado **hoy**.
+- Se actualiza solo cada 10 s con `GET /llamadas` (tres consultas: las de hoy, las que se están
+  procesando y las pendientes). No usa WebSocket.
+- Indicadores del día, "Requieren atención" (críticas, luego negativas por falla del agente y luego
+  el resto de negativas, de menor a mayor puntaje), la cola de análisis, el sentimiento de hoy y la
+  tabla de llamadas de hoy. Cada llamada abre su detalle.
+- Cuando aparece una llamada **crítica nueva**, muestra un aviso y suena un pitido (se puede silenciar).
+  El navegador solo deja sonar después de que el usuario haya hecho clic en la página.
+- Si se pierde la conexión, dice "Desconectado - Reintentando...", apaga los datos viejos y se
+  recupera solo al volver el backend.
+- Las cuentas de hoy usan las 100 llamadas más recientes del día (lo máximo de una página de
+  `GET /llamadas`); si hay más, lo avisa.
 
 ## Sesión
 - El token se guarda en `sessionStorage`: sobrevive a una recarga y se borra al
