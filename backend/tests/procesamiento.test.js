@@ -181,6 +181,68 @@ test('acepta cualquier 0.x e ignora los campos que no conoce', async () => {
   assert.equal(llamada.estado_procesamiento, 'COMPLETADO');
 });
 
+const alertasDe = (idLlamada) =>
+  consultar(
+    `SELECT tipo_alerta, origen_evento, timestamp_evento, valor_registrado, mensaje_sugerencia
+       FROM TB_Alerta WHERE id_llamada = ? ORDER BY timestamp_evento, id_alerta`,
+    [idLlamada]
+  );
+
+test('v0.3: guarda cada alerta en TB_Alerta y la cuenta en la auditoria', async () => {
+  const llamada = await procesarModo('v03');
+  assert.equal(llamada.estado_procesamiento, 'COMPLETADO');
+  assert.deepEqual(await alertasDe(llamada.id_llamada), [
+    {
+      tipo_alerta: 'VOCABULARIO_INADECUADO',
+      origen_evento: 'AGENTE',
+      timestamp_evento: 0,
+      valor_registrado: 'Palabra: estafa',
+      mensaje_sugerencia: 'Evite términos que puedan ofender o alarmar al cliente.',
+    },
+    {
+      tipo_alerta: 'EXCESO_VOLUMEN',
+      origen_evento: 'CLIENTE',
+      timestamp_evento: 5.5,
+      valor_registrado: '-8.5 dBFS',
+      mensaje_sugerencia: 'Mantenga un tono calmado y valide la molestia del cliente.',
+    },
+  ]);
+  const [auditoria] = await auditoriaDe(llamada.id_llamada);
+  assert.equal(auditoria.detalle_cambio.alertas, 2);
+  assert.equal(auditoria.detalle_cambio.version_contrato, '0.3');
+});
+
+test('v0.3 con alertas vacias, o v0.2 sin el campo: COMPLETADO sin alertas', async () => {
+  for (const modo of ['v03_sin_alertas', 'exito']) {
+    const llamada = await procesarModo(modo);
+    assert.equal(llamada.estado_procesamiento, 'COMPLETADO', modo);
+    assert.deepEqual(await alertasDe(llamada.id_llamada), [], modo);
+    const [auditoria] = await auditoriaDe(llamada.id_llamada);
+    assert.equal(auditoria.detalle_cambio.alertas, 0, modo);
+  }
+});
+
+test('una alerta invalida deja la llamada en ERROR sin guardar nada', async () => {
+  const casos = {
+    alerta_tipo_invalido: 'alertas[].tipo_alerta',
+    alerta_origen_invalido: 'alertas[].origen_evento',
+    alerta_tiempo_negativo: 'alertas[].timestamp_evento',
+    alerta_valor_largo: 'alertas[].valor_registrado',
+    alerta_mensaje_largo: 'alertas[].mensaje_sugerencia',
+    alerta_sin_mensaje: 'alertas[].mensaje_sugerencia',
+  };
+  for (const [modo, campo] of Object.entries(casos)) {
+    const llamada = await procesarModo(modo);
+    assert.equal(llamada.estado_procesamiento, 'ERROR', modo);
+    assert.match(llamada.mensaje_error, /^CONTRATO_INCOMPLETO: /, modo);
+    assert.ok(llamada.mensaje_error.includes(campo), `${modo}: ${llamada.mensaje_error}`);
+    assert.equal(llamada.puntaje_final, 0, modo);
+    assert.deepEqual(await alertasDe(llamada.id_llamada), [], modo);
+    const transcripcion = await consultar('SELECT 1 FROM TB_Transcripcion WHERE id_llamada = ?', [llamada.id_llamada]);
+    assert.equal(transcripcion.length, 0, modo);
+  }
+});
+
 test('v0.1 (la actual): ERROR con CONTRATO_INCOMPLETO y sin guardar valores por defecto', async () => {
   const llamada = await procesarModo('v01');
   assert.equal(llamada.estado_procesamiento, 'ERROR');
@@ -341,6 +403,22 @@ test('una llamada interrumpida vuelve a PENDIENTE y al repetirla no duplica la t
   const filas = await consultar('SELECT texto_transcrito FROM TB_Transcripcion WHERE id_llamada = ?', [id]);
   assert.equal(filas.length, 2);
   assert.ok(!filas.some((fila) => fila.texto_transcrito.includes('resto')));
+});
+
+test('al repetir una llamada interrumpida no duplica las alertas', async () => {
+  const idLote = await crearLote();
+  const id = await crearLlamada('v03', idLote);
+  await consultar(`UPDATE TB_Llamada SET estado_procesamiento = 'PROCESANDO' WHERE id_llamada = ?`, [id]);
+  await consultar(
+    `INSERT INTO TB_Alerta (id_llamada, tipo_alerta, origen_evento, timestamp_evento, valor_registrado)
+     VALUES (?, 'ALTERACION_TONO', 'AGENTE', 1, 'resto de un intento anterior')`,
+    [id]
+  );
+
+  await recuperarInterrumpidas({ idLote });
+  await procesarPendientes({ idLote, ...opciones });
+  const alertas = await alertasDe(id);
+  assert.deepEqual(alertas.map((alerta) => alerta.tipo_alerta), ['VOCABULARIO_INADECUADO', 'EXCESO_VOLUMEN']);
 });
 
 test('sin AUDIO_PYTHON o con la ruta inexistente, el procesamiento no arranca', () => {
