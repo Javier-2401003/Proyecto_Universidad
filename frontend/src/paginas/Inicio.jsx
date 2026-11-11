@@ -218,27 +218,36 @@ function BarrasAlertas({ porTipo }) {
   const filas = Object.entries(porTipo).sort((a, b) => b[1] - a[1]);
   const maximo = Math.max(1, ...filas.map(([, cantidad]) => cantidad));
 
+  // OMISION_SCRIPT todavia no se detecta (docs/contrato_audio.md, v0.3): se avisa para que
+  // su 0 no se lea como "nadie omitio el guion".
+  const notaGuion = (
+    <p className="texto-secundario nota-grafico">La omision del guion todavia no se detecta.</p>
+  );
+
   if (filas.every(([, cantidad]) => cantidad === 0)) {
-    // Las alertas llegan con la v0.3 del contrato de audio; hasta entonces siempre seran 0.
     return (
-      <p className="texto-secundario">
-        Sin alertas registradas. La deteccion automatica de alertas todavia no esta disponible.
-      </p>
+      <>
+        <p className="texto-secundario">No hubo alertas en este periodo.</p>
+        {notaGuion}
+      </>
     );
   }
 
   return (
-    <ul className="barras">
-      {filas.map(([tipo, cantidad]) => (
-        <li key={tipo} className="barras__fila">
-          <span className="barras__etiqueta">{TIPOS_ALERTA[tipo] ?? tipo}</span>
-          <span className="barras__pista">
-            <span className="barras__relleno" style={{ width: `${(cantidad / maximo) * 100}%` }} />
-          </span>
-          <strong className="barras__valor">{cantidad}</strong>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="barras">
+        {filas.map(([tipo, cantidad]) => (
+          <li key={tipo} className="barras__fila">
+            <span className="barras__etiqueta">{TIPOS_ALERTA[tipo] ?? tipo}</span>
+            <span className="barras__pista">
+              <span className="barras__relleno" style={{ width: `${(cantidad / maximo) * 100}%` }} />
+            </span>
+            <strong className="barras__valor">{cantidad}</strong>
+          </li>
+        ))}
+      </ul>
+      {notaGuion}
+    </>
   );
 }
 
