@@ -215,49 +215,68 @@ Los audios "armados" usan voces de Windows, con hablante conocido; solo la llama
 ---
 
 ## Willy - Backend
-_Última actualización: 05/11/2026_
+_Última actualización: 10/11/2026_
 
 **Objetivo para la próxima reunión**
-- [x] Carga de audios por lotes: `GET /agentes`, `POST /llamadas/lotes` y `GET /llamadas/lotes/:id_lote` (PR #7, fusionado).
-- [x] Gestión de usuarios: editar, desactivar y asignar supervisor (PR #11, fusionado).
-- [x] Detalle de una llamada: `GET /llamadas/:id_llamada` y `/audio` (PR #13, fusionado).
-- [x] Estadísticas del inicio: `GET /estadisticas/resumen` (PR #16, fusionado).
-- [x] Roles: `GET /roles` (PR #17) y su contrato en `docs/api.md` (PR #18), fusionados.
-- [x] Revisar el contrato de audio v0.1 (PR #9) y v0.2 (PR #21).
-- [x] Procesamiento de audio en el backend (PR #15, fusionado).
+- [x] Carga de lotes, gestión de usuarios, detalle de llamada, estadísticas, roles y procesamiento de audio (PRs #7, #11, #13, #15 a #18, fusionados).
+- [x] Auditoría: contrato (PR #29) y `GET /auditoria` (PR #36).
+- [x] Listado de llamadas: revisión del contrato de Javier (PR #30) y `GET /llamadas` (PR #37).
+- [x] Alertas: revisar la v0.3 del contrato (PR #41) y guardarlas en `TB_Alerta` (PR #44).
+- [x] Prueba de punta a punta con el `analizar.py` real (10/11, abajo).
 
 **Hecho:**
 - Carga de lotes (PR #7). Usa `multer` (MIT): después de `git pull` hay que correr `npm install` en
   `backend/`. Los audios quedan en `backend/uploads/lotes/<id_lote>/`.
-- `GET /api/v1/llamadas/:id_llamada` y `/audio` (PR #13). Sin módulo de permisos: el agente ve sus
-  llamadas, el supervisor las de sus agentes asignados y el SuperAdmin todas; si no puede verla, `404`.
-- `GET /api/v1/estadisticas/resumen` (PR #16), con la misma visibilidad que el detalle. Javier ya puede
-  poner `VITE_SIMULAR_ESTADISTICAS=false`.
-- `GET /api/v1/roles` (PR #17), con `GESTION_USUARIOS` leer; documentado en `docs/api.md` (PR #18).
-- PR #11: los correos de `tests/usuarios.test.js` usan el prefijo `test.usr.` para no chocar con otros
-  archivos de prueba (10 de 10 corridas pasando).
-- Contrato v0.2 (PR #21): aprobado en un comentario del PR. Es compatible con el PR #15: su ejemplo y
-  el caso sin voz quedan `COMPLETADO` en el código real. Las reglas de puntaje quedan como provisionales.
-- Procesamiento de audio en `main` (PR #15: `src/procesamientoAudio.js`, `tests/procesamiento.test.js`,
-  sin Python). Una llamada a la vez con `execFile`, según `docs/contrato_audio.md`. Si `AUDIO_PYTHON` o
-  `AUDIO_SCRIPT` de `backend/.env` faltan o no existen, no arranca y las llamadas siguen en `PENDIENTE`
-  (ver `backend/.env.example`). Solo está probado con un ejecutable falso.
-- Regla nueva en `CLAUDE.md` (PR #24): el autor puede fusionar su propio PR si solo toca su área.
+- `GET /llamadas/:id_llamada` y `/audio` (PR #13), `GET /estadisticas/resumen` (PR #16) y `GET /llamadas`
+  (PR #37). Los tres tienen la misma visibilidad, sin módulo de permisos: el Agente ve sus llamadas, el
+  Supervisor las de sus agentes asignados y el SuperAdmin todas.
+- `GET /auditoria` (PR #36), con `AUDITORIA` leer. Del usuario solo devuelve id, nombre y correo.
+  `src/listados.js` reúne la paginación y las fechas de los dos listados.
+- `GET /roles` (PR #17), con `GESTION_USUARIOS` leer.
+- Procesamiento de audio (PR #15). Una llamada a la vez con `execFile`, según `docs/contrato_audio.md`.
+  Si `AUDIO_PYTHON` o `AUDIO_SCRIPT` de `backend/.env` faltan o no existen, no arranca y las llamadas
+  siguen en `PENDIENTE`.
+- Alertas de la v0.3 en `TB_Alerta` (PR #44). Si una alerta no es válida, la llamada queda en `ERROR`
+  con `CONTRATO_INCOMPLETO` (decisión de la sección 6 del contrato). Un reproceso no las duplica.
+- Revisiones: contrato v0.2 (PRs #21 y #32), v0.3 (PR #41) y decisiones del 11/11 (PR #46).
+- Regla de `CLAUDE.md` (PR #24): el autor puede fusionar su propio PR si solo toca su área.
+- `npm test` en `backend/`: 135 pruebas pasando con MySQL real.
+
+**Prueba de punta a punta (10/11, en mi laptop, `main` con la v0.3):** venv de `audio-processing/` con
+Python 3.13 (606 MB) y modelo `base`. Usé 5 llamadas armadas con voces de Windows, de 72 a 89 s: el
+agente con la voz de Raúl y la cliente con la de Sabina. **No son llamadas humanas.** Creé un Supervisor
+y un Agente por la API, los asigné y subí el lote como Supervisor. El backend las procesó solo, junto
+con las 5 que seguían `PENDIENTE` del lote 6. **Las 10 quedaron `COMPLETADO` y los dos lotes se
+cerraron, sin ningún `ERROR`.** El análisis tardó de 22 a 36 s por llamada.
+
+| Llamada | Resultado | ¿Tiene sentido? |
+|---|---|---|
+| Positiva ("excelente", "muchas gracias, fue muy amable") | `NEUTRO`, 62,36 | No llega a `POSITIVO` (máximo 77,5): decisión 3 del 11/11 |
+| Neutra (cambio de dirección) | `NEUTRO`, 62,04 | Sí |
+| Cliente grita, dice "estafa" y "ladrones", quiere cancelar | `CRITICO`, 19,02; 2 `EXCESO_VOLUMEN` y 2 `VOCABULARIO_INADECUADO` del cliente | Sí, salvo el diagnóstico `FALLA_AGENTE` (ver David) |
+| Agente grosero ("no sea tonta") | `NEGATIVO`, 34,14, `FALLA_AGENTE`; alerta de vocabulario del agente | Sí |
+| Con ruido de calle | `NEUTRO`, 63,75, sin baja confianza | No (ver David) |
+
+En las 4 llamadas sin ruido, la transcripción y el `hablante` salieron casi perfectos (13 a 27 segmentos).
+Solo hubo detalles menores, como "Telecomandina" o "señor a Torres".
 
 **En curso:** -
 
 **Pendiente:**
-- Probar el procesamiento con el `analizar.py` real (hay que instalar el venv de `audio-processing/`).
-- Guardar `TB_Alerta` cuando David entregue la v0.3.
+- Dashboard en tiempo real y Reportes: definir el contrato con Javier (están "Por definir").
+- Endpoint para cambiar la contraseña (`docs/api.md` lo deja "para un endpoint propio").
+- Repetir la prueba con llamadas humanas reales cuando el equipo las tenga.
 
 **Necesito de otros:**
-- **Quien tenga el venv de audio:** iniciar el backend con `AUDIO_PYTHON` y `AUDIO_SCRIPT` en su `.env` y
-  avisarme si alguna llamada queda en `ERROR` (con su `mensaje_error`).
-- **David** (detalle en el comentario del PR #21; no bloquean):
-  - En la v0.3, usar los valores de `TB_Alerta.tipo_alerta` (`EXCESO_VOLUMEN`, no `ELEVACION_VOLUMEN`).
-  - Anotar en el contrato los mensajes propios del backend y el timeout de 3600 s.
-  - `json.dumps(..., allow_nan=False)` en `analizar.py`.
-  - Cambiar el estado del contrato a "aprobada".
-- **Equipo:** decidir si el SuperAdmin también puede subir lotes. Con los permisos iniciales solo
-  lee `CARGA_LOTES`, así que solo el Supervisor puede subir. Si se decide que sí, lo cambio con
-  un script `database/04_...sql`.
+- **David** (de la prueba del 10/11):
+  - **Diagnóstico:** en la llamada del cliente que grita sale `FALLA_AGENTE` porque el agente dice
+    "voy a registrar su **queja**" (-0,5). Debería ser `CLIENTE_PROBLEMATICO`; parece lo que corrige tu
+    PR #45.
+  - **Ruido:** con ruido de calle, Whisper degrada el texto ("Buenas noches de recorrandito a la Lama")
+    y la mayoría de los `hablante` salen cruzados: 13 `AGENTE` contra 6 `CLIENTE` en una llamada
+    pareja. Además, `baja_confianza_audio` queda en `false`.
+  - **Puntaje:** la llamada positiva confirma que hace falta reescalar `puntaje_final` (decisión 3).
+  - Te paso mi grabación de 52 s por fuera de GitHub, para el umbral de baja confianza.
+- **Javier:** qué necesita el Dashboard en tiempo real y los Reportes, para proponer los contratos.
+- **Usuarios de la prueba:** `sup.real.9d2bec@prueba.test` (Supervisor) y `age.real.9d2bec@prueba.test`
+  (Agente), solo en mi MySQL local. Las contraseñas están en mi `backend/.env`.
