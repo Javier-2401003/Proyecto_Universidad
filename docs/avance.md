@@ -4,18 +4,19 @@ Cada integrante (o su Claude) actualiza **solo su propia sección** al terminar 
 sesión de trabajo. Las secciones "Estado general" y "Acuerdos" se cambian en reunión.
 
 ## Estado general
-Avance aproximado: **15-20 %** (20/10/2026).
+Avance aproximado: **75-80 %** (11/11/2026).
 
 | Parte | Responsable | Estado |
 |---|---|---|
 | Base de datos (12 tablas, roles, módulos, permisos) | - | Hecho |
 | Autenticación JWT, RBAC y auditoría | - | Hecho |
-| Gestión de usuarios | Willy | Parcial: listar y crear |
-| Carga de audios por lotes | Willy | Por empezar |
-| Procesamiento de audio (Whisper, librosa, sentimiento, puntaje) | David | Por empezar |
-| Frontend | Javier | Por empezar |
-| Dashboard en vivo, panel del agente, alertas | Por asignar | Por empezar |
-| Búsqueda histórica y reportes | Por asignar | Por empezar |
+| Gestión de usuarios (crear, editar, desactivar, asignar supervisor) | Willy y Javier | Hecho |
+| Carga de audios por lotes | Willy y Javier | Hecho |
+| Análisis de audio v0.3 (Whisper, sentimiento, puntaje, hablante, alertas) | David | Hecho; falta calibrar con llamadas reales |
+| Procesamiento en el backend (análisis automático, alertas en `TB_Alerta`) | Willy | Hecho; probado de punta a punta el 06/11 |
+| Inicio con estadísticas, detalle de llamada, panel del agente, búsqueda histórica, auditoría | Javier (endpoints de Willy) | Hecho |
+| Dashboard en tiempo real | Javier y Willy | Por definir (Blueprint) |
+| Reportes | Javier y Willy | Por definir (Blueprint) |
 
 ## Acuerdos
 - Solo herramientas gratuitas; Whisper siempre en local (ver `CLAUDE.md`).
@@ -37,8 +38,23 @@ Avance aproximado: **15-20 %** (20/10/2026).
     Define qué datos del análisis muestra la pantalla (transcripción por hablante con
     sentimiento, alertas, puntaje, clasificación y diagnóstico). Su apartado **"De dónde
     salen los datos"** es la base para `docs/contrato_audio.md`.
-  - `docs/contrato_audio.md` (David y Willy): pendiente. Cómo llama Node a Python y el JSON que devuelve.
+  - `docs/contrato_audio.md` (David y Willy): cómo llama Node a Python y el JSON que devuelve. En `main`
+    la **v0.3** (con alertas).
 - Guía para instalar y probar la demo en cualquier computadora: `docs/demo.md`.
+- **Decisiones del 11/11/2026** (sobre el análisis de audio; ver `docs/contrato_audio.md`, "Por
+  aprobar" y "Para revisar con llamadas reales"):
+  1. **RN-02 y RN-03 se apartan del Blueprint, y se acepta así:** una subida de volumen cuenta si
+     llega al 180 % durante 2 s (el Blueprint dice 150 % durante 1,5 s), y la alerta roja exige además
+     texto negativo. El motivo es bajar las falsas alarmas; se explica en el informe.
+  2. **Cortes de clasificación 35 y 65:** se quedan, de forma provisional, hasta medir con llamadas reales.
+  3. **`puntaje_final` se reescala para usar de 0 a 100.** Hoy el máximo es 77,5 porque `score_acustico`
+     nunca es positivo. **David** propone cómo en un PR al contrato, que revisa Willy. El campo sigue
+     siendo de 0 a 100, así que el backend y el frontend no cambian.
+  4. **Las palabras de cancelación o amenaza y los gritos pesan más que las de cortesía.** Un cliente
+     que grita y amenaza con cancelar debe salir `NEGATIVO` o `CRITICO`, aunque diga "gracias" (hoy
+     sale `NEUTRO`, 39,8). Lo ajusta **David**.
+  5. **Solo el Supervisor sube lotes;** el SuperAdmin sigue solo consultando `CARGA_LOTES`. No hace
+     falta el script `database/04_...sql`.
 
 ---
 
