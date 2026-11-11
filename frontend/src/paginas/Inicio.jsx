@@ -8,21 +8,15 @@ import { PERIODOS, obtenerResumen } from '../api/estadisticas.js';
 import { SIMULAR_ESTADISTICAS as SIMULAR } from '../api/simulacion/activa.js';
 import { Cargando } from '../componentes/Cargando.jsx';
 import { Indicador } from '../componentes/Indicador.jsx';
+import { BarraApilada, SERIES_CLASIFICACION, porcentaje } from '../componentes/Graficos.jsx';
 
-// Orden y color de cada barra apilada. Los colores son los mismos de las etiquetas
+// Orden y color de las barras de estado. Los colores son los mismos de las etiquetas
 // de carga de lotes y del detalle de una llamada.
 const ESTADOS = [
   { clave: 'COMPLETADO', texto: 'Completadas', clase: 'serie--exito' },
   { clave: 'PROCESANDO', texto: 'Procesando', clase: 'serie--primario' },
   { clave: 'PENDIENTE', texto: 'Pendientes', clase: 'serie--neutro' },
   { clave: 'ERROR', texto: 'Con error', clase: 'serie--error' },
-];
-
-const CLASIFICACIONES = [
-  { clave: 'POSITIVO', texto: 'Positivas', clase: 'serie--exito' },
-  { clave: 'NEUTRO', texto: 'Neutras', clase: 'serie--neutro' },
-  { clave: 'NEGATIVO', texto: 'Negativas', clase: 'serie--negativo' },
-  { clave: 'CRITICO', texto: 'Criticas', clase: 'serie--error' },
 ];
 
 const TIPOS_ALERTA = {
@@ -37,7 +31,6 @@ const formatoNumero = new Intl.NumberFormat('es');
 
 // "2026-11-03" -> fecha local (sin que la zona horaria la mueva un dia).
 const fechaLocal = (iso) => new Date(`${iso}T00:00:00`);
-const porcentaje = (parte, total) => (total > 0 ? Math.round((parte / total) * 100) : 0);
 
 export default function Inicio() {
   const { usuario } = useSesion();
@@ -151,7 +144,7 @@ function Estadisticas({ resumen, veOtrosAgentes }) {
           ) : (
             <>
               <BarraApilada
-                series={CLASIFICACIONES}
+                series={SERIES_CLASIFICACION}
                 valores={sentimiento.por_clasificacion}
                 total={completadas}
                 unidad="llamadas analizadas"
@@ -181,39 +174,6 @@ function Estadisticas({ resumen, veOtrosAgentes }) {
   );
 }
 
-// Una barra horizontal dividida por categoria. La leyenda repite cada valor, asi
-// que el color nunca es la unica forma de leerlo.
-function BarraApilada({ series, valores, total, unidad }) {
-  const descripcion = series.map(({ clave, texto }) => `${texto}: ${valores[clave]}`).join(', ');
-  return (
-    <div className="barra-apilada">
-      <div className="barra-apilada__pista" role="img" aria-label={`${descripcion} (de ${total} ${unidad})`}>
-        {series
-          .filter(({ clave }) => valores[clave] > 0)
-          .map(({ clave, texto, clase }) => (
-            <span
-              key={clave}
-              className={`barra-apilada__tramo ${clase}`}
-              style={{ flexGrow: valores[clave] }}
-              title={`${texto}: ${valores[clave]} (${porcentaje(valores[clave], total)} %)`}
-            />
-          ))}
-      </div>
-      <ul className="leyenda">
-        {series.map(({ clave, texto, clase }) => (
-          <li key={clave}>
-            <i className={clase} aria-hidden="true" />
-            <span>{texto}</span>
-            <strong>{valores[clave]}</strong>
-            <span className="texto-secundario">{porcentaje(valores[clave], total)} %</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-// Barras horizontales de un solo color, de mayor a menor, con el valor al final.
 function BarrasAlertas({ porTipo }) {
   const filas = Object.entries(porTipo).sort((a, b) => b[1] - a[1]);
   const maximo = Math.max(1, ...filas.map(([, cantidad]) => cantidad));
