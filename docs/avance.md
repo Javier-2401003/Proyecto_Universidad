@@ -152,7 +152,7 @@ exportación en el backend; opcional).
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 10/11/2026_
+_Última actualización: 11/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -209,7 +209,7 @@ Los audios "armados" usan voces de Windows, con hablante conocido; solo la llama
   los PRs #43 y #45: 92 pruebas pasando, y en las llamadas armadas el origen de cada alerta coincide
   con el diagnóstico.
 
-**Primera llamada real con conflicto (10/11, rama `david-lexico-groserias`):** una llamada de soporte
+**Primera llamada real con conflicto (10/11, PR #51, en `main`):** una llamada de soporte
 técnico descargada de internet (8 min 56 s) en la que la clienta grita e insulta casi todo el tiempo.
 - Antes salía `NEUTRO` 42,7 sin alertas de la clienta: 17 frases con groserías daban 0 y no hubo ningún
   `EXCESO_VOLUMEN`. Además salieron 3 `ALTERACION_TONO` falsas del agente.
@@ -220,10 +220,26 @@ técnico descargada de internet (8 min 56 s) en la que la clienta grita e insult
 - Las 17 llamadas armadas dan lo mismo que antes y otra llamada descargada (un sketch irónico, sin
   gritos) sigue `NEUTRO` sin alertas; 97 pruebas pasando.
 
+**Decisión 4 del 11/11 (rama `david-pesos-decision4`): cancelación, amenazas y gritos pesan más que la
+cortesía.**
+- Texto: la cancelación y las amenazas (lista `graves` de `lexico_es.json`) y todo el vocabulario
+  inadecuado valen -1,0, el doble que "gracias" o "con gusto". Negadas valen lo normal: "no quiero
+  cancelar" sigue en +0,5. No cambia el contrato: el global sigue siendo el promedio de las frases.
+- Voz: cada tramo de grito sostenido cuenta doble en `score_acustico`; los cambios de tono, que también
+  salen en llamadas tranquilas, cuentan una vez.
+- Con 27 llamadas (las 17 armadas, la de la decisión y la tranquila de la prueba del 06/11, 5 de la demo
+  y 3 descargadas): 27 en la clase esperada, antes 24. El cliente que grita y amenaza con cancelar pasa
+  de `NEUTRO` 39,8 a `NEGATIVO` 33,3 (`CLIENTE_PROBLEMATICO`), y la llamada real con insultos, de
+  `NEUTRO` 35,4 a `NEGATIVO` 24,4. Las positivas y neutras no cambian. 103 pruebas pasando.
+- No llega a `CRITICO`: su texto queda en -0,20 y el contrato pide menos de -0,3. La decisión acepta
+  `NEGATIVO`.
+
 **Pendiente:**
-- **Calibración:** el cliente que grita y amenaza con cancelar sale `NEUTRO` (39,8): el texto queda en
-  -0,1 porque se promedia con los "gracias", y `CRITICO` exige texto menor a -0,3. Hay que revisar los
-  cortes y el promedio del léxico con llamadas reales.
+- **Reescalar `puntaje_final` de 0 a 100 (decisión 3 del 11/11):** propuesta en un PR al contrato, que
+  revisa Willy.
+- **Ruido (prueba de Willy del 10/11):** con ruido de calle, Whisper degrada el texto, los `hablante`
+  salen cruzados (13 `AGENTE` contra 6 `CLIENTE` en una llamada pareja) y `baja_confianza_audio` queda en
+  `false`.
 - Repetir la prueba de punta a punta con llamadas reales de call center, junto con Willy y Javier.
 - Medir `hablante` con llamadas reales etiquetadas (espero 65-85 % en mono, sin medir) y usarlo en el
   promedio móvil de RN-02.
@@ -244,16 +260,13 @@ técnico descargada de internet (8 min 56 s) en la que la clienta grita e insult
   más fuerte que el agente y no hubo ningún `EXCESO_VOLUMEN`. Arreglarlo cambia RN-02 (ver "Necesito").
 
 **Necesito de otros:**
-- Willy: anotar aquí los fallos del análisis que encuentres en tu prueba con audios de call center.
-  ¿Me compartes 3 o 4 de esos audios, y tu grabación de 52 s, para medir `hablante` y el umbral de
-  confianza?
+- Willy: tu grabación de 52 s (por fuera de GitHub, como dijiste), para el umbral de baja confianza.
 - Willy o Javier: correr `analizar.py` con `base` en su laptop y anotar cuánto tarda, para medir en la
   más lenta del equipo.
 - Equipo: definir el guion obligatorio para `OMISION_SCRIPT` (por ejemplo, saludo, identificación y
   despedida).
-- Equipo: confirmar que RN-02 y RN-03 se apartan del Blueprint (180 % durante 2 s en lugar de 150 %
-  durante 1,5 s; alerta roja solo con texto negativo) y los cortes provisionales 35 y 65. Y decidir cómo
-  detectar a un cliente que grita casi toda la llamada; propongo comparar su volumen con el del agente.
+- Equipo: decidir cómo detectar a un cliente que grita casi toda la llamada (cambia RN-02); propongo
+  comparar su volumen con el del agente. Lo de RN-02, RN-03 y los cortes 35 y 65 ya quedó decidido el 11/11.
 
 ---
 

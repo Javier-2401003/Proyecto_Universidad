@@ -1,5 +1,7 @@
 {
   "peso_por_palabra": 0.5,
+  "peso_grave": 1.0,
+  "graves": ["cancelar", "cancelación", "cancelaron", "canceló", "cancelado", "cancelada", "cancelen", "cancelo", "denuncia", "denuncias", "denunciar", "demandar"],
   "ventana_negacion": 3,
   "negadores": ["no", "sin", "tampoco"],
   "oficial_rn01": {

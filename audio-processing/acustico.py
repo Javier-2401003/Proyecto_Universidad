@@ -170,7 +170,9 @@ def evaluar(f0, rms, segundos_por_cuadro, reglas):
 
     "rms" debe venir del audio de preparar_audio. Sin eventos el puntaje es 0, no positivo: una
     voz tranquila no prueba satisfaccion. Baja hasta -1 cuando los eventos llegan a
-    "fraccion_saturacion" del tiempo con voz.
+    "fraccion_saturacion" del tiempo con voz. Cada tramo de grito sostenido cuenta
+    "peso_tramo_grito" veces (decision del equipo del 11/11: los gritos pesan mas); los tramos
+    de tono cuentan una vez, porque tambien aparecen en llamadas tranquilas.
     """
     tramo = reglas["segundos_por_tramo"]
     cuadros_por_tramo = int(round(tramo / segundos_por_cuadro))
@@ -180,10 +182,10 @@ def evaluar(f0, rms, segundos_por_cuadro, reglas):
 
     volumen = marcar_volumen(amplitud, voz, reglas)
     tono = marcar_tono(np.asarray(f0), cuadros_por_tramo, len(amplitud), reglas) & voz
-    subida = volumen | tono
+    puntos = np.count_nonzero(tono & ~volumen) + reglas["peso_tramo_grito"] * np.count_nonzero(volumen)
 
     tramos_con_voz = np.count_nonzero(voz)
-    fraccion = np.count_nonzero(subida) / tramos_con_voz if tramos_con_voz else 0.0
+    fraccion = puntos / tramos_con_voz if tramos_con_voz else 0.0
     return {
         "score_acustico": round(-min(1.0, fraccion / reglas["fraccion_saturacion"]), 3) + 0.0,
         # Solo volumen: la ventana de 2 s del tono hace que un solo cambio de voz ya dure 2 s.

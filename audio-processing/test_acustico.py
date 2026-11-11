@@ -107,6 +107,13 @@ class PruebasVolumen(unittest.TestCase):
     def test_audio_muy_corto_no_falla(self):
         self.assertEqual(resultado(*senal([(0.1, 0.1)]))["score_acustico"], 0.0)
 
+    def test_un_grito_sostenido_pesa_el_doble(self):
+        # Decision del equipo del 11/11: los gritos pesan mas.
+        f0, rms = senal([(20, 0.1), (3, 0.3), (20, 0.1)])
+        sin_peso = evaluar(f0, rms, SEGUNDOS_POR_CUADRO, {**REGLAS, "peso_tramo_grito": 1.0})
+        self.assertEqual(REGLAS["peso_tramo_grito"], 2.0)
+        self.assertAlmostEqual(resultado(f0, rms)["score_acustico"], 2 * sin_peso["score_acustico"], places=2)
+
 
 class PruebasTono(unittest.TestCase):
     def test_tono_estable_no_genera_eventos(self):
@@ -125,6 +132,12 @@ class PruebasTono(unittest.TestCase):
         f0, rms = senal([(20, 0.1)])
         f0[:] = np.nan
         self.assertEqual(resultado(f0, rms)["score_acustico"], 0.0)
+
+    def test_el_tono_no_pesa_doble(self):
+        f0, rms = senal([(30, 0.1)], f0=150.0)
+        f0[10 * CUADROS_POR_SEGUNDO:13 * CUADROS_POR_SEGUNDO:2] = 400.0
+        sin_peso = evaluar(f0, rms, SEGUNDOS_POR_CUADRO, {**REGLAS, "peso_tramo_grito": 1.0})
+        self.assertEqual(resultado(f0, rms)["score_acustico"], sin_peso["score_acustico"])
 
     def test_eventos_en_todo_el_audio_saturan_en_menos_uno(self):
         f0, rms = senal([(30, 0.1)], f0=150.0)

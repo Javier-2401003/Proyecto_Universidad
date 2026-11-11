@@ -7,6 +7,9 @@ decision del proyecto (se puede ajustar en lexico_es.json):
   - El puntaje global es el promedio de las frases con alguna palabra clave.
   - Las palabras de "vocabulario_inadecuado" que no estan en las listas de sentimiento tambien
     restan, y no se niegan: "no sea tonto" sigue siendo un insulto.
+  - Decision del equipo del 11/11: la cancelacion y las amenazas ("graves") y todo el
+    "vocabulario_inadecuado" valen "peso_grave", mas que la cortesia. Negada, cualquier palabra
+    vale "peso_por_palabra" con el signo al reves: "no quiero cancelar" suma 0,5, no 1.
 """
 
 import json
@@ -46,14 +49,18 @@ def cargar_lexico(ruta=RUTA_LEXICO):
 
     # En una llamada real, 17 frases con insultos daban 0 porque ninguno estaba en el lexico.
     insultos = set()
+    graves = {tuple(normalizar(palabra).split()) for palabra in datos.get("graves", [])}
     for palabra in datos.get("vocabulario_inadecuado", []):
         expresion = tuple(normalizar(palabra).split())
         if expresion not in pesos:
-            pesos[expresion] = -datos["peso_por_palabra"]
             insultos.add(expresion)
+        graves.add(expresion)
+    for expresion in graves:
+        pesos[expresion] = -datos.get("peso_grave", datos["peso_por_palabra"])
 
     return {
         "pesos": pesos,
+        "peso_por_palabra": datos["peso_por_palabra"],
         "largo_maximo": max(len(frase) for frase in pesos),
         "negadores": {normalizar(n) for n in datos["negadores"]},
         "ventana_negacion": datos["ventana_negacion"],
@@ -121,7 +128,9 @@ def analizar_frase(texto, lexico, ignorar_negativas=()):
         peso = lexico["pesos"][expresion]
         if peso < 0 and raiz(expresion) in ignorar_negativas:
             continue
-        total += -peso if negada else peso
+        if negada:
+            peso = lexico["peso_por_palabra"] if peso < 0 else -lexico["peso_por_palabra"]
+        total += peso
         coincidencias += 1
     return round(max(-1.0, min(1.0, total)), 3), coincidencias
 
