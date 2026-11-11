@@ -34,6 +34,10 @@ class PruebasVocabulario(unittest.TestCase):
     def test_no_coincide_dentro_de_otra_palabra(self):
         self.assertEqual(palabras_inadecuadas("el estafador habló", LEXICO), [])
 
+    def test_plurales_y_groserias_de_una_llamada_real(self):
+        self.assertEqual(palabras_inadecuadas("¡Son unos malparidos, qué mierdas, hijueputas!", LEXICO),
+                         ["malparidos", "mierdas", "hijueputas"])
+
     def test_una_alerta_por_palabra_y_segmento_aunque_se_repita(self):
         alertas = alertas_vocabulario([segmento(3.5, 6, "CLIENTE", "estafa, estafa y más estafa")], LEXICO)
         self.assertEqual(alertas, [{"tipo_alerta": "VOCABULARIO_INADECUADO", "origen_evento": "CLIENTE",

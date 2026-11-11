@@ -137,7 +137,7 @@ _Última actualización: 10/11/2026_
 - Gritos (07/11, PR #43, en `main`): un grito se le atribuía a cualquiera cuyo turno rozara, aunque
   fuera 0,2 s. Ahora cuenta para quien más tiempo habla dentro del grito, igual que `origen_evento` en
   la v0.3.
-- Palabras repetidas (10/11, rama `david-diagnostico-repeticion`): "Dejo registrada su queja y su
+- Palabras repetidas (10/11, PR #45, en `main`): "Dejo registrada su queja y su
   solicitud de cancelación" daba `FALLA_AGENTE`. Ahora al agente no le cuentan las palabras negativas
   que el cliente ya dijo antes, de la misma familia ("cancelar" y "cancelación"). Solo cambia el
   diagnóstico, no el puntaje.
@@ -182,6 +182,17 @@ Los audios "armados" usan voces de Windows, con hablante conocido; solo la llama
   los PRs #43 y #45: 92 pruebas pasando, y en las llamadas armadas el origen de cada alerta coincide
   con el diagnóstico.
 
+**Primera llamada real con conflicto (10/11, rama `david-lexico-groserias`):** una llamada de soporte
+técnico descargada de internet (8 min 56 s) en la que la clienta grita e insulta casi todo el tiempo.
+- Antes salía `NEUTRO` 42,7 sin alertas de la clienta: 17 frases con groserías daban 0 y no hubo ningún
+  `EXCESO_VOLUMEN`. Además salieron 3 `ALTERACION_TONO` falsas del agente.
+- Amplié el léxico (conjugaciones como "cancelaron", "falta de respeto") y la lista provisional de
+  groserías, que ahora también restan en el sentimiento, sin que la negación las invierta ("no sea
+  tonto"). Ahora: texto -0,43, puntaje 35,35 y 10 `VOCABULARIO_INADECUADO` de la clienta. Sigue `NEUTRO`
+  por 0,35 puntos, porque el volumen no ayuda (ver Pendiente).
+- Las 17 llamadas armadas dan lo mismo que antes y otra llamada descargada (un sketch irónico, sin
+  gritos) sigue `NEUTRO` sin alertas; 97 pruebas pasando.
+
 **Pendiente:**
 - **Calibración:** el cliente que grita y amenaza con cancelar sale `NEUTRO` (39,8): el texto queda en
   -0,1 porque se promedia con los "gracias", y `CRITICO` exige texto menor a -0,3. Hay que revisar los
@@ -199,7 +210,11 @@ Los audios "armados" usan voces de Windows, con hablante conocido; solo la llama
   `hablante`, detección de gritos y umbral de `baja_confianza_audio`. **Bloqueado:** no tengo llamadas
   reales de call center ni acceso a las otras laptops.
 - `ALTERACION_TONO`: sin los errores de octava, el 40 % de RN-02 no se cumplió en ningún audio; hay que
-  ver con llamadas reales si alguna vez se dispara.
+  ver con llamadas reales si alguna vez se dispara. En la llamada real con conflicto dio 3 alertas
+  falsas al agente: quedan errores de octava y ventanas con la voz de la clienta.
+- **Gritos sostenidos:** si el cliente grita casi toda la llamada, RN-02 no lo detecta, porque compara con
+  el promedio de los 30 s anteriores, que ya es su grito. En la llamada real la clienta hablaba unos 8 dB
+  más fuerte que el agente y no hubo ningún `EXCESO_VOLUMEN`. Arreglarlo cambia RN-02 (ver "Necesito").
 
 **Necesito de otros:**
 - Willy: anotar aquí los fallos del análisis que encuentres en tu prueba con audios de call center.
@@ -210,7 +225,8 @@ Los audios "armados" usan voces de Windows, con hablante conocido; solo la llama
 - Equipo: definir el guion obligatorio para `OMISION_SCRIPT` (por ejemplo, saludo, identificación y
   despedida).
 - Equipo: confirmar que RN-02 y RN-03 se apartan del Blueprint (180 % durante 2 s en lugar de 150 %
-  durante 1,5 s; alerta roja solo con texto negativo) y los cortes provisionales 35 y 65.
+  durante 1,5 s; alerta roja solo con texto negativo) y los cortes provisionales 35 y 65. Y decidir cómo
+  detectar a un cliente que grita casi toda la llamada; propongo comparar su volumen con el del agente.
 
 ---
 

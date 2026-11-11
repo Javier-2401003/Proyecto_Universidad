@@ -65,6 +65,24 @@ class PruebasFamilias(unittest.TestCase):
         self.assertEqual(analizar_frase("excelente", LEXICO, {"excel"}), (0.5, 1))
 
 
+class PruebasInsultos(unittest.TestCase):
+    def test_todo_el_vocabulario_inadecuado_resta(self):
+        for palabra in LEXICO["inadecuadas"].values():
+            self.assertLess(puntaje(f"usted es {palabra}"), 0, palabra)
+
+    def test_un_insulto_no_se_niega(self):
+        self.assertEqual(puntaje("no sea tonto"), -0.5)
+        self.assertEqual(puntaje("no me cuelgue, malparido"), -0.5)
+
+    def test_las_palabras_de_sentimiento_se_siguen_negando(self):
+        # "fraude" esta en las dos listas: manda la de sentimiento.
+        self.assertEqual(puntaje("no es un fraude"), 0.5)
+
+    def test_formas_conjugadas_y_expresiones(self):
+        self.assertEqual(puntaje("me cancelaron el servicio"), -0.5)
+        self.assertEqual(analizar_frase("esto es una falta de respeto", LEXICO), (-0.5, 1))
+
+
 class PruebasCarga(unittest.TestCase):
     def test_acepta_archivo_guardado_con_bom(self):
         with open(RUTA_LEXICO, encoding="utf-8") as archivo:

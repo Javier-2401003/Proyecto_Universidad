@@ -131,8 +131,13 @@ reglas son una decisión del proyecto, no del Blueprint:
 - "no", "sin" o "tampoco" hasta 3 palabras antes, sin una coma de por medio, invierten el
   signo: "no es una estafa" suma, y "no, gracias" sigue siendo positiva.
 - `score_global_nlp` es el promedio de las frases con alguna palabra clave, o 0 si no hay ninguna.
-- `ampliacion_no_oficial` agrega plurales, femeninos y palabras como "molesto" o "terrible".
-  **No está en el Blueprint.** Hay que vaciar esa lista para usar solo RN-01.
+- `ampliacion_no_oficial` agrega plurales, femeninos, conjugaciones ("cancelaron") y palabras como
+  "molesto", "terrible" o "falta de respeto". **No está en el Blueprint.** Hay que vaciar esa lista
+  para usar solo RN-01.
+- Las palabras de `vocabulario_inadecuado` (ver Alertas) que no están en las listas de sentimiento
+  también restan 0,5, y la negación no las invierte: "no sea tonto" sigue siendo un insulto. Las que
+  están en las dos listas ("estafa", "fraude") se niegan como antes: "no es un fraude" suma. En una
+  llamada real con insultos, 17 frases de la clienta daban 0 porque ninguna grosería estaba en el léxico.
 
 Para ejecutar las pruebas, desde `audio-processing/` (no necesitan audio ni instalar nada más):
 ```powershell
@@ -230,11 +235,17 @@ defina el guion obligatorio.
 | Conversación armada en la que el cliente grita (×3) | 1 `EXCESO_VOLUMEN` del cliente, a los 9 s, justo cuando empieza a gritar |
 | Conversación armada tranquila | Ninguna |
 | Llamada real de radio (4 min 44 s) | Ninguna. Sin el filtro de octavas daba **7 `ALTERACION_TONO` falsas**: todas eran errores de `pyin` |
+| Llamada real de soporte técnico, la clienta grita e insulta (8 min 56 s) | 10 `VOCABULARIO_INADECUADO` de la clienta, **ningún `EXCESO_VOLUMEN`** y 3 `ALTERACION_TONO` **falsas** del agente |
 
 **Límites conocidos:**
 
 - **Solo el primer grito de una racha:** el promedio móvil se adapta, así que un cliente que grita en
-  todos sus turnos da una sola alerta de volumen.
+  todos sus turnos da una sola alerta de volumen. Y si grita casi toda la llamada no da ninguna: en
+  la llamada real de 8 min 56 s la clienta habla unos 8 dB más fuerte que el agente y ocupa el 73 %
+  del tiempo, así que el promedio de los 30 s anteriores ya es su grito. Corregirlo cambia RN-02
+  (por ejemplo, comparar con el volumen del agente): lo decide el equipo.
+- **Tono falso en el agente:** en esa misma llamada salieron 3 `ALTERACION_TONO` del agente, que habla
+  tranquilo; hay errores de octava de `pyin` que el filtro no quita y ventanas con la voz de la clienta.
 - **El 40 % de RN-02 casi nunca se cumple con voz real:** sin los errores de octava, ni la llamada real
   ni los audios armados llegaron a ese nivel. Hay que medirlo con llamadas reales de call center.
 - **Vocabulario sin contexto:** "no es una estafa" también se marca, y la alerta usa el inicio del
