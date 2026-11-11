@@ -52,6 +52,26 @@ const V01 = {
   segmentos: [{ indice: 0, inicio: 0, fin: 1, texto: 'Hola', f0_hz: 100, rms_dbfs: -20 }],
 };
 
+// v0.3: lo mismo que la v0.2 mas el arreglo de alertas (como el ejemplo del contrato).
+const ALERTAS = [
+  {
+    tipo_alerta: 'VOCABULARIO_INADECUADO',
+    origen_evento: 'AGENTE',
+    timestamp_evento: 0,
+    valor_registrado: 'Palabra: estafa',
+    mensaje_sugerencia: 'Evite términos que puedan ofender o alarmar al cliente.',
+  },
+  {
+    tipo_alerta: 'EXCESO_VOLUMEN',
+    origen_evento: 'CLIENTE',
+    timestamp_evento: 5.5,
+    valor_registrado: '-8.5 dBFS',
+    mensaje_sugerencia: 'Mantenga un tono calmado y valide la molestia del cliente.',
+  },
+];
+const V03 = { ...V02, version_contrato: '0.3', alertas: ALERTAS };
+const conAlerta = (cambio) => JSON.stringify({ ...V03, alertas: [ALERTAS[0], { ...ALERTAS[1], ...cambio }] });
+
 registrar('inicio');
 process.stderr.write('Cargando modelo... (stderr no indica error)\n');
 
@@ -68,6 +88,30 @@ switch (modo) {
     break;
   case 'sin_voz':
     salir(0, JSON.stringify(SIN_VOZ));
+    break;
+  case 'v03':
+    salir(0, JSON.stringify(V03));
+    break;
+  case 'v03_sin_alertas':
+    salir(0, JSON.stringify({ ...V03, alertas: [] }));
+    break;
+  case 'alerta_tipo_invalido': // el nombre interno que usaba antes la v0.3
+    salir(0, conAlerta({ tipo_alerta: 'ELEVACION_VOLUMEN' }));
+    break;
+  case 'alerta_origen_invalido':
+    salir(0, conAlerta({ origen_evento: 'AMBOS' }));
+    break;
+  case 'alerta_tiempo_negativo':
+    salir(0, conAlerta({ timestamp_evento: -1 }));
+    break;
+  case 'alerta_valor_largo': // valor_registrado es VARCHAR(100)
+    salir(0, conAlerta({ valor_registrado: 'x'.repeat(101) }));
+    break;
+  case 'alerta_mensaje_largo': // mensaje_sugerencia es VARCHAR(255)
+    salir(0, conAlerta({ mensaje_sugerencia: 'x'.repeat(256) }));
+    break;
+  case 'alerta_sin_mensaje':
+    salir(0, conAlerta({ mensaje_sugerencia: undefined }));
     break;
   case 'v01':
     salir(0, JSON.stringify(V01));

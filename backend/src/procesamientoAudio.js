@@ -19,9 +19,18 @@ const score = z.number().min(-1).max(1);
 const tiempo = z.number().nonnegative().max(99999.999); // DECIMAL(8,3)
 const medida = z.number().min(-9999.99).max(9999.99).nullish(); // DECIMAL(6,2)
 
-// Campos de la v0.2 (seccion 5 del contrato). Los que el backend no conoce se ignoran.
-// Los limites son los de las columnas: MySQL sin modo estricto (Wamp) recorta en silencio
-// el valor que no cabe, y se guardaria un dato falso.
+// Cada alerta de la v0.3 (seccion 3 del contrato), con los limites de TB_Alerta.
+const esquemaAlerta = z.object({
+  tipo_alerta: z.enum(['EXCESO_VOLUMEN', 'ALTERACION_TONO', 'VOCABULARIO_INADECUADO', 'OMISION_SCRIPT']),
+  origen_evento: z.enum(['AGENTE', 'CLIENTE']),
+  timestamp_evento: tiempo,
+  valor_registrado: z.string().max(100), // VARCHAR(100)
+  mensaje_sugerencia: z.string().max(255), // VARCHAR(255)
+});
+
+// Campos de la v0.2 (seccion 5 del contrato) y, si vienen, las alertas de la v0.3. Los que el
+// backend no conoce se ignoran. Los limites son los de las columnas: MySQL sin modo estricto
+// (Wamp) recorta en silencio el valor que no cabe, y se guardaria un dato falso.
 const esquemaResultado = z.object({
   duracion_segundos: z.number().nonnegative().max(2147483647),
   baja_confianza_audio: z.boolean(),
@@ -43,6 +52,8 @@ const esquemaResultado = z.object({
       })
       .refine((segmento) => segmento.fin >= segmento.inicio, { path: ['fin'] })
   ),
+  // Sin el campo (v0.2) la llamada se guarda sin alertas; si viene, cada una debe ser valida.
+  alertas: z.array(esquemaAlerta).default([]),
 });
 
 function recortar(mensaje) {
@@ -216,10 +227,28 @@ async function guardarExito(llamada, { datos, versionContrato }) {
         ]
       );
     }
+    // Igual que la transcripcion: un reproceso no debe duplicar las alertas.
+    await conexion.execute('DELETE FROM TB_Alerta WHERE id_llamada = ?', [llamada.id_llamada]);
+    for (const alerta of datos.alertas) {
+      await conexion.execute(
+        `INSERT INTO TB_Alerta
+           (id_llamada, tipo_alerta, origen_evento, timestamp_evento, valor_registrado, mensaje_sugerencia)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          llamada.id_llamada,
+          alerta.tipo_alerta,
+          alerta.origen_evento,
+          alerta.timestamp_evento,
+          alerta.valor_registrado,
+          alerta.mensaje_sugerencia,
+        ]
+      );
+    }
     await registrarCierre(conexion, llamada, {
       estado_procesamiento: 'COMPLETADO',
       version_contrato: versionContrato,
       segmentos: datos.segmentos.length,
+      alertas: datos.alertas.length,
     });
   });
 }
