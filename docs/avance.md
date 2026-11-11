@@ -160,15 +160,16 @@ y la visibilidad del Agente. Las tildes se guardan bien (`utf8mb4`).
 
 Los audios "armados" usan voces de Windows, con hablante conocido; solo la llamada de radio es real.
 
-**En curso: v0.3 (alertas).**
-- PR #41, contrato v0.3 (espera revisión de Willy): arreglo `alertas` con los valores exactos de
-  `TB_Alerta`. Detecta `EXCESO_VOLUMEN`, `ALTERACION_TONO` por hablante y `VOCABULARIO_INADECUADO`;
-  `OMISION_SCRIPT` queda para cuando el equipo defina el guion. Incluye las dos precisiones de Willy
-  del #32.
-- Rama `david-alertas-v03`: la implementación, con 81 pruebas pasando. No se fusiona hasta que se
-  apruebe el #41. Con audio: el grito armado da 1 `EXCESO_VOLUMEN` del cliente, la conversación tranquila
-  ninguna, y la llamada real ninguna (daba 7 `ALTERACION_TONO` falsas por errores de octava de `pyin`,
-  que ahora se descartan). La salida sigue pasando el esquema del #15.
+**v0.3 (alertas):**
+- Contrato v0.3 (PR #41): Willy lo aprobó y lo fusionó el 10/11. Arreglo `alertas` con los valores
+  exactos de `TB_Alerta`: `EXCESO_VOLUMEN`, `ALTERACION_TONO` por hablante y `VOCABULARIO_INADECUADO`,
+  provisionales igual que la lista de palabras y los mensajes. `OMISION_SCRIPT` queda para cuando el
+  equipo defina el guion. El backend ya guarda las alertas (PR #44 de Willy).
+- Implementación (PR #42): `analizar.py` emite la v0.3. Con audio: el grito armado da 1
+  `EXCESO_VOLUMEN` del cliente, la conversación tranquila ninguna, y la llamada real ninguna (daba 7
+  `ALTERACION_TONO` falsas por errores de octava de `pyin`, que ahora se descartan). Probado junto con
+  los PRs #43 y #45: 92 pruebas pasando, y en las llamadas armadas el origen de cada alerta coincide
+  con el diagnóstico.
 
 **Pendiente:**
 - **Calibración:** el cliente que grita y amenaza con cancelar sale `NEUTRO` (39,8): el texto queda en
@@ -190,9 +191,9 @@ Los audios "armados" usan voces de Windows, con hablante conocido; solo la llama
   ver con llamadas reales si alguna vez se dispara.
 
 **Necesito de otros:**
-- Willy: revisar el PR #41 (contrato v0.3) y anotar aquí los fallos del análisis que encuentres en tu
-  prueba con audios de call center. ¿Me compartes 3 o 4 de esos audios, y tu grabación de 52 s, para
-  medir `hablante` y el umbral de confianza?
+- Willy: anotar aquí los fallos del análisis que encuentres en tu prueba con audios de call center.
+  ¿Me compartes 3 o 4 de esos audios, y tu grabación de 52 s, para medir `hablante` y el umbral de
+  confianza?
 - Willy o Javier: correr `analizar.py` con `base` en su laptop y anotar cuánto tarda, para medir en la
   más lenta del equipo.
 - Equipo: definir el guion obligatorio para `OMISION_SCRIPT` (por ejemplo, saludo, identificación y
