@@ -3,8 +3,8 @@
 Interfaz web en React + Vite. Por ahora incluye el login, el menú lateral según los
 permisos del usuario, la gestión de usuarios (crear, editar, activar o desactivar y asignar
 supervisor), la carga de audios por lotes, el detalle de una llamada y las estadísticas de
-la página de inicio, el Panel del Agente, la Búsqueda histórica, el Registro de auditoría y el
-Dashboard en Tiempo Real.
+la página de inicio, el Panel del Agente, la Búsqueda histórica, el Registro de auditoría, el
+Dashboard en Tiempo Real y los Reportes.
 
 ## Puesta en marcha
 Requisitos: Node.js 20 o superior y el backend funcionando (ver `README.md` de la raíz).
@@ -134,6 +134,20 @@ lo decide `src/api/simulacion/activa.js`; las pantallas simuladas muestran el av
   recupera solo al volver el backend.
 - Las cuentas de hoy usan las 100 llamadas más recientes del día (lo máximo de una página de
   `GET /llamadas`); si hay más, lo avisa.
+
+### Reportes (`/reportes`)
+- Para SuperAdmin y Supervisor (módulo `REPORTES`). Filtros: fechas (por defecto, los últimos 30
+  días) y agente; quedan en la dirección.
+- Junta las llamadas del periodo con `GET /llamadas` (de 100 en 100, hasta 2000; si hay más, lo
+  avisa) y calcula en el navegador: **resumen ejecutivo**, **desempeño por agente**, **tendencia
+  semanal** y **llamadas críticas**. Al pie explica cómo se calcula cada número.
+- **Índice de calidad del agente:** promedio del puntaje sin las llamadas de "cliente problemático".
+- **Descargar CSV:** una fila por llamada, separado por `;` y en UTF-8 con BOM para que Excel en
+  español lo abra bien.
+- **Guardar PDF:** usa la impresión del navegador ("Guardar como PDF"); al imprimir se ocultan el
+  menú, los filtros y los botones.
+- No registra la descarga en la auditoría: para eso haría falta un endpoint de exportación en el
+  backend.
 
 ## Sesión
 - El token se guarda en `sessionStorage`: sobrevive a una recarga y se borra al

@@ -135,9 +135,15 @@ indicadores, "Requieren atención", cola de análisis, sentimiento y tabla; avis
 crítica nueva y estado de conexión. Decidido priorizar lo que ya tenemos sobre la guía de Dashboard
 y Reportes del Blueprint (no hay llamadas en vivo).
 
-**En curso:** Reportes, con los mismos endpoints.
+**Reportes** (11/11/2026, rama `javier-reportes`): resumen ejecutivo, desempeño por agente (índice
+de calidad sin las llamadas de cliente problemático), tendencia semanal y llamadas críticas, con
+filtros de fechas y agente. Descarga CSV y PDF (impresión del navegador). También sin endpoints
+nuevos: junta las llamadas con `GET /llamadas`. Con esto **ningún módulo queda "En construcción"**.
 
-**Pendiente:** -
+**En curso:** -
+
+**Pendiente:** registrar en la auditoría la descarga de reportes (necesitaría un endpoint de
+exportación en el backend; opcional).
 
 **Necesito de otros:**
 - Willy y David: probar de punta a punta con audios reales ahora que el #15 está en `main`, para
