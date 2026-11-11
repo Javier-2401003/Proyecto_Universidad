@@ -18,7 +18,7 @@ from collections import deque
 import numpy as np
 from scipy.signal import butter, sosfiltfilt
 
-from lexico import puntaje_global
+from lexico import analizar_frase, cargar_lexico, puntaje_global, raices_negativas
 
 RUTA_REGLAS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reglas_acusticas.json")
 ORDEN_FILTRO = 4
@@ -236,22 +236,43 @@ def hablante_del_evento(evento, segmentos):
     return max(tiempos, key=tiempos.get) if tiempos else None
 
 
-def calcular_diagnostico(clasificacion, segmentos, frases_analizadas, eventos, baja_confianza, reglas):
+def frases_sin_eco(segmentos, frases_analizadas, lexico):
+    """Frases analizadas sin las palabras negativas que el agente repite de lo que ya dijo el cliente.
+
+    "Registro su queja y su solicitud de cancelacion" no es una falla del agente si el cliente ya
+    se quejo y pidio cancelar. Se compara por familia de palabras (lexico.raiz).
+    """
+    dichas_por_cliente = set()
+    resultado = []
+    for segmento, frase in zip(segmentos, frases_analizadas):
+        if segmento["hablante"] == "AGENTE" and dichas_por_cliente:
+            frase = analizar_frase(segmento["texto"], lexico, dichas_por_cliente)
+        elif segmento["hablante"] == "CLIENTE":
+            dichas_por_cliente |= raices_negativas(segmento["texto"], lexico)
+        resultado.append(frase)
+    return resultado
+
+
+def calcular_diagnostico(clasificacion, segmentos, frases_analizadas, eventos, baja_confianza, reglas,
+                         lexico=None):
     """Origen del conflicto en una llamada mala (Blueprint, 3.3, punto 4).
 
     Solo se diagnostican llamadas NEGATIVO o CRITICO. Si el agente tiene texto negativo o gritos, es
     FALLA_AGENTE; si solo los tiene el cliente, CLIENTE_PROBLEMATICO. Cada grito es de quien mas
-    tiempo habla dentro de el. Con baja confianza no cuenta la voz. Todavia no revisa si el agente
-    omitio el script ni si interrumpio.
+    tiempo habla dentro de el, y al agente no le cuentan las palabras negativas que repite del
+    cliente. Con baja confianza no cuenta la voz. Todavia no revisa si el agente omitio el script ni
+    si interrumpio. Sin lexico, usa el de lexico_es.json.
     """
     if clasificacion not in ("NEGATIVO", "CRITICO"):
         return "SIN_CONFLICTO"
 
     gritones = set() if baja_confianza else {
         hablante_del_evento(e, segmentos) for e in eventos if e["tipo"] == "EXCESO_VOLUMEN"}
+    frases = frases_sin_eco(segmentos, frases_analizadas,
+                            lexico if lexico is not None else cargar_lexico())
 
     def tiene_conflicto(hablante):
-        propias = [f for s, f in zip(segmentos, frases_analizadas) if s["hablante"] == hablante]
+        propias = [f for s, f in zip(segmentos, frases) if s["hablante"] == hablante]
         return puntaje_global(propias) < reglas["umbral_nlp_negativo"] or hablante in gritones
 
     if tiene_conflicto("AGENTE"):

@@ -13,6 +13,9 @@ import re
 import unicodedata
 
 RUTA_LEXICO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lexico_es.json")
+# Una familia de palabras comparte las primeras letras: "queja" y "quejas", "cancelar" y
+# "cancelación", "pésimo" y "pésima".
+LETRAS_RAIZ = 5
 
 
 def normalizar(texto):
@@ -69,10 +72,8 @@ def buscar_coincidencia(palabras, inicio, lexico):
     return None
 
 
-def analizar_frase(texto, lexico):
-    """Devuelve (puntaje de -1 a +1, cuantas palabras clave se encontraron)."""
-    total = 0.0
-    coincidencias = 0
+def encontrar_expresiones(texto, lexico):
+    """Expresiones del lexico en el texto, en orden, junto con si estan negadas."""
     for palabras in separar_clausulas(texto):
         indice = 0
         while indice < len(palabras):
@@ -81,11 +82,34 @@ def analizar_frase(texto, lexico):
                 indice += 1
                 continue
             previas = palabras[max(0, indice - lexico["ventana_negacion"]):indice]
-            negada = any(palabra in lexico["negadores"] for palabra in previas)
-            peso = lexico["pesos"][expresion]
-            total += -peso if negada else peso
-            coincidencias += 1
+            yield expresion, any(palabra in lexico["negadores"] for palabra in previas)
             indice += len(expresion)
+
+
+def raiz(expresion):
+    """Familia de una expresion del lexico (una tupla de palabras normalizadas)."""
+    return "".join(expresion)[:LETRAS_RAIZ]
+
+
+def raices_negativas(texto, lexico):
+    """Familias de las palabras negativas del texto, esten o no negadas."""
+    return {raiz(expresion) for expresion, _ in encontrar_expresiones(texto, lexico)
+            if lexico["pesos"][expresion] < 0}
+
+
+def analizar_frase(texto, lexico, ignorar_negativas=()):
+    """Devuelve (puntaje de -1 a +1, cuantas palabras clave se encontraron).
+
+    Las palabras negativas cuya familia esta en ignorar_negativas no cuentan.
+    """
+    total = 0.0
+    coincidencias = 0
+    for expresion, negada in encontrar_expresiones(texto, lexico):
+        peso = lexico["pesos"][expresion]
+        if peso < 0 and raiz(expresion) in ignorar_negativas:
+            continue
+        total += -peso if negada else peso
+        coincidencias += 1
     return round(max(-1.0, min(1.0, total)), 3), coincidencias
 
 
