@@ -5,6 +5,8 @@ decision del proyecto (se puede ajustar en lexico_es.json):
   - Cada palabra clave suma o resta "peso_por_palabra"; el total se limita a -1 y +1.
   - Un negador hasta "ventana_negacion" palabras antes, en la misma clausula, invierte el signo.
   - El puntaje global es el promedio de las frases con alguna palabra clave.
+  - Las palabras de "vocabulario_inadecuado" que no estan en las listas de sentimiento tambien
+    restan, y no se niegan: "no sea tonto" sigue siendo un insulto.
 """
 
 import json
@@ -42,11 +44,20 @@ def cargar_lexico(ruta=RUTA_LEXICO):
         for palabra in grupo["negativas"]:
             pesos[tuple(normalizar(palabra).split())] = -datos["peso_por_palabra"]
 
+    # En una llamada real, 17 frases con insultos daban 0 porque ninguno estaba en el lexico.
+    insultos = set()
+    for palabra in datos.get("vocabulario_inadecuado", []):
+        expresion = tuple(normalizar(palabra).split())
+        if expresion not in pesos:
+            pesos[expresion] = -datos["peso_por_palabra"]
+            insultos.add(expresion)
+
     return {
         "pesos": pesos,
         "largo_maximo": max(len(frase) for frase in pesos),
         "negadores": {normalizar(n) for n in datos["negadores"]},
         "ventana_negacion": datos["ventana_negacion"],
+        "insultos_sin_negacion": insultos,
         # Lista provisional para VOCABULARIO_INADECUADO (contrato v0.3): el Blueprint solo da "estafa".
         "inadecuadas": {normalizar(palabra): palabra for palabra in datos.get("vocabulario_inadecuado", [])},
     }
@@ -82,7 +93,9 @@ def encontrar_expresiones(texto, lexico):
                 indice += 1
                 continue
             previas = palabras[max(0, indice - lexico["ventana_negacion"]):indice]
-            yield expresion, any(palabra in lexico["negadores"] for palabra in previas)
+            negada = (expresion not in lexico["insultos_sin_negacion"]
+                      and any(palabra in lexico["negadores"] for palabra in previas))
+            yield expresion, negada
             indice += len(expresion)
 
 
