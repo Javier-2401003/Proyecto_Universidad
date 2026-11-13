@@ -207,8 +207,9 @@ señaló Willy, encontré que la diarización fallaba en llamadas cortas aunque 
   Con 6 llamadas por caso y la verdad de cada turno: hombre y mujer 99,3 %, dos hombres 87,0 % (antes
   66,7 %) y dos mujeres 73,6 % (antes 62,1 %); con ruido de calle, 94-99 %, y la llamada real con
   conflicto, 98,7 %. No cambia el contrato: `hablante` sigue siendo `AGENTE` o `CLIENTE`.
-- Sigue pendiente lo de `baja_confianza_audio` con ruido: mi primer ruido de prueba quedaba casi todo
-  bajo 80 Hz y el análisis lo filtra, así que hay que repetirlo con ruido dentro de la banda de la voz.
+- `baja_confianza_audio` con ruido: lo repetí con ruido dentro de la banda de la voz. El criterio de la
+  v0.3 no se activaba nunca con ruido de calle; el nuevo (señal/ruido menor a 18 dB) va en el contrato
+  v0.4 (#53) y su implementación en el #54.
 
 **v0.3 (alertas):**
 - Contrato v0.3 (PR #41): Willy lo aprobó y lo fusionó el 10/11. Arreglo `alertas` con los valores
@@ -251,10 +252,15 @@ cortesía.**
 queda igual. Con 27 llamadas: la positiva de la prueba de Willy pasa a `POSITIVO` (72,5), 7 llamadas
 cambian de `NEUTRO` a `POSITIVO` y ninguna negativa cambia. Efecto a decidir: 4 de esas 7 son consultas
 neutras que terminan con "gracias"; el contrato deja una alternativa en curva que no las cambia.
-- Implementación lista (rama `david-puntaje-v04`, 13/11): `analizar.py` emite la v0.4, y
+- Implementación lista (PR #54, borrador, 13/11): `analizar.py` emite la v0.4, y
   `escala_lado_positivo` en `reglas_acusticas.json` elige `"lineal"` o `"curva"` sin tocar código. Con
   el `analizar.py` real, las 27 llamadas dan lo mismo que la simulación, y el lado negativo da
-  exactamente lo mismo que la v0.3; 107 pruebas pasando. Se fusiona después del #53.
+  exactamente lo mismo que la v0.3. Se fusiona después del #53.
+- **Criterio de ruido de `baja_confianza_audio` (también en la v0.4):** señal/ruido menor a 18 dB, sin
+  exigir 12 dB de variación de volumen. Con ruido de calle mezclado en la banda de la voz, la v0.3 no se
+  activaba ni a 0 dB (texto bien al 30-69 %); ahora se activa desde 5 dB (texto bien al 67-80 %). No marca
+  ninguna llamada limpia; los recortes de la llamada real de radio quedan a 1,4 dB del corte. 110
+  pruebas pasando con la diarización del #55.
 
 **Pendiente:**
 - **Ruido (prueba de Willy del 10/11):** con ruido de calle, Whisper degrada el texto, los `hablante`
