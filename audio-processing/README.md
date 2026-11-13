@@ -342,22 +342,29 @@ siempre es `AGENTE` o `CLIENTE`, aunque la separación no sea segura:
 
 1. **Por canales:** si el archivo trae dos canales distintos, izquierdo = agente y derecho = cliente
    (Blueprint, 3.2.1). Un estéreo con la misma mezcla en ambos canales no cuenta.
-2. **Por voz:** si no, reparte ventanas de 1 s en dos grupos, según timbre (MFCC) y tono (F0).
+2. **Por voz:** si no, reparte los **segmentos de Whisper** en dos grupos, según timbre (MFCC promedio
+   de sus cuadros con voz) y tono (F0 mediano, con peso 4). Antes agrupaba ventanas de 1 s, con el
+   timbre promediado también sobre pausas y ruido, y las suavizaba con un filtro de mediana: en
+   llamadas de 40 s eso agrupaba por pausas y por lo que se decía, no por quién hablaba (ver abajo).
 3. **Quién es el agente:** el grupo con más frases típicas de agente (`reglas_diarizacion.json`); si
    empatan, quien habla primero.
 
-**Precisión medida** con conversaciones armadas con voces de Windows (unos 100 s cada una), donde se
-sabe quién habla. Es el porcentaje del tiempo con el hablante correcto:
+**Precisión medida** (13/11) con llamadas armadas de call center de unos 40 s, con voces de Windows y
+la verdad de cada turno guardada al armarlas. Es el porcentaje del tiempo con el hablante correcto;
+entre paréntesis, la peor llamada:
 
-| Caso | Acierto |
-|---|---|
-| Hombre y mujer | 99,6 % y 99,9 % |
-| Dos mujeres | 99,9 % |
-| Misma voz con 4 semitonos de diferencia | 96,8 % |
-| Misma voz con 2 semitonos de diferencia | **56,5 %** (casi al azar) |
-| Habla primero el cliente, hombre y mujer | 97,3 % |
-| Filtro de teléfono y ruido, hombre y mujer | 89,6 % |
-| Filtro de teléfono y ruido, dos mujeres | 93,0 % |
+| Caso (6 llamadas cada uno) | Antes (ventanas) | Ahora (segmentos) |
+|---|---|---|
+| Hombre y mujer (Raúl y Sabina) | 66,6 % (45 %) | **99,3 %** (98 %) |
+| Dos hombres (Raúl y Raúl 3 semitonos más agudo) | 66,7 % (53 %) | **87,0 %** (58 %) |
+| Dos mujeres (Sabina y Sabina 3 semitonos más grave) | 62,1 % (41 %) | **73,6 %** (20 %) |
+| Hombre y mujer con ruido de calle a 20, 10 y 5 dB (24 versiones) | 94,0-95,2 % | 94,2-98,7 % |
+| Llamada real con conflicto (8 min 56 s, hombre y mujer; verdad por el tono) | 97,7 % | 98,7 % |
+
+Las pruebas anteriores, con llamadas de unos 100 s, daban 99,6 % con hombre y mujer: las llamadas
+cortas tienen pocas ventanas y ahí fallaba. Con voces del mismo género sigue siendo poco confiable: en
+2 de las 12 llamadas los roles quedaron casi invertidos (Whisper juntó turnos de las dos, o el primer
+segmento se agrupó con el cliente).
 
 **Precisión esperada en llamadas reales: de 65 a 85 % en audio mono, y por encima de 95 % con canales
 separados.** Es una estimación, no una medida: las voces sintéticas son más fáciles que una llamada
@@ -368,8 +375,9 @@ real. Falta medirla con llamadas etiquetadas.
 - **Voces parecidas:** dos personas del mismo género y tono casi no se separan.
 - **Roles invertidos:** si no hay frases típicas y el cliente habla primero, se invierten **todos** los
   hablantes de la llamada, aunque la separación sea buena.
-- **Un hablante por segmento:** si dos personas hablan dentro de un mismo segmento de Whisper, gana
-  quien ocupa más tiempo. En una llamada real hubo segmentos de más de 60 s con muy poco texto.
+- **Un hablante por segmento:** si dos personas hablan dentro de un mismo segmento de Whisper, sus voces
+  se mezclan en el promedio. Con ruido, Whisper junta más turnos: es la mayor parte de los errores que
+  quedan con ruido. En una llamada real hubo segmentos de más de 60 s con muy poco texto.
 - **Una sola voz:** igual se reparte en dos grupos.
 - **Conflicto:** `diagnostico_conflicto` depende de esta separación, y aún no revisa si el agente
   omitió el script o interrumpió. Con hablantes errados, puede culpar a quien no fue. Cada subida de

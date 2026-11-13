@@ -3,12 +3,14 @@
 Dos caminos, en este orden:
   1. Canales: si el archivo trae dos canales distintos, izquierdo = agente y derecho = cliente
      (Blueprint, 3.2.1).
-  2. Agrupacion: reparte ventanas de voz en dos grupos por timbre (MFCC) y tono (F0). Las frases
-     tipicas de reglas_diarizacion.json dicen que grupo es el agente; si no alcanzan, es quien
-     habla primero.
+  2. Agrupacion: reparte los segmentos de Whisper en dos grupos por timbre (MFCC de sus cuadros con
+     voz) y tono (F0). Las frases tipicas de reglas_diarizacion.json dicen que grupo es el agente;
+     si no alcanzan, es quien habla primero.
 
+Se agrupan segmentos y no ventanas de 1 s: en llamadas de 40 s, las ventanas se agrupaban por pausas
+y por lo que se decia, y acertaban 67 % del tiempo con un hombre y una mujer; por segmento, 99 %.
 Cada segmento de Whisper recibe un solo hablante: si dos personas hablan dentro del mismo segmento,
-gana la que ocupa mas tiempo. Siempre devuelve AGENTE o CLIENTE, aunque la separacion no sea segura.
+se mezclan sus voces. Siempre devuelve AGENTE o CLIENTE, aunque la separacion no sea segura.
 """
 
 import json
@@ -16,7 +18,6 @@ import os
 
 import librosa
 import numpy as np
-from scipy.ndimage import median_filter
 
 from lexico import normalizar
 
@@ -68,26 +69,29 @@ def hablante_por_canal(izquierdo, derecho, frecuencia, segmentos):
     return hablantes
 
 
-def calcular_ventanas(audio, f0, frecuencia, salto, reglas):
-    """Devuelve las ventanas con voz: tiempos y caracteristicas (MFCC sin energia + F0)."""
+def caracteristicas_por_segmento(segmentos, audio, f0, frecuencia, salto, reglas):
+    """Una fila por segmento con voz (MFCC sin energia + log del tono mediano) y los indices medidos.
+
+    El MFCC se promedia solo en los cuadros con tono: las pausas y el ruido no dicen quien habla.
+    """
     mfcc = librosa.feature.mfcc(y=audio, sr=frecuencia, n_mfcc=reglas["numero_mfcc"] + 1,
                                 hop_length=salto)[1:]
     cuadros = min(mfcc.shape[1], len(f0))
     segundos_por_cuadro = salto / frecuencia
-    ancho = int(reglas["segundos_ventana"] / segundos_por_cuadro)
-    avance = int(reglas["segundos_salto"] / segundos_por_cuadro)
+    minimo = max(1, int(reglas["segundos_minimos_voz"] / segundos_por_cuadro))
 
-    tiempos = []
     filas = []
-    for inicio in range(0, max(0, cuadros - ancho + 1), avance):
-        tono = f0[inicio:inicio + ancho]
-        con_voz = tono[~np.isnan(tono)]
-        if len(con_voz) < reglas["fraccion_minima_voz"] * ancho:
+    medidos = []
+    for indice, segmento in enumerate(segmentos):
+        desde = int(segmento["inicio"] / segundos_por_cuadro)
+        hasta = min(int(segmento["fin"] / segundos_por_cuadro), cuadros)
+        tono = f0[desde:hasta]
+        voz = ~np.isnan(tono)
+        if np.count_nonzero(voz) < minimo:
             continue
-        tiempos.append((inicio * segundos_por_cuadro, (inicio + ancho) * segundos_por_cuadro))
-        filas.append(np.append(np.mean(mfcc[:, inicio:inicio + ancho], axis=1),
-                               np.log(np.median(con_voz))))
-    return tiempos, np.array(filas)
+        filas.append(np.append(np.mean(mfcc[:, desde:hasta][:, voz], axis=1), np.log(np.median(tono[voz]))))
+        medidos.append(indice)
+    return np.array(filas), medidos
 
 
 def dos_medias(puntos):
@@ -108,34 +112,26 @@ def dos_medias(puntos):
 
 
 def agrupar(caracteristicas, reglas):
-    """Reparte las ventanas en dos grupos y suaviza saltos aislados de una sola ventana."""
+    """Reparte los segmentos en dos grupos. Sin suavizar: los turnos se alternan."""
     if len(caracteristicas) < 2:
         return np.zeros(len(caracteristicas), dtype=int)
     desviacion = np.std(caracteristicas, axis=0)
     desviacion[desviacion == 0] = 1.0
     normalizadas = (caracteristicas - np.mean(caracteristicas, axis=0)) / desviacion
     normalizadas[:, -1] *= reglas["peso_f0"]
-    return median_filter(dos_medias(normalizadas), size=3, mode="nearest")
+    return dos_medias(normalizadas)
 
 
-def grupo_por_segmento(segmentos, tiempos, grupos):
-    """Grupo con mas tiempo dentro de cada segmento; sin voz medida, el del segmento anterior."""
-    asignados = []
-    anterior = None
-    for segmento in segmentos:
-        tiempo_grupo = [0.0, 0.0]
-        for (desde, hasta), grupo in zip(tiempos, grupos):
-            traslape = min(hasta, segmento["fin"]) - max(desde, segmento["inicio"])
-            if traslape > 0:
-                tiempo_grupo[grupo] += traslape
-        if tiempo_grupo[0] == tiempo_grupo[1] == 0.0:
-            actual = anterior
-        else:
-            actual = 0 if tiempo_grupo[0] >= tiempo_grupo[1] else 1
-        asignados.append(actual)
-        anterior = actual if actual is not None else anterior
-    primero = next((g for g in asignados if g is not None), 0)
-    return [primero if g is None else g for g in asignados]
+def completar_sin_voz(total, medidos, grupos):
+    """Grupo de cada segmento; uno sin voz medida toma el del anterior (al principio, el primer medido)."""
+    asignados = [None] * total
+    for indice, grupo in zip(medidos, grupos):
+        asignados[indice] = int(grupo)
+    anterior = next((g for g in asignados if g is not None), 0)
+    for indice, grupo in enumerate(asignados):
+        anterior = anterior if grupo is None else grupo
+        asignados[indice] = anterior
+    return asignados
 
 
 def grupo_del_agente(segmentos, asignados, reglas):
@@ -157,8 +153,7 @@ def asignar_hablantes(segmentos, audio, f0, frecuencia, salto, reglas, canales=N
     if canales is not None and canales_distintos(canales[0], canales[1], reglas):
         return hablante_por_canal(canales[0], canales[1], frecuencia, segmentos)
 
-    tiempos, caracteristicas = calcular_ventanas(audio, f0, frecuencia, salto, reglas)
-    grupos = agrupar(caracteristicas, reglas)
-    asignados = grupo_por_segmento(segmentos, tiempos, grupos)
+    caracteristicas, medidos = caracteristicas_por_segmento(segmentos, audio, f0, frecuencia, salto, reglas)
+    asignados = completar_sin_voz(len(segmentos), medidos, agrupar(caracteristicas, reglas))
     agente = grupo_del_agente(segmentos, asignados, reglas)
     return [AGENTE if grupo == agente else CLIENTE for grupo in asignados]
