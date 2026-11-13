@@ -14,7 +14,7 @@ import os
 import sys
 import time
 
-VERSION_CONTRATO = "0.3"
+VERSION_CONTRATO = "0.4"
 FRECUENCIA_MUESTREO = 16000  # Whisper trabaja a 16 kHz
 SALTO_MUESTRAS = 320         # 20 ms entre cuadros de analisis acustico
 CUADRO_MUESTRAS = 1024       # 64 ms por cuadro (alcanza para F0 desde 65 Hz)

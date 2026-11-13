@@ -152,7 +152,7 @@ exportación en el backend; opcional).
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 12/11/2026_
+_Última actualización: 13/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -234,12 +234,15 @@ cortesía.**
 - No llega a `CRITICO`: su texto queda en -0,20 y el contrato pide menos de -0,3. La decisión acepta
   `NEGATIVO`.
 
-**En curso: decisión 3 del 11/11, contrato v0.4 (rama `david-contrato-v04`, espera revisión de Willy).**
+**En curso: decisión 3 del 11/11, contrato v0.4 (PR #53, espera revisión de Willy).**
 `puntaje_final` usa de 0 a 100: el lado positivo se estira (`50 + 50 × combinado / 0,55`) y el negativo
 queda igual. Con 27 llamadas: la positiva de la prueba de Willy pasa a `POSITIVO` (72,5), 7 llamadas
 cambian de `NEUTRO` a `POSITIVO` y ninguna negativa cambia. Efecto a decidir: 4 de esas 7 son consultas
-neutras que terminan con "gracias"; el contrato deja una alternativa en curva que no las cambia. La
-implementación va en otro PR cuando se apruebe.
+neutras que terminan con "gracias"; el contrato deja una alternativa en curva que no las cambia.
+- Implementación lista (rama `david-puntaje-v04`, 13/11): `analizar.py` emite la v0.4, y
+  `escala_lado_positivo` en `reglas_acusticas.json` elige `"lineal"` o `"curva"` sin tocar código. Con
+  el `analizar.py` real, las 27 llamadas dan lo mismo que la simulación, y el lado negativo da
+  exactamente lo mismo que la v0.3; 107 pruebas pasando. Se fusiona después del #53.
 
 **Pendiente:**
 - **Ruido (prueba de Willy del 10/11):** con ruido de calle, Whisper degrada el texto, los `hablante`

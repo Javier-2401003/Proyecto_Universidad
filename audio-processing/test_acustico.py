@@ -1,10 +1,13 @@
 """Pruebas de RN-02 y RN-03 con senales armadas a mano. Ejecutar: python -m unittest -v"""
 
+import json
+import os
+import tempfile
 import unittest
 
 import numpy as np
 
-from acustico import calcular_puntaje, cargar_reglas, evaluar, preparar_audio
+from acustico import RUTA_REGLAS, calcular_puntaje, cargar_reglas, evaluar, preparar_audio
 
 REGLAS = cargar_reglas()
 SEGUNDOS_POR_CUADRO = 0.02
@@ -168,14 +171,45 @@ class PruebasPuntaje(unittest.TestCase):
     def calcular(self, nlp, acustico, baja_confianza=False, subida=0.0):
         return calcular_puntaje(nlp, acustico, baja_confianza, subida, REGLAS)
 
-    def test_aplica_la_formula_de_rn03(self):
-        self.assertEqual(self.calcular(0.5, -0.2)["puntaje_final"], 59.25)
+    def test_aplica_la_formula_de_rn03_con_la_escala_de_la_v04(self):
+        # combinado = 0,55 x 0,5 + 0,45 x -0,2 = 0,185; 50 + 50 x 0,185 / 0,55
+        self.assertEqual(self.calcular(0.5, -0.2)["puntaje_final"], 66.82)
 
     def test_la_escala_va_de_0_a_100_y_el_centro_es_50(self):
         self.assertEqual(self.calcular(-1.0, -1.0)["puntaje_final"], 0.0)
-        self.assertEqual(self.calcular(1.0, 1.0)["puntaje_final"], 100.0)
+        # score_acustico nunca es positivo: el maximo real es texto +1 sin subidas (77,5 en la v0.3).
+        self.assertEqual(self.calcular(1.0, 0.0)["puntaje_final"], 100.0)
         resultado_neutro = self.calcular(0.0, 0.0)
         self.assertEqual(resultado_neutro, {"puntaje_final": 50.0, "clasificacion_final": "NEUTRO"})
+
+    def test_el_lado_negativo_es_igual_que_en_la_v03(self):
+        # (-0,75; -1,0) da 6,875: el empate al redondear tiene que caer igual que en la v0.3.
+        for nlp, acustico in [(-0.5, -0.2), (0.0, -0.5), (-1.0, -0.5), (0.2, -0.8), (-0.75, -1.0)]:
+            combinado = 0.55 * nlp + 0.45 * acustico
+            self.assertEqual(self.calcular(nlp, acustico)["puntaje_final"], round((combinado + 1) * 50, 2))
+
+    def test_sin_subidas_el_ruido_ya_no_sube_el_puntaje(self):
+        # Efecto que senalo Willy en la v0.3: texto 0,8 daba 72 en una llamada limpia y 90 con ruido.
+        limpia = self.calcular(0.8, 0.0)["puntaje_final"]
+        self.assertEqual(limpia, 90.0)
+        self.assertEqual(self.calcular(0.8, 0.0, baja_confianza=True)["puntaje_final"], limpia)
+
+    def test_alternativa_en_curva(self):
+        curva = {**REGLAS, "escala_lado_positivo": "curva"}
+        self.assertEqual(calcular_puntaje(1.0, 0.0, False, 0.0, curva)["puntaje_final"], 100.0)
+        self.assertEqual(calcular_puntaje(0.5, 0.0, False, 0.0, curva)["puntaje_final"], 62.5)
+        self.assertEqual(calcular_puntaje(-0.5, -0.2, False, 0.0, curva)["puntaje_final"], 31.75)
+
+    def test_una_escala_desconocida_falla_al_cargar(self):
+        with open(RUTA_REGLAS, encoding="utf-8") as archivo:
+            datos = json.load(archivo)
+        datos["decisiones_del_proyecto"]["escala_lado_positivo"] = "otra"
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = os.path.join(carpeta, "reglas.json")
+            with open(ruta, "w", encoding="utf-8") as archivo:
+                json.dump(datos, archivo)
+            with self.assertRaises(ValueError):
+                cargar_reglas(ruta)
 
     def test_voz_sostenida_y_texto_negativo_dan_alerta_roja(self):
         self.assertEqual(self.calcular(-0.5, -0.2, subida=2.0)["clasificacion_final"], "CRITICO")

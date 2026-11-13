@@ -21,6 +21,7 @@ from scipy.signal import butter, sosfiltfilt
 from lexico import analizar_frase, cargar_lexico, puntaje_global, raices_negativas
 
 RUTA_REGLAS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reglas_acusticas.json")
+ESCALAS_LADO_POSITIVO = ("lineal", "curva")
 ORDEN_FILTRO = 4
 MUESTRAS_MINIMAS_FILTRO = 1024
 
@@ -29,8 +30,11 @@ def cargar_reglas(ruta=RUTA_REGLAS):
     # utf-8-sig: el Bloc de notas de Windows puede guardar el archivo con BOM.
     with open(ruta, encoding="utf-8-sig") as archivo:
         datos = json.load(archivo)
-    return {**datos["rn02"], **datos["rn03"], **datos["recalibracion_falsos_positivos"],
-            **datos["decisiones_del_proyecto"]}
+    reglas = {**datos["rn02"], **datos["rn03"], **datos["recalibracion_falsos_positivos"],
+              **datos["decisiones_del_proyecto"]}
+    if reglas.get("escala_lado_positivo") not in ESCALAS_LADO_POSITIVO:
+        raise ValueError(f"escala_lado_positivo debe ser una de {ESCALAS_LADO_POSITIVO}")
+    return reglas
 
 
 def a_dbfs(valores):
@@ -197,6 +201,22 @@ def evaluar(f0, rms, segundos_por_cuadro, reglas):
     }
 
 
+def escalar(combinado, reglas):
+    """Lleva el puntaje combinado a 0-100 con 50 como neutro (contrato v0.4, decision 3 del 11/11).
+
+    El combinado va de -1 a "peso_nlp", porque score_acustico nunca es positivo: en la v0.3 el
+    maximo era 77,5. El lado positivo se estira hasta 100, en linea recta ("lineal") o en curva
+    ("curva", la alternativa del contrato); el negativo queda como en la v0.3.
+    """
+    if combinado <= 0:
+        # La misma expresion que la v0.3, para que el redondeo de 2 decimales de identico.
+        return (combinado + 1.0) * 50.0
+    proporcion = min(1.0, combinado / reglas["peso_nlp"])
+    if reglas["escala_lado_positivo"] == "curva":
+        proporcion = proporcion ** 2
+    return 50.0 + 50.0 * proporcion
+
+
 def calcular_puntaje(score_nlp, score_acustico, baja_confianza, subida_continua, reglas):
     """Puntaje de 0 a 100 (100 es lo mejor) y clasificacion, segun RN-03 recalibrado.
 
@@ -204,10 +224,10 @@ def calcular_puntaje(score_nlp, score_acustico, baja_confianza, subida_continua,
     texto negativo; con texto neutro o positivo, la voz solo baja el puntaje de forma proporcional.
     """
     if baja_confianza:
-        combinado = score_nlp
+        puntaje = (score_nlp + 1.0) * 50.0
     else:
-        combinado = reglas["peso_nlp"] * score_nlp + reglas["peso_acustico"] * score_acustico
-    puntaje = round((combinado + 1.0) * 50.0, 2)
+        puntaje = escalar(reglas["peso_nlp"] * score_nlp + reglas["peso_acustico"] * score_acustico, reglas)
+    puntaje = round(max(0.0, min(100.0, puntaje)), 2)
 
     alerta_roja = (not baja_confianza
                    and subida_continua >= reglas["segundos_subida_continua"]

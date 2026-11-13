@@ -82,15 +82,15 @@ Una vez descargados los modelos, puede trabajar sin internet con
 Ejemplo de salida (recortado):
 ```json
 {
-  "version_contrato": "0.3",
+  "version_contrato": "0.4",
   "archivo": "llamada.wav",
   "duracion_segundos": 268.553,
   "idioma": "es",
   "modelo": { "motor": "faster-whisper", "nombre": "base", "tipo_calculo": "int8" },
   "baja_confianza_audio": false,
   "score_global_nlp": 0.5,
-  "score_acustico": 0.0,
-  "puntaje_final": 63.75,
+  "score_acustico": -0.25,
+  "puntaje_final": 64.77,
   "clasificacion_final": "NEUTRO",
   "diagnostico_conflicto": "SIN_CONFLICTO",
   "resumen_acustico": { "f0_mediana_hz": 213.64, "rms_promedio_dbfs": -20.05, "...": "..." },
@@ -184,9 +184,12 @@ Los valores están en `reglas_acusticas.json`, separados por su origen:
    con voz. Cada tramo de grito sostenido (`EXCESO_VOLUMEN`) cuenta **doble** (`peso_tramo_grito`,
    decisión del equipo del 11/11); los de tono cuentan una vez, porque también aparecen en llamadas
    tranquilas. **Nunca es positivo**, porque una voz tranquila no prueba satisfacción. Sin segmentos es 0.
-4. **`puntaje_final`:** `(0,55 × NLP + 0,45 × acústico + 1) × 50`, donde 100 es lo mejor. Con texto
-   neutro o positivo, la voz solo baja este puntaje. Como `score_acustico` nunca es positivo, el máximo
-   es 77,5.
+4. **`puntaje_final` (contrato v0.4):** `combinado = 0,55 × NLP + 0,45 × acústico` va de -1 a 0,55,
+   porque `score_acustico` nunca es positivo. El lado negativo es `50 + 50 × combinado`, como en la
+   v0.3; el positivo se estira hasta 100: `50 + 50 × combinado / 0,55`. Así 50 sigue siendo neutro y
+   texto +1 sin subidas llega a 100 (en la v0.3, el máximo era 77,5). Con texto neutro o positivo, la voz
+   solo baja este puntaje. `escala_lado_positivo` en `reglas_acusticas.json` elige `"lineal"` o
+   `"curva"` (`50 + 50 × (combinado / 0,55)²`, la alternativa del contrato).
 5. **`clasificacion_final`:** `CRITICO` si hay alerta roja; `NEGATIVO` bajo 35; `POSITIVO` sobre 65;
    `NEUTRO` en el resto. **Los cortes son provisionales**: el Blueprint no los define.
 6. **Flujo E1:** `baja_confianza_audio` es `true` si no hay segmentos, si Whisper está poco seguro, o si
