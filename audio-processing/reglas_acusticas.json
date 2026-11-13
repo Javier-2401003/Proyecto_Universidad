@@ -25,6 +25,7 @@
     "segundos_ventana_tono": 2.0,
     "segundos_minimos_voz_tono": 0.5,
     "fraccion_saturacion": 0.25,
+    "peso_tramo_grito": 2.0,
     "snr_ruidoso_db": 15.0,
     "rango_extremo_db": 12.0,
     "puntaje_negativo_menor_a": 35.0,

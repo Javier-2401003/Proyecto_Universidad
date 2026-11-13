@@ -34,14 +34,14 @@ class PruebasFrase(unittest.TestCase):
         self.assertEqual(puntaje("gracias, excelente, amable, con gusto"), 1.0)
 
     def test_positiva_y_negativa_se_compensan_pero_cuentan(self):
-        self.assertEqual(analizar_frase("gracias, pero es una estafa", LEXICO), (0.0, 2))
+        self.assertEqual(analizar_frase("gracias, pero fue pésimo", LEXICO), (0.0, 2))
 
     def test_negacion_invierte_el_signo(self):
         self.assertEqual(puntaje("no es una estafa"), 0.5)
         self.assertEqual(puntaje("no fue excelente"), -0.5)
 
     def test_negacion_fuera_de_la_ventana_no_cuenta(self):
-        self.assertEqual(puntaje("no creo que sea una estafa"), -0.5)
+        self.assertEqual(puntaje("no creo que sea tan pésimo"), -0.5)
 
     def test_la_puntuacion_corta_la_negacion(self):
         self.assertEqual(puntaje("no, gracias"), 0.5)
@@ -71,16 +71,40 @@ class PruebasInsultos(unittest.TestCase):
             self.assertLess(puntaje(f"usted es {palabra}"), 0, palabra)
 
     def test_un_insulto_no_se_niega(self):
-        self.assertEqual(puntaje("no sea tonto"), -0.5)
-        self.assertEqual(puntaje("no me cuelgue, malparido"), -0.5)
+        self.assertEqual(puntaje("no sea tonto"), -1.0)
+        self.assertEqual(puntaje("no me cuelgue, malparido"), -1.0)
 
     def test_las_palabras_de_sentimiento_se_siguen_negando(self):
-        # "fraude" esta en las dos listas: manda la de sentimiento.
+        # "fraude" esta en las dos listas: se niega como palabra de sentimiento.
         self.assertEqual(puntaje("no es un fraude"), 0.5)
 
     def test_formas_conjugadas_y_expresiones(self):
-        self.assertEqual(puntaje("me cancelaron el servicio"), -0.5)
+        self.assertEqual(puntaje("me cancelaron el servicio"), -1.0)
         self.assertEqual(analizar_frase("esto es una falta de respeto", LEXICO), (-0.5, 1))
+
+
+class PruebasGraves(unittest.TestCase):
+    """Decision del equipo del 11/11: cancelacion, amenazas e insultos pesan mas que la cortesia."""
+
+    def test_cancelacion_amenaza_e_insulto_pesan_el_doble_que_la_cortesia(self):
+        self.assertEqual(puntaje("voy a cancelar el contrato"), -1.0)
+        self.assertEqual(puntaje("voy a poner una denuncia"), -1.0)
+        self.assertEqual(puntaje("esto es una estafa"), -1.0)
+        self.assertEqual(puntaje("muchas gracias"), 0.5)
+
+    def test_una_grave_no_se_compensa_con_un_gracias(self):
+        self.assertEqual(analizar_frase("gracias, pero es una estafa", LEXICO), (-0.5, 2))
+
+    def test_negada_una_grave_vale_lo_normal(self):
+        self.assertEqual(puntaje("no quiero cancelar"), 0.5)
+        self.assertEqual(puntaje("no es una estafa"), 0.5)
+
+    def test_llamada_de_la_decision_del_11_11(self):
+        # Cliente molesto que amenaza con cancelar y con una queja, entre dos "gracias": antes -0,1.
+        frases = ["Buenas tardes, gracias por llamar a servicio al cliente.", "Ya estoy muy molesto.",
+                  "Si no lo arreglan voy a cancelar el contrato.", "Voy a poner una queja formal.",
+                  "No, eso es todo por ahora. Muchas gracias."]
+        self.assertEqual(puntaje_global([analizar_frase(f, LEXICO) for f in frases]), -0.2)
 
 
 class PruebasCarga(unittest.TestCase):

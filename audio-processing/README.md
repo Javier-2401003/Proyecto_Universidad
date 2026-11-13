@@ -128,6 +128,10 @@ reglas son una decisión del proyecto, no del Blueprint:
 
 - Cada palabra clave vale ±0,5 y la suma de la frase se limita a ±1. Una sola palabra ya cruza
   el umbral de ±0,3; una frase sin palabras clave queda en 0.
+- **Decisión del equipo del 11/11:** la cancelación y las amenazas (`graves` en `lexico_es.json`:
+  "cancelar", "cancelaron", "denuncia", "demandar"…) y todo `vocabulario_inadecuado` valen **-1,0**,
+  el doble que la cortesía ("gracias", "con gusto"). Así "gracias, pero es una estafa" queda en -0,5
+  y no en 0. Negada, cualquier palabra vale 0,5 con el signo al revés: "no quiero cancelar" suma 0,5.
 - "no", "sin" o "tampoco" hasta 3 palabras antes, sin una coma de por medio, invierten el
   signo: "no es una estafa" suma, y "no, gracias" sigue siendo positiva.
 - `score_global_nlp` es el promedio de las frases con alguna palabra clave, o 0 si no hay ninguna.
@@ -135,7 +139,7 @@ reglas son una decisión del proyecto, no del Blueprint:
   "molesto", "terrible" o "falta de respeto". **No está en el Blueprint.** Hay que vaciar esa lista
   para usar solo RN-01.
 - Las palabras de `vocabulario_inadecuado` (ver Alertas) que no están en las listas de sentimiento
-  también restan 0,5, y la negación no las invierte: "no sea tonto" sigue siendo un insulto. Las que
+  también restan, y la negación no las invierte: "no sea tonto" sigue siendo un insulto. Las que
   están en las dos listas ("estafa", "fraude") se niegan como antes: "no es un fraude" suma. En una
   llamada real con insultos, 17 frases de la clienta daban 0 porque ninguna grosería estaba en el léxico.
 
@@ -164,7 +168,7 @@ Los valores están en `reglas_acusticas.json`, separados por su origen:
 | `recalibracion_falsos_positivos` | **Se apartan del Blueprint a propósito**, para bajar las falsas alarmas |
 | `decisiones_del_proyecto` | Lo que el Blueprint no define: filtro, ventanas, cortes y criterio de ruido |
 
-**Qué se recalibró frente al Blueprint:**
+**Qué se recalibró frente al Blueprint** (el equipo lo aceptó así el 11/11):
 
 | Regla | Blueprint | Ahora |
 |---|---|---|
@@ -177,7 +181,9 @@ Los valores están en `reglas_acusticas.json`, separados por su origen:
    normaliza. Solo se usa para esta regla: `rms_dbfs` sigue midiendo el audio original.
 2. **Voz y ruido:** se estima el ruido en cada audio, y lo que no llega a voz no entra al promedio móvil.
 3. **`score_acustico`:** es 0 sin eventos y baja hasta -1 cuando los eventos ocupan el 25 % del tiempo
-   con voz. **Nunca es positivo**, porque una voz tranquila no prueba satisfacción. Sin segmentos es 0.
+   con voz. Cada tramo de grito sostenido (`EXCESO_VOLUMEN`) cuenta **doble** (`peso_tramo_grito`,
+   decisión del equipo del 11/11); los de tono cuentan una vez, porque también aparecen en llamadas
+   tranquilas. **Nunca es positivo**, porque una voz tranquila no prueba satisfacción. Sin segmentos es 0.
 4. **`puntaje_final`:** `(0,55 × NLP + 0,45 × acústico + 1) × 50`, donde 100 es lo mejor. Con texto
    neutro o positivo, la voz solo baja este puntaje. Como `score_acustico` nunca es positivo, el máximo
    es 77,5.
