@@ -198,6 +198,18 @@ y la visibilidad del Agente. Las tildes se guardan bien (`utf8mb4`).
 
 Los audios "armados" usan voces de Windows, con hablante conocido; solo la llamada de radio es real.
 
+**Separación de agente y cliente corregida (13/11, rama `david-ruido`):** al investigar el ruido que
+señaló Willy, encontré que la diarización fallaba en llamadas cortas aunque fueran limpias.
+- Agrupaba ventanas de 1 s con el timbre promediado también sobre pausas, y las suavizaba con un filtro
+  de mediana: en llamadas de 40 s agrupaba por pausas y por lo que se decía. Con un hombre y una mujer
+  acertaba 66,6 % del tiempo (peor llamada, 45 %). Las pruebas del README eran de llamadas de 100 s.
+- Ahora agrupa los segmentos de Whisper, con el timbre de sus cuadros con voz y el tono a peso 4.
+  Con 6 llamadas por caso y la verdad de cada turno: hombre y mujer 99,3 %, dos hombres 87,0 % (antes
+  66,7 %) y dos mujeres 73,6 % (antes 62,1 %); con ruido de calle, 94-99 %, y la llamada real con
+  conflicto, 98,7 %. No cambia el contrato: `hablante` sigue siendo `AGENTE` o `CLIENTE`.
+- Sigue pendiente lo de `baja_confianza_audio` con ruido: mi primer ruido de prueba quedaba casi todo
+  bajo 80 Hz y el análisis lo filtra, así que hay que repetirlo con ruido dentro de la banda de la voz.
+
 **v0.3 (alertas):**
 - Contrato v0.3 (PR #41): Willy lo aprobó y lo fusionó el 10/11. Arreglo `alertas` con los valores
   exactos de `TB_Alerta`: `EXCESO_VOLUMEN`, `ALTERACION_TONO` por hablante y `VOCABULARIO_INADECUADO`,

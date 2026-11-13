@@ -1,9 +1,7 @@
 {
-  "segundos_ventana": 1.0,
-  "segundos_salto": 0.5,
-  "fraccion_minima_voz": 0.3,
+  "segundos_minimos_voz": 0.2,
   "numero_mfcc": 13,
-  "peso_f0": 2.0,
+  "peso_f0": 4.0,
   "correlacion_maxima_canales": 0.7,
   "frases_agente": [
     "en que le puedo ayudar",

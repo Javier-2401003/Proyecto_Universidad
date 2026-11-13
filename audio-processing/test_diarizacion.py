@@ -5,8 +5,9 @@ import unittest
 import numpy as np
 
 from acustico import calcular_diagnostico, cargar_reglas as cargar_reglas_acusticas, hablante_del_evento
-from diarizacion import (AGENTE, CLIENTE, agrupar, asignar_hablantes, canales_distintos,
-                         cargar_reglas, grupo_del_agente, grupo_por_segmento, hablante_por_canal)
+from diarizacion import (AGENTE, CLIENTE, agrupar, asignar_hablantes, canales_distintos, cargar_reglas,
+                         caracteristicas_por_segmento, completar_sin_voz, grupo_del_agente,
+                         hablante_por_canal)
 from lexico import analizar_frase, cargar_lexico
 
 REGLAS = cargar_reglas()
@@ -48,20 +49,34 @@ class PruebasAgrupacion(unittest.TestCase):
         self.assertEqual(len(set(grupos[20:])), 1)
         self.assertNotEqual(grupos[0], grupos[20])
 
-    def test_pocas_ventanas_no_fallan(self):
+    def test_pocos_segmentos_no_fallan(self):
         self.assertEqual(list(agrupar(np.zeros((1, 14)), REGLAS)), [0])
         self.assertEqual(len(agrupar(np.zeros((0, 14)), REGLAS)), 0)
 
-    def test_segmento_toma_el_grupo_con_mas_tiempo(self):
-        tiempos = [(0, 1), (1, 2), (2, 3), (3, 4)]
-        self.assertEqual(grupo_por_segmento([segmento(0, 3)], tiempos, [0, 0, 1, 1]), [0])
+    def test_turnos_alternados_no_se_suavizan(self):
+        # Antes un filtro de mediana unia turnos de un solo segmento con sus vecinos.
+        sem = np.random.default_rng(4)
+        caracteristicas = np.array([sem.normal(3 * (i % 2), 0.1, 14) for i in range(7)])
+        grupos = list(agrupar(caracteristicas, REGLAS))
+        self.assertEqual(grupos, [grupos[0], 1 - grupos[0]] * 3 + [grupos[0]])
 
     def test_segmento_sin_voz_medida_hereda_el_anterior(self):
-        asignados = grupo_por_segmento([segmento(0, 1), segmento(5, 6)], [(0, 1)], [1])
-        self.assertEqual(asignados, [1, 1])
+        self.assertEqual(completar_sin_voz(3, [0, 2], [1, 0]), [1, 1, 0])
+
+    def test_los_primeros_sin_voz_toman_el_primer_grupo_medido(self):
+        self.assertEqual(completar_sin_voz(3, [2], [1]), [1, 1, 1])
 
     def test_ningun_segmento_medido_no_deja_grupos_vacios(self):
-        self.assertEqual(grupo_por_segmento([segmento(5, 6)], [], []), [0])
+        self.assertEqual(completar_sin_voz(2, [], []), [0, 0])
+
+    def test_las_pausas_no_cambian_el_timbre_del_segmento(self):
+        tiempo = np.arange(FRECUENCIA * 4) / FRECUENCIA
+        voz = sum(np.sin(2 * np.pi * 150 * k * tiempo) / k for k in range(1, 6)) * 0.1
+        audio = np.where(tiempo < 2, voz, 0.0).astype(np.float32)
+        f0 = np.where(np.arange(201) * SALTO / FRECUENCIA < 2, 150.0, np.nan)
+        con_pausa, _ = caracteristicas_por_segmento([segmento(0, 4)], audio, f0, FRECUENCIA, SALTO, REGLAS)
+        sin_pausa, _ = caracteristicas_por_segmento([segmento(0, 2)], audio, f0, FRECUENCIA, SALTO, REGLAS)
+        np.testing.assert_allclose(con_pausa, sin_pausa, atol=1e-6)
 
 
 class PruebasRoles(unittest.TestCase):
