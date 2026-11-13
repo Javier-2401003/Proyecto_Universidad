@@ -7,8 +7,9 @@ import { aleatorio, elegir } from './estadisticas.js';
 const ESTADOS = ['PENDIENTE', 'PROCESANDO', 'COMPLETADO', 'ERROR'];
 const CLASIFICACIONES = ['POSITIVO', 'NEUTRO', 'NEGATIVO', 'CRITICO'];
 const DIAGNOSTICOS = ['FALLA_AGENTE', 'CLIENTE_PROBLEMATICO', 'SIN_CONFLICTO'];
-// Rango de puntaje_final de cada clasificacion (los cortes de docs/contrato_audio.md).
-const RANGOS_PUNTAJE = { POSITIVO: [65, 77.5], NEUTRO: [35, 65], NEGATIVO: [20, 35], CRITICO: [5, 30] };
+// Rango de puntaje_final de cada clasificacion: cortes 35 y 65 de docs/contrato_audio.md; con la
+// v0.4 las positivas llegan hasta 100.
+const RANGOS_PUNTAJE = { POSITIVO: [65, 100], NEUTRO: [35, 65], NEGATIVO: [20, 35], CRITICO: [5, 30] };
 const ALERTAS_MAXIMAS = { POSITIVO: 0, NEUTRO: 1, NEGATIVO: 3, CRITICO: 5 };
 
 // Los mismos agentes de prueba que la simulacion de carga de lotes.
@@ -57,7 +58,8 @@ function generarLlamadas() {
         duracion_segundos: estado === 'COMPLETADO' ? 60 + Math.floor(azar() * 240) : 0,
         estado_procesamiento: estado,
         mensaje_error: estado === 'ERROR' ? 'AUDIO_ILEGIBLE: No se pudo leer el audio.' : null,
-        baja_confianza_audio: estado === 'COMPLETADO' && azar() < 0.06,
+        // Con baja confianza no hay CRITICO (docs/contrato_audio.md).
+        baja_confianza_audio: estado === 'COMPLETADO' && clasificacion !== 'CRITICO' && azar() < 0.06,
         resultado:
           estado === 'COMPLETADO'
             ? {
