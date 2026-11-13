@@ -1,15 +1,16 @@
 # Contrato: backend (Node) y análisis de audio (Python)
 
-**Estado: v0.3 (alertas), propuesta por David y pendiente de la revisión de Willy.** La v0.2 la aprobó
-Willy el 06/11/2026 (PR #21), con los puntos de la sección 7 como provisionales, y la implementan
-`audio-processing/analizar.py` y el procesamiento del backend (`backend/src/procesamientoAudio.js`).
-Si alguien necesita un cambio, se hace primero aquí, en un PR propio, y se avisa al otro.
+**Estado: v0.4 (escala de `puntaje_final`), propuesta por David y pendiente de la revisión de Willy.**
+La v0.3 (alertas) la aprobó Willy el 10/11/2026 (PR #41), con los puntos de la sección 7 como
+provisionales, y la implementan `audio-processing/analizar.py` (PR #42) y el procesamiento del backend
+(`backend/src/procesamientoAudio.js`, PR #44). Si alguien necesita un cambio, se hace primero aquí, en un
+PR propio, y se avisa al otro.
 
 - Script: `audio-processing/analizar.py` (instalación en `audio-processing/README.md`).
 - Quién llama: el backend, después de que `POST /llamadas/lotes` dejó la llamada en
   `PENDIENTE` (ver `docs/api.md`).
 - Qué devuelve: **un solo JSON por stdout**. El backend lo guarda en `TB_Llamada`,
-  `TB_Transcripcion` y, más adelante, `TB_Alerta`.
+  `TB_Transcripcion` y `TB_Alerta`.
 
 ## 1. Cómo se ejecuta
 
@@ -59,7 +60,7 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 
 ```json
 {
-  "version_contrato": "0.3",
+  "version_contrato": "0.4",
   "archivo": "llamada_0001.mp3",
   "duracion_segundos": 268.553,
   "idioma": "es",
@@ -67,8 +68,8 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
   "modelo": { "motor": "faster-whisper", "nombre": "base", "tipo_calculo": "int8" },
   "baja_confianza_audio": false,
   "score_global_nlp": 0.5,
-  "score_acustico": 0.0,
-  "puntaje_final": 63.75,
+  "score_acustico": -0.25,
+  "puntaje_final": 64.77,
   "clasificacion_final": "NEUTRO",
   "diagnostico_conflicto": "SIN_CONFLICTO",
   "resumen_acustico": {
@@ -118,7 +119,7 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 | `baja_confianza_audio` | boolean | no | Flujo E1. Es `true` si no hubo segmentos, si `confianza_logprob_promedio < -1,5`, o si hay ruido de fondo con variaciones de volumen extremas. Con `true`, `puntaje_final` usa 100 % el texto. Criterio **provisional**. | `TB_Llamada.baja_confianza_audio` (0/1) |
 | `score_global_nlp` | number (3 dec.) | no | De -1 a +1. Promedio de las frases con palabras clave (RN-01); 0 si no hay ninguna. | `TB_Llamada.score_global_nlp` |
 | `score_acustico` | number (3 dec.) | no | De -1 a 0 por ahora: 0 sin subidas de volumen o tono; nunca es positivo (RN-02). | `TB_Llamada.score_acustico` |
-| `puntaje_final` | number (2 dec.) | no | De 0 a 100; 100 es lo mejor y 50 es neutro (RN-03). Con los pesos actuales, el máximo es 77,5. | `TB_Llamada.puntaje_final` |
+| `puntaje_final` | number (2 dec.) | no | De 0 a 100; 100 es lo mejor y 50 es neutro (RN-03). **v0.4:** usa toda la escala (fórmula en la sección 5); con la v0.3 el máximo era 77,5. | `TB_Llamada.puntaje_final` |
 | `clasificacion_final` | string | no | `"POSITIVO"`, `"NEUTRO"`, `"NEGATIVO"` o `"CRITICO"` (reglas en la sección 5). | `TB_Llamada.clasificacion_final` |
 | `diagnostico_conflicto` | string | no | `"FALLA_AGENTE"`, `"CLIENTE_PROBLEMATICO"` o `"SIN_CONFLICTO"` (reglas en la sección 5). | `TB_Llamada.diagnostico_conflicto` |
 | `resumen_acustico` | object | no | Ver abajo. | - |
@@ -219,8 +220,17 @@ de `TB_Llamada` (puntaje 0, `NEUTRO`) como si fueran un resultado real.
 | `POSITIVO` | `puntaje_final` mayor a 65 |
 | `NEUTRO` | El resto |
 
-`puntaje_final = (0,55 × score_global_nlp + 0,45 × score_acustico + 1) × 50`. Con
-`baja_confianza_audio: true`, es `(score_global_nlp + 1) × 50` y no hay `CRITICO`.
+`combinado = 0,55 × score_global_nlp + 0,45 × score_acustico`, que va de -1 a 0,55 porque
+`score_acustico` nunca es positivo. **v0.4:** el lado positivo se estira hasta 100.
+
+- Si `combinado` es mayor que 0: `puntaje_final = 50 + 50 × combinado / 0,55`.
+- Si no: `puntaje_final = 50 + 50 × combinado`, igual que en la v0.3.
+
+Así 50 sigue siendo neutro, el lado negativo no cambia y una llamada con texto +1 sin subidas llega a
+100. `POSITIVO` (más de 65) pide `combinado` mayor a 0,165: sin subidas, un texto mayor a +0,3, el
+umbral de RN-01. Con `baja_confianza_audio: true`, es `(score_global_nlp + 1) × 50` y no hay `CRITICO`;
+con texto positivo y sin subidas, da lo mismo que una llamada limpia. En la v0.3 era
+`(combinado + 1) × 50`, con un máximo de 77,5.
 
 **Diagnóstico (provisional).** Solo en llamadas `NEGATIVO` o `CRITICO`; en las demás es
 `SIN_CONFLICTO`. Es `FALLA_AGENTE` si el agente tiene texto negativo (promedio menor a -0,3) o
@@ -280,16 +290,21 @@ Columnas que **no** son del análisis y siguen siendo del backend: `fecha_inicio
 - Agregar un campo nuevo es compatible: sube la versión menor (`0.1` a `0.2`). El backend
   acepta cualquier `0.x` e ignora los campos que no conoce, pero para guardar un resultado
   exige los campos de la v0.2 (sección 5).
-- **Propuesta para la v0.3:** si viene `alertas`, el backend las valida como el resto (tipos y orígenes
+- **Desde la v0.3 (aprobado el 10/11):** si viene `alertas`, el backend las valida como el resto (tipos y orígenes
   del ENUM, tiempo dentro de `DECIMAL(8,3)`, textos dentro de su largo) y las guarda en la misma
   transacción que la llamada; si una no es válida, la llamada queda en `ERROR` con
   `CONTRATO_INCOMPLETO`. Si no viene (v0.2), la llamada se guarda sin alertas.
+- Cambiar cómo se calcula un campo, sin cambiar su tipo ni su rango, también sube la versión menor
+  (`0.3` a `0.4`). El backend no cambia, pero los puntajes de versiones distintas no se comparan: una
+  llamada analizada con la v0.3 conserva su escala hasta que se reprocese. La versión de cada análisis
+  queda en la auditoría (`detalle_cambio.version_contrato`).
 - Renombrar, quitar o cambiar el tipo de un campo sube la versión mayor (`1.x` a `2.0`) y
   requiere el visto bueno de los dos.
 
 ## 7. Decisiones del equipo
 
-Las decisiones 1 a 6 y 8 son de Willy (28/10/2026, 02/11/2026 y 06/11/2026); la 7 es de Javier.
+Las decisiones 1 a 6, 8 y 9 son de Willy (28/10/2026, 02/11/2026, 06/11/2026 y 10/11/2026); la 7 es de
+Javier y la 10, del equipo.
 
 1. **Variables de `.env`:** se usan los nombres de la sección 1.
 2. **`hablante` y `score_sentimiento`:** se espera a la v0.2 para guardar `TB_Transcripcion`,
@@ -310,19 +325,48 @@ Las decisiones 1 a 6 y 8 son de Willy (28/10/2026, 02/11/2026 y 06/11/2026); la 
    - las reglas de `diagnostico_conflicto`;
    - RN-02 y RN-03 recalibrados: 180 % durante 2 s en lugar de 150 % durante 1,5 s, y la alerta roja
      exige también texto negativo.
+9. **v0.3 aprobada (10/11, PR #41):** se aceptan como provisionales las tres alertas, la lista de
+   `vocabulario_inadecuado` y los mensajes de `reglas_alertas.json`. `OMISION_SCRIPT` espera el guion del
+   equipo, y una alerta no válida deja la llamada en `ERROR` con `CONTRATO_INCOMPLETO` (sección 6).
+10. **Decisiones del equipo del 11/11 (PR #46)** sobre el análisis:
+    - Se acepta que RN-02 y RN-03 se aparten del Blueprint, como en la decisión 8.
+    - Los cortes 35 y 65 se quedan, provisionales, hasta medir con llamadas reales.
+    - `puntaje_final` se reescala para usar de 0 a 100: es la v0.4 (abajo).
+    - Las palabras de cancelación o amenaza y los gritos pesan más que la cortesía. Se hizo en el
+      léxico y en `score_acustico` (PR #52), sin cambiar este contrato.
 
-### Por aprobar en la v0.3
+### Por aprobar en la v0.4
 
-- El arreglo `alertas` y las tres alertas que detecta (sección 5, "Alertas").
-- La lista provisional de `vocabulario_inadecuado` y los mensajes de `reglas_alertas.json`.
-- Que `OMISION_SCRIPT` espere a que el equipo defina el guion.
-- La validación de las alertas en el backend (sección 6).
+- **La fórmula de `puntaje_final` de la sección 5.** Resuelve los dos efectos que señaló Willy en la
+  v0.3:
+  - el máximo era 77,5, y `POSITIVO` exigía un `score_global_nlp` mayor a 0,545;
+  - con el mismo texto (0,8) y sin subidas, una llamada limpia daba 72 y una con ruido 90.
+- **Efecto medido** con 27 llamadas (17 armadas, 5 de la demo, 2 de la prueba del 06/11 y 3
+  descargadas), con los pesos del PR #52:
+
+  | | v0.3 | v0.4 |
+  |---|---|---|
+  | Máximo posible | 77,5 | 100 |
+  | Positiva de la prueba de Willy (10/11) | `NEUTRO`, 62,36 | `POSITIVO`, 72,5 |
+  | Texto 0,8 sin subidas: limpia / con ruido | 72 / 90 | 90 / 90 |
+  | Llamadas que cambian de clase | - | 7, todas de `NEUTRO` a `POSITIVO` |
+  | Negativas y críticas | - | Sin cambios |
+
+- **Efecto a decidir:** de esas 7, 3 son positivas que antes no llegaban. Las otras 4 son consultas
+  neutras que terminan con "gracias" o "perfecto": su texto da +0,5, igual que una llamada satisfecha,
+  y salen `POSITIVO` (de 66 a 72).
+  - Si el equipo prefiere que sigan `NEUTRO`, la alternativa es estirar el lado positivo en curva:
+    `50 + 50 × (combinado / 0,55)²`.
+  - También llega a 100 y no cambia ninguna clase de las 27 llamadas, pero la positiva de Willy sigue
+    `NEUTRO` (60,1).
+- **Puntajes anteriores:** las llamadas analizadas con la v0.3 conservan su escala hasta que se
+  reprocesen (sección 6).
+- **Javier:** los datos simulados del frontend generan las positivas entre 65 y 77,5
+  (`frontend/src/api/simulacion/listado.js`); con la v0.4 pueden llegar a 100.
 
 ### Para revisar con llamadas reales
 
-Dos efectos de las reglas actuales que señaló Willy:
-
-1. Como `score_acustico` nunca es positivo, el máximo de `puntaje_final` es 77,5, y llegar a
-   `POSITIVO` exige un `score_global_nlp` mayor a 0,545.
-2. Con `baja_confianza_audio`, el puntaje usa solo el texto y puede llegar a 100. Con el mismo texto
-   (0,8), una llamada limpia da 72 y una con ruido da 90: el ruido sube el puntaje.
+1. Los cortes 35 y 65 (decisión 10).
+2. Si una consulta neutra y cortés debe salir `POSITIVO` (efecto de la v0.4).
+3. Con `baja_confianza_audio` el puntaje usa solo el texto: con texto negativo sigue bajando más que en
+   una llamada limpia (texto -0,5 sin subidas: 36,25 limpia, 25 con ruido).
