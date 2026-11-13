@@ -191,7 +191,7 @@ def construir_resultado(args, audio, segmentos, hablantes, info, f0, rms, rms_pr
     score_acustico = acustico["score_acustico"] if segmentos else 0.0
     subida_continua = acustico["subida_continua_segundos"] if segmentos else 0.0
     baja_confianza = bool((not segmentos) or logprob_promedio < UMBRAL_LOGPROB_BAJA_CONFIANZA
-                          or acustico["ruido_extremo"])
+                          or acustico["ruido_de_fondo"])
     score_global_nlp = puntaje_global(frases_analizadas)
     final = calcular_puntaje(score_global_nlp, score_acustico, baja_confianza, subida_continua,
                              reglas_acusticas)

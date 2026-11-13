@@ -26,8 +26,7 @@
     "segundos_minimos_voz_tono": 0.5,
     "fraccion_saturacion": 0.25,
     "peso_tramo_grito": 2.0,
-    "snr_ruidoso_db": 15.0,
-    "rango_extremo_db": 12.0,
+    "snr_ruidoso_db": 18.0,
     "escala_lado_positivo": "lineal",
     "puntaje_negativo_menor_a": 35.0,
     "puntaje_positivo_mayor_a": 65.0

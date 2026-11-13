@@ -156,15 +156,25 @@ class PruebasRuido(unittest.TestCase):
 
     def test_ruido_de_fondo_con_rafagas_activa_e1(self):
         rms = self.rafagas(voz_con_pausas(60, 0.05, 0.03))
-        self.assertTrue(resultado(np.full(len(rms), 150.0), rms)["ruido_extremo"])
+        self.assertTrue(resultado(np.full(len(rms), 150.0), rms)["ruido_de_fondo"])
 
     def test_gritos_en_audio_limpio_no_activan_e1(self):
         rms = self.rafagas(voz_con_pausas(60, 0.05, 0.0005))
-        self.assertFalse(resultado(np.full(len(rms), 150.0), rms)["ruido_extremo"])
+        self.assertFalse(resultado(np.full(len(rms), 150.0), rms)["ruido_de_fondo"])
 
-    def test_ruido_sin_variaciones_extremas_no_activa_e1(self):
+    def test_ruido_constante_tambien_activa_e1(self):
+        # v0.4: la v0.3 pedia ademas variaciones extremas, y el ruido de calle constante no las tiene.
         rms = voz_con_pausas(60, 0.05, 0.03)
-        self.assertFalse(resultado(np.full(len(rms), 150.0), rms)["ruido_extremo"])
+        r = resultado(np.full(len(rms), 150.0), rms)
+        self.assertLess(r["rango_db"], 12.0)
+        self.assertTrue(r["ruido_de_fondo"])
+
+    def test_ruido_leve_no_activa_e1(self):
+        # Voz 20 dB sobre el ruido: el corte es 18 dB.
+        rms = voz_con_pausas(60, 0.05, 0.005)
+        r = resultado(np.full(len(rms), 150.0), rms)
+        self.assertGreater(r["snr_db"], REGLAS["snr_ruidoso_db"])
+        self.assertFalse(r["ruido_de_fondo"])
 
 
 class PruebasPuntaje(unittest.TestCase):

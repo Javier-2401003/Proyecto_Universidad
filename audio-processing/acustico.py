@@ -154,19 +154,21 @@ def a_eventos(marcados, tipo, segundos_por_tramo):
 
 
 def medir_ruido(cuadros_db, niveles_db, voz, reglas):
-    """Flujo E1: audio con ruido de fondo y variaciones de volumen extremas.
+    """Flujo E1 (contrato v0.4): ruido de fondo con senal/ruido menor a "snr_ruidoso_db".
 
     El ruido se mide en cuadros cortos, porque solo ahi aparecen las pausas entre palabras:
     en tramos de 500 ms una voz limpia sin pausas largas parece ruidosa. Por eso un grito en una
-    grabacion limpia no activa E1: tiene rango extremo, pero no ruido de fondo.
+    grabacion limpia no activa E1. La v0.3 exigia ademas 12 dB de variacion de volumen ("rango"),
+    y un ruido de calle constante nunca llegaba: con 0 dB de ruido el texto salia mal a medias y E1
+    seguia apagado. El rango queda solo como dato.
     """
     if not np.any(voz):
-        return {"snr_db": 0.0, "rango_db": 0.0, "ruido_extremo": False}
+        return {"snr_db": 0.0, "rango_db": 0.0, "ruido_de_fondo": False}
     # Percentil 90: las rafagas fuertes no deben contar como el nivel normal de la voz.
     snr = float(np.percentile(cuadros_db, 90) - np.percentile(cuadros_db, 5))
     rango = float(np.percentile(niveles_db[voz], 99) - np.percentile(niveles_db[voz], 50))
     return {"snr_db": round(snr, 2), "rango_db": round(rango, 2),
-            "ruido_extremo": snr < reglas["snr_ruidoso_db"] and rango >= reglas["rango_extremo_db"]}
+            "ruido_de_fondo": snr < reglas["snr_ruidoso_db"]}
 
 
 def evaluar(f0, rms, segundos_por_cuadro, reglas):

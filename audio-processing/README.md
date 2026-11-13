@@ -193,8 +193,9 @@ Los valores están en `reglas_acusticas.json`, separados por su origen:
 5. **`clasificacion_final`:** `CRITICO` si hay alerta roja; `NEGATIVO` bajo 35; `POSITIVO` sobre 65;
    `NEUTRO` en el resto. **Los cortes son provisionales**: el Blueprint no los define.
 6. **Flujo E1:** `baja_confianza_audio` es `true` si no hay segmentos, si Whisper está poco seguro, o si
-   hay ruido de fondo (menos de 15 dB entre voz y ruido) con variaciones extremas (12 dB o más sobre la
-   mediana). Con esa bandera, el puntaje usa **100 % el texto** y no hay alerta roja.
+   hay ruido de fondo: menos de **18 dB** entre voz y ruido (contrato v0.4; la v0.3 pedía menos de
+   15 dB y además variaciones de 12 dB o más, y un ruido constante nunca las tenía). Con esa bandera, el
+   puntaje usa **100 % el texto** y no hay alerta roja.
 
 **Resultados de la calibración:** se probó con una sola llamada real (asesoría que parece tranquila,
 4 min 44 s), subiendo la ganancia en 12 posiciones para simular gritos:
@@ -299,8 +300,8 @@ como "sal o quién" o "saluquien" en la voz sintética). Por eso el proyecto usa
 
 ## Baja confianza
 
-`baja_confianza_audio` es `true` si no hay segmentos, si hay ruido con variaciones extremas (ver
-"Análisis acústico") o si `confianza_logprob` promedio es menor a **-1,5**. El valor anterior, -1,0,
+`baja_confianza_audio` es `true` si no hay segmentos, si hay ruido de fondo (menos de 18 dB entre voz y
+ruido, ver "Análisis acústico") o si `confianza_logprob` promedio es menor a **-1,5**. El valor anterior, -1,0,
 marcó como ruidosa una voz real (-1,142, en la revisión de Willy). Para elegirlo se agregó ruido blanco a 2 minutos de una llamada real (modelo
 `base`) y se comparó el texto con el del audio original:
 
@@ -316,6 +317,23 @@ marcó como ruidosa una voz real (-1,142, en la revisión de Willy). Para elegir
 **Es provisional:** sale de un solo audio con ruido agregado y del dato de Willy, no de varias
 grabaciones reales. Hay que repetirlo con grabaciones reales de la laptop de cada integrante,
 incluida la de Willy.
+
+**Ruido de calle (13/11, contrato v0.4).** Con ruido de calle (tráfico, autos que pasan y bocinas)
+mezclado dentro de la banda de la voz en 6 llamadas armadas, la confianza de Whisper casi no baja
+(nunca de -0,76), así que no sirve para detectarlo. La señal/ruido medida sí:
+
+| Ruido mezclado | Señal/ruido medida | Texto igual al de la llamada limpia | Bandera v0.3 | Bandera v0.4 |
+|---|---|---|---|---|
+| Sin ruido | 26-27 dB | 100 % | `false` | `false` |
+| 10 dB | 19-21 dB | 76-92 % | `false` | `false` |
+| 5 dB | 15-17 dB | 67-80 % | `false` | `true` |
+| 0 dB | 13-15 dB | 30-69 % | `false` | `true` |
+
+Las llamadas armadas miden de 26 a 36 dB y la real con conflicto 40,5 dB; ninguna se marca. Los
+recortes de la llamada de radio miden 19,4 y 19,6 dB: no se marcan, pero quedan a 1,4 dB del corte.
+La bandera no recupera lo que Whisper perdió: una llamada negativa con 0 dB de ruido queda `NEUTRO`
+50, porque el texto ya no tiene palabras clave. Con ruido de 10 dB la bandera no se activa, pero
+`hablante` ya puede invertirse.
 
 ## Separación de agente y cliente
 
