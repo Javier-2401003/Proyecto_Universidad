@@ -1,6 +1,7 @@
 # Contrato: backend (Node) y análisis de audio (Python)
 
-**Estado: v0.4 (escala de `puntaje_final`), propuesta por David y pendiente de la revisión de Willy.**
+**Estado: v0.4 (escala de `puntaje_final` y criterio de ruido de `baja_confianza_audio`), propuesta por
+David y pendiente de la revisión de Willy.**
 La v0.3 (alertas) la aprobó Willy el 10/11/2026 (PR #41), con los puntos de la sección 7 como
 provisionales, y la implementan `audio-processing/analizar.py` (PR #42) y el procesamiento del backend
 (`backend/src/procesamientoAudio.js`, PR #44). Si alguien necesita un cambio, se hace primero aquí, en un
@@ -116,7 +117,7 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 | `idioma` | string | no | Idioma usado (hoy siempre el de `--idioma`). | - |
 | `probabilidad_idioma` | number 0-1 | no | Seguridad de Whisper sobre el idioma. | - |
 | `modelo` | object | no | `motor`, `nombre` y `tipo_calculo` usados. | - (útil para auditoría) |
-| `baja_confianza_audio` | boolean | no | Flujo E1. Es `true` si no hubo segmentos, si `confianza_logprob_promedio < -1,5`, o si hay ruido de fondo con variaciones de volumen extremas. Con `true`, `puntaje_final` usa 100 % el texto. Criterio **provisional**. | `TB_Llamada.baja_confianza_audio` (0/1) |
+| `baja_confianza_audio` | boolean | no | Flujo E1. Es `true` si no hubo segmentos, si `confianza_logprob_promedio < -1,5`, o si la relación señal/ruido medida es menor a 18 dB (**v0.4**; la v0.3 exigía además variaciones de volumen extremas). Con `true`, `puntaje_final` usa 100 % el texto. Criterio **provisional**. | `TB_Llamada.baja_confianza_audio` (0/1) |
 | `score_global_nlp` | number (3 dec.) | no | De -1 a +1. Promedio de las frases con palabras clave (RN-01); 0 si no hay ninguna. | `TB_Llamada.score_global_nlp` |
 | `score_acustico` | number (3 dec.) | no | De -1 a 0 por ahora: 0 sin subidas de volumen o tono; nunca es positivo (RN-02). | `TB_Llamada.score_acustico` |
 | `puntaje_final` | number (2 dec.) | no | De 0 a 100; 100 es lo mejor y 50 es neutro (RN-03). **v0.4:** usa toda la escala (fórmula en la sección 5); con la v0.3 el máximo era 77,5. | `TB_Llamada.puntaje_final` |
@@ -320,7 +321,7 @@ Javier y la 10, del equipo.
 7. **Odómetro (Javier):** 100 es lo mejor del odómetro y el puntaje neutro es `50.00`.
 8. **v0.2 aprobada como provisional (06/11):** se aceptan, para revisarlos con llamadas reales:
    - el umbral de `baja_confianza_audio` en -1,5, en lugar de -1,0, y el criterio de ruido con
-     variaciones extremas;
+     variaciones extremas (la v0.4 propone cambiarlo, abajo);
    - los cortes de 35 y 65, y la alerta roja como `CRITICO`;
    - las reglas de `diagnostico_conflicto`;
    - RN-02 y RN-03 recalibrados: 180 % durante 2 s en lugar de 150 % durante 1,5 s, y la alerta roja
@@ -363,6 +364,25 @@ Javier y la 10, del equipo.
   reprocesen (sección 6).
 - **Javier:** los datos simulados del frontend generan las positivas entre 65 y 77,5
   (`frontend/src/api/simulacion/listado.js`); con la v0.4 pueden llegar a 100.
+- **El criterio de ruido de `baja_confianza_audio` (tabla de la sección 3):** señal/ruido medida menor a
+  18 dB, sin exigir variaciones extremas de volumen. Resuelve otro efecto que vio Willy el 10/11: con
+  ruido de calle, el texto se degradaba y la bandera quedaba en `false`.
+  - Con la v0.3 no se activa nunca con ruido de calle: un ruido constante no llega a los 12 dB de
+    variación que exigía.
+  - Medido con 6 llamadas armadas y ruido de calle mezclado dentro de la banda de la voz:
+
+    | Ruido mezclado | Señal/ruido medida | Texto igual al de la llamada limpia | v0.3 | v0.4 |
+    |---|---|---|---|---|
+    | Sin ruido | 26-27 dB | 100 % | `false` | `false` |
+    | 10 dB | 19-21 dB | 76-92 % | `false` | `false` |
+    | 5 dB | 15-17 dB | 67-80 % | `false` | `true` |
+    | 0 dB | 13-15 dB | 30-69 % | `false` | `true` |
+
+  - Las 17 llamadas armadas miden de 26 a 36 dB, y las de la demo más, por sus silencios digitales. Llamadas reales: la de soporte con
+    conflicto mide 40,5 dB y la de radio 25,6 dB, pero dos recortes de la de radio miden 19,4 y 19,6 dB.
+    Ninguna se marca, aunque esos recortes quedan cerca del corte.
+  - Con `true`, el puntaje usa solo el texto, no hay `CRITICO` y solo salen alertas de vocabulario: un
+    auto que pasa ya no puede contar como grito.
 
 ### Para revisar con llamadas reales
 
@@ -370,3 +390,6 @@ Javier y la 10, del equipo.
 2. Si una consulta neutra y cortés debe salir `POSITIVO` (efecto de la v0.4).
 3. Con `baja_confianza_audio` el puntaje usa solo el texto: con texto negativo sigue bajando más que en
    una llamada limpia (texto -0,5 sin subidas: 36,25 limpia, 25 con ruido).
+4. El corte de 18 dB: hay pocas llamadas reales para confirmarlo, y los recortes de la de radio quedan a
+   1,4 dB. Con ruido de 10 dB la bandera no se activa, pero `hablante` ya puede invertirse (en una
+   llamada, 9 % de acierto), porque Whisper deforma las frases típicas del agente.
