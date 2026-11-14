@@ -13,7 +13,7 @@ llamadas reales; el informe y la presentación van aparte.
 | Autenticación JWT, RBAC y auditoría | - | Hecho |
 | Gestión de usuarios (crear, editar, desactivar, asignar supervisor) | Willy y Javier | Hecho |
 | Carga de audios por lotes | Willy y Javier | Hecho |
-| Análisis de audio v0.3 (Whisper, sentimiento, puntaje, hablante, alertas) | David | Hecho; la v0.4 (puntaje de 0 a 100 y criterio de ruido) en revisión (PR #53 y #54); falta calibrar con llamadas reales |
+| Análisis de audio v0.4 (Whisper, sentimiento, puntaje de 0 a 100, hablante, alertas) | David | Hecho (v0.4 en `main`, PR #53 y #54, escala lineal aprobada por Willy); falta calibrar con llamadas reales |
 | Procesamiento en el backend (análisis automático, alertas en `TB_Alerta`) | Willy | Hecho; probado de punta a punta el 06/11 (laptop de David, sin alertas) y el 10/11 (laptop de Willy, v0.3 con alertas: 10 llamadas `COMPLETADO`) |
 | Inicio con estadísticas, detalle de llamada, panel del agente, búsqueda histórica, auditoría | Javier (endpoints de Willy) | Hecho |
 | Dashboard en tiempo real | Javier | Hecho (PR #49): se actualiza cada 10 s con `GET /llamadas`, sin endpoints nuevos |
@@ -157,8 +157,10 @@ organizar las grabaciones de llamadas actuadas.
 **Necesito de otros:**
 - Willy: revisar el PR #57 (ejemplo de `docs/api.md`). Ya no hace falta definir contratos para el
   Dashboard ni los Reportes: usan `GET /llamadas`.
-- Equipo, para David: el guion obligatorio (`OMISION_SCRIPT`), cómo detectar a un cliente que grita
-  casi toda la llamada y la escala del puntaje del PR #53 (lineal o en curva).
+- Willy: el reproceso de llamadas que propusiste en el #53. Mientras no exista, el inicio, el
+  Dashboard y los Reportes promedian llamadas de la v0.3 (máximo 77,5) junto con las de la v0.4.
+- Equipo, para David: el guion obligatorio (`OMISION_SCRIPT`) y cómo detectar a un cliente que grita
+  casi toda la llamada.
 
 ---
 
