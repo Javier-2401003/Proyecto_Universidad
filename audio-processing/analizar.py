@@ -14,7 +14,7 @@ import os
 import sys
 import time
 
-VERSION_CONTRATO = "0.3"
+VERSION_CONTRATO = "0.4"
 FRECUENCIA_MUESTREO = 16000  # Whisper trabaja a 16 kHz
 SALTO_MUESTRAS = 320         # 20 ms entre cuadros de analisis acustico
 CUADRO_MUESTRAS = 1024       # 64 ms por cuadro (alcanza para F0 desde 65 Hz)
@@ -191,7 +191,7 @@ def construir_resultado(args, audio, segmentos, hablantes, info, f0, rms, rms_pr
     score_acustico = acustico["score_acustico"] if segmentos else 0.0
     subida_continua = acustico["subida_continua_segundos"] if segmentos else 0.0
     baja_confianza = bool((not segmentos) or logprob_promedio < UMBRAL_LOGPROB_BAJA_CONFIANZA
-                          or acustico["ruido_extremo"])
+                          or acustico["ruido_de_fondo"])
     score_global_nlp = puntaje_global(frases_analizadas)
     final = calcular_puntaje(score_global_nlp, score_acustico, baja_confianza, subida_continua,
                              reglas_acusticas)

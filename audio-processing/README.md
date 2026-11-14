@@ -82,15 +82,15 @@ Una vez descargados los modelos, puede trabajar sin internet con
 Ejemplo de salida (recortado):
 ```json
 {
-  "version_contrato": "0.3",
+  "version_contrato": "0.4",
   "archivo": "llamada.wav",
   "duracion_segundos": 268.553,
   "idioma": "es",
   "modelo": { "motor": "faster-whisper", "nombre": "base", "tipo_calculo": "int8" },
   "baja_confianza_audio": false,
   "score_global_nlp": 0.5,
-  "score_acustico": 0.0,
-  "puntaje_final": 63.75,
+  "score_acustico": -0.25,
+  "puntaje_final": 64.77,
   "clasificacion_final": "NEUTRO",
   "diagnostico_conflicto": "SIN_CONFLICTO",
   "resumen_acustico": { "f0_mediana_hz": 213.64, "rms_promedio_dbfs": -20.05, "...": "..." },
@@ -184,14 +184,18 @@ Los valores están en `reglas_acusticas.json`, separados por su origen:
    con voz. Cada tramo de grito sostenido (`EXCESO_VOLUMEN`) cuenta **doble** (`peso_tramo_grito`,
    decisión del equipo del 11/11); los de tono cuentan una vez, porque también aparecen en llamadas
    tranquilas. **Nunca es positivo**, porque una voz tranquila no prueba satisfacción. Sin segmentos es 0.
-4. **`puntaje_final`:** `(0,55 × NLP + 0,45 × acústico + 1) × 50`, donde 100 es lo mejor. Con texto
-   neutro o positivo, la voz solo baja este puntaje. Como `score_acustico` nunca es positivo, el máximo
-   es 77,5.
+4. **`puntaje_final` (contrato v0.4):** `combinado = 0,55 × NLP + 0,45 × acústico` va de -1 a 0,55,
+   porque `score_acustico` nunca es positivo. El lado negativo es `50 + 50 × combinado`, como en la
+   v0.3; el positivo se estira hasta 100: `50 + 50 × combinado / 0,55`. Así 50 sigue siendo neutro y
+   texto +1 sin subidas llega a 100 (en la v0.3, el máximo era 77,5). Con texto neutro o positivo, la voz
+   solo baja este puntaje. `escala_lado_positivo` en `reglas_acusticas.json` elige `"lineal"` o
+   `"curva"` (`50 + 50 × (combinado / 0,55)²`, la alternativa del contrato).
 5. **`clasificacion_final`:** `CRITICO` si hay alerta roja; `NEGATIVO` bajo 35; `POSITIVO` sobre 65;
    `NEUTRO` en el resto. **Los cortes son provisionales**: el Blueprint no los define.
 6. **Flujo E1:** `baja_confianza_audio` es `true` si no hay segmentos, si Whisper está poco seguro, o si
-   hay ruido de fondo (menos de 15 dB entre voz y ruido) con variaciones extremas (12 dB o más sobre la
-   mediana). Con esa bandera, el puntaje usa **100 % el texto** y no hay alerta roja.
+   hay ruido de fondo: menos de **18 dB** entre voz y ruido (contrato v0.4; la v0.3 pedía menos de
+   15 dB y además variaciones de 12 dB o más, y un ruido constante nunca las tenía). Con esa bandera, el
+   puntaje usa **100 % el texto** y no hay alerta roja.
 
 **Resultados de la calibración:** se probó con una sola llamada real (asesoría que parece tranquila,
 4 min 44 s), subiendo la ganancia en 12 posiciones para simular gritos:
@@ -296,8 +300,8 @@ como "sal o quién" o "saluquien" en la voz sintética). Por eso el proyecto usa
 
 ## Baja confianza
 
-`baja_confianza_audio` es `true` si no hay segmentos, si hay ruido con variaciones extremas (ver
-"Análisis acústico") o si `confianza_logprob` promedio es menor a **-1,5**. El valor anterior, -1,0,
+`baja_confianza_audio` es `true` si no hay segmentos, si hay ruido de fondo (menos de 18 dB entre voz y
+ruido, ver "Análisis acústico") o si `confianza_logprob` promedio es menor a **-1,5**. El valor anterior, -1,0,
 marcó como ruidosa una voz real (-1,142, en la revisión de Willy). Para elegirlo se agregó ruido blanco a 2 minutos de una llamada real (modelo
 `base`) y se comparó el texto con el del audio original:
 
@@ -313,6 +317,23 @@ marcó como ruidosa una voz real (-1,142, en la revisión de Willy). Para elegir
 **Es provisional:** sale de un solo audio con ruido agregado y del dato de Willy, no de varias
 grabaciones reales. Hay que repetirlo con grabaciones reales de la laptop de cada integrante,
 incluida la de Willy.
+
+**Ruido de calle (13/11, contrato v0.4).** Con ruido de calle (tráfico, autos que pasan y bocinas)
+mezclado dentro de la banda de la voz en 6 llamadas armadas, la confianza de Whisper casi no baja
+(nunca de -0,76), así que no sirve para detectarlo. La señal/ruido medida sí:
+
+| Ruido mezclado | Señal/ruido medida | Texto igual al de la llamada limpia | Bandera v0.3 | Bandera v0.4 |
+|---|---|---|---|---|
+| Sin ruido | 26-27 dB | 100 % | `false` | `false` |
+| 10 dB | 19-21 dB | 76-92 % | `false` | `false` |
+| 5 dB | 15-17 dB | 67-80 % | `false` | `true` |
+| 0 dB | 13-15 dB | 30-69 % | `false` | `true` |
+
+Las llamadas armadas miden de 26 a 36 dB y la real con conflicto 40,5 dB; ninguna se marca. Los
+recortes de la llamada de radio miden 19,4 y 19,6 dB: no se marcan, pero quedan a 1,4 dB del corte.
+La bandera no recupera lo que Whisper perdió: una llamada negativa con 0 dB de ruido queda `NEUTRO`
+50, porque el texto ya no tiene palabras clave. Con ruido de 10 dB la bandera no se activa, pero
+`hablante` ya puede invertirse.
 
 ## Separación de agente y cliente
 
