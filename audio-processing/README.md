@@ -232,7 +232,7 @@ mensajes están en `reglas_alertas.json` y son los mismos textos de los datos si
 | `tipo_alerta` | Cómo se detecta |
 |---|---|
 | `EXCESO_VOLUMEN` | Cada subida de volumen de RN-02, la misma que usa `score_acustico`. El origen es el hablante que ocupa más tiempo en la subida; el valor, el cuadro más fuerte del audio original en dBFS |
-| `ALTERACION_TONO` | RN-02 **por hablante**: dentro de sus propios segmentos, una ventana de 2 s cuyo F0 varía más del 40 % de su media. Antes se descartan los errores de octava de `pyin` (más del doble o menos de la mitad de su mediana) |
+| `ALTERACION_TONO` | RN-02 **por hablante**: dentro de sus propios segmentos, una ventana de 2 s cuyo F0 varía más del 40 % de su media. Antes se descartan los errores de octava de `pyin` (más del doble o menos de la mitad de su mediana) y la voz del otro hablante dentro de sus segmentos (cuadros en el rango típico del otro, percentiles 10 a 90, y fuera del propio) |
 | `VOCABULARIO_INADECUADO` | Una palabra de `vocabulario_inadecuado` en `lexico_es.json` (lista **provisional**); una alerta por palabra y segmento |
 
 Con `baja_confianza_audio` solo salen las de vocabulario. `OMISION_SCRIPT` queda para cuando el equipo
@@ -245,7 +245,7 @@ defina el guion obligatorio.
 | Conversación armada en la que el cliente grita (×3) | 1 `EXCESO_VOLUMEN` del cliente, a los 9 s, justo cuando empieza a gritar |
 | Conversación armada tranquila | Ninguna |
 | Llamada real de radio (4 min 44 s) | Ninguna. Sin el filtro de octavas daba **7 `ALTERACION_TONO` falsas**: todas eran errores de `pyin` |
-| Llamada real de soporte técnico, la clienta grita e insulta (8 min 56 s) | 10 `VOCABULARIO_INADECUADO` de la clienta, **ningún `EXCESO_VOLUMEN`** y 3 `ALTERACION_TONO` **falsas** del agente |
+| Llamada real de soporte técnico, la clienta grita e insulta (8 min 56 s) | 10 `VOCABULARIO_INADECUADO` de la clienta y **ningún `EXCESO_VOLUMEN`**. Daba 3 `ALTERACION_TONO` **falsas** del agente: 1 era de la diarización vieja y 2 de la voz de la clienta encima de la suya; ahora, ninguna |
 
 **Límites conocidos:**
 
@@ -254,8 +254,12 @@ defina el guion obligatorio.
   la llamada real de 8 min 56 s la clienta habla unos 8 dB más fuerte que el agente y ocupa el 73 %
   del tiempo, así que el promedio de los 30 s anteriores ya es su grito. Corregirlo cambia RN-02
   (por ejemplo, comparar con el volumen del agente): lo decide el equipo.
-- **Tono falso en el agente:** en esa misma llamada salieron 3 `ALTERACION_TONO` del agente, que habla
-  tranquilo; hay errores de octava de `pyin` que el filtro no quita y ventanas con la voz de la clienta.
+- **Voz cruzada:** cuando un hablante habla encima del otro, su voz queda dentro de los segmentos del
+  otro. Se descartan los cuadros en el rango típico del otro y fuera del propio: en 75 llamadas (armadas,
+  con ruido y reales), las `ALTERACION_TONO` falsas bajaron de 8 a 3, todas en llamadas con ruido o con
+  la diarización vieja. Se usa el rango y no "el más cercano", para no perder un grito cuyo tono baja
+  hacia el del otro (prueba con una clienta que oscila de 160 a 500 Hz). Con voces del mismo género
+  los rangos se solapan y el filtro casi no actúa.
 - **El 40 % de RN-02 casi nunca se cumple con voz real:** sin los errores de octava, ni la llamada real
   ni los audios armados llegaron a ese nivel. Hay que medirlo con llamadas reales de call center.
 - **Vocabulario sin contexto:** "no es una estafa" también se marca, y la alerta usa el inicio del

@@ -152,7 +152,7 @@ exportación en el backend; opcional).
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 13/11/2026_
+_Última actualización: 14/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -198,7 +198,7 @@ y la visibilidad del Agente. Las tildes se guardan bien (`utf8mb4`).
 
 Los audios "armados" usan voces de Windows, con hablante conocido; solo la llamada de radio es real.
 
-**Separación de agente y cliente corregida (13/11, rama `david-ruido`):** al investigar el ruido que
+**Separación de agente y cliente corregida (13/11, PR #55, en `main`):** al investigar el ruido que
 señaló Willy, encontré que la diarización fallaba en llamadas cortas aunque fueran limpias.
 - Agrupaba ventanas de 1 s con el timbre promediado también sobre pausas, y las suavizaba con un filtro
   de mediana: en llamadas de 40 s agrupaba por pausas y por lo que se decía. Con un hombre y una mujer
@@ -247,25 +247,30 @@ cortesía.**
 - No llega a `CRITICO`: su texto queda en -0,20 y el contrato pide menos de -0,3. La decisión acepta
   `NEGATIVO`.
 
-**En curso: decisión 3 del 11/11, contrato v0.4 (PR #53, espera revisión de Willy).**
+**Hecho: decisión 3 del 11/11, contrato v0.4 (PRs #53 y #54, en `main` desde el 14/11).** Willy la
+aprobó con la fórmula lineal y el criterio de ruido como provisional.
 `puntaje_final` usa de 0 a 100: el lado positivo se estira (`50 + 50 × combinado / 0,55`) y el negativo
 queda igual. Con 27 llamadas: la positiva de la prueba de Willy pasa a `POSITIVO` (72,5), 7 llamadas
-cambian de `NEUTRO` a `POSITIVO` y ninguna negativa cambia. Efecto a decidir: 4 de esas 7 son consultas
-neutras que terminan con "gracias"; el contrato deja una alternativa en curva que no las cambia.
-- Implementación lista (PR #54, borrador, 13/11): `analizar.py` emite la v0.4, y
-  `escala_lado_positivo` en `reglas_acusticas.json` elige `"lineal"` o `"curva"` sin tocar código. Con
-  el `analizar.py` real, las 27 llamadas dan lo mismo que la simulación, y el lado negativo da
-  exactamente lo mismo que la v0.3. Se fusiona después del #53.
+cambian de `NEUTRO` a `POSITIVO` y ninguna negativa cambia. 4 de esas 7 son consultas neutras que
+terminan con "gracias": Willy lo acepta por ahora y queda para revisar con llamadas reales.
+- `analizar.py` emite la v0.4, y `escala_lado_positivo` en `reglas_acusticas.json` elige `"lineal"` o
+  `"curva"` sin tocar código. El lado negativo da exactamente lo mismo que la v0.3.
 - **Criterio de ruido de `baja_confianza_audio` (también en la v0.4):** señal/ruido menor a 18 dB, sin
   exigir 12 dB de variación de volumen. Con ruido de calle mezclado en la banda de la voz, la v0.3 no se
   activaba ni a 0 dB (texto bien al 30-69 %); ahora se activa desde 5 dB (texto bien al 67-80 %). No marca
-  ninguna llamada limpia; los recortes de la llamada real de radio quedan a 1,4 dB del corte. 110
-  pruebas pasando con la diarización del #55.
+  ninguna llamada limpia; los recortes de la llamada real de radio quedan a 1,4 dB del corte.
+
+**Alertas de tono por voz cruzada (14/11, rama `david-tono-cruzado`):** en la llamada real con conflicto,
+las 2 `ALTERACION_TONO` que le quedaban al agente eran la voz de la clienta (270-310 Hz) encima de la del
+agente (110-150 Hz). Ahora se descartan los cuadros en el rango típico del otro hablante y fuera del
+propio. En 75 llamadas, las alertas de tono falsas bajan de 8 a 3, y la llamada real queda en 0. Un
+grito que baja hacia el tono del otro se sigue detectando. 112 pruebas pasando.
 
 **Pendiente:**
-- **Ruido (prueba de Willy del 10/11):** con ruido de calle, Whisper degrada el texto, los `hablante`
-  salen cruzados (13 `AGENTE` contra 6 `CLIENTE` en una llamada pareja) y `baja_confianza_audio` queda en
-  `false`.
+- **Ruido (prueba de Willy del 10/11):** la diarización (#55) y la baja confianza (v0.4) ya están. Queda que,
+  con mucho ruido, Whisper deforma las frases típicas del agente y los roles pueden invertirse.
+- **Reprocesar llamadas v0.3** (de Willy): hasta que el backend pueda reprocesarlas, los promedios
+  mezclan puntajes de la v0.3 y la v0.4.
 - Repetir la prueba de punta a punta con llamadas reales de call center, junto con Willy y Javier.
 - Medir `hablante` con llamadas reales etiquetadas (espero 65-85 % en mono, sin medir) y usarlo en el
   promedio móvil de RN-02.
@@ -279,18 +284,14 @@ neutras que terminan con "gracias"; el contrato deja una alternativa en curva qu
   `hablante`, detección de gritos y umbral de `baja_confianza_audio`. **Bloqueado:** no tengo llamadas
   reales de call center ni acceso a las otras laptops.
 - `ALTERACION_TONO`: sin los errores de octava, el 40 % de RN-02 no se cumplió en ningún audio; hay que
-  ver con llamadas reales si alguna vez se dispara. En la llamada real con conflicto dio 3 alertas
-  falsas al agente: quedan errores de octava y ventanas con la voz de la clienta.
+  ver con llamadas reales si alguna vez se dispara. Las falsas que quedan son de llamadas con ruido.
 - **Gritos sostenidos:** si el cliente grita casi toda la llamada, RN-02 no lo detecta, porque compara con
   el promedio de los 30 s anteriores, que ya es su grito. En la llamada real la clienta hablaba unos 8 dB
   más fuerte que el agente y no hubo ningún `EXCESO_VOLUMEN`. Arreglarlo cambia RN-02 (ver "Necesito").
 
 **Necesito de otros:**
-- Willy: revisar el contrato v0.4 (escala de `puntaje_final`) y elegir entre la fórmula propuesta y la
-  alternativa en curva. Y tu grabación de 52 s (por fuera de GitHub, como dijiste), para el umbral de
-  baja confianza.
-- Javier: si se aprueba la v0.4, los datos simulados del frontend (`simulacion/listado.js`) pueden
-  llevar las positivas hasta 100.
+- Willy: tu grabación de 52 s (por fuera de GitHub, como dijiste), para el umbral de baja confianza. Y
+  revisar el #57 de Javier (ejemplo de `docs/api.md`): sale a mi nombre, así que yo no puedo aprobarlo.
 - Willy o Javier: correr `analizar.py` con `base` en su laptop y anotar cuánto tarda, para medir en la
   más lenta del equipo.
 - Equipo: definir el guion obligatorio para `OMISION_SCRIPT` (por ejemplo, saludo, identificación y

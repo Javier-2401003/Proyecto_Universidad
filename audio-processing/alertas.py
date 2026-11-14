@@ -13,6 +13,9 @@ import numpy as np
 from lexico import palabras_inadecuadas
 
 RUTA_REGLAS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reglas_alertas.json")
+# Rango tipico del tono de cada hablante (percentiles), para reconocer la voz del otro.
+PERCENTILES_RANGO_TIPICO = (10, 90)
+CUADROS_MINIMOS_RANGO = 10
 
 
 def cargar_reglas(ruta=RUTA_REGLAS):
@@ -72,6 +75,36 @@ def quitar_errores_de_octava(f0, cuadros, factor):
     return limpio
 
 
+def quitar_voz_del_otro(f0, cuadros):
+    """Quita los cuadros de un hablante que caen en el rango tipico del otro y fuera del propio.
+
+    Si el cliente habla encima del agente, su voz queda dentro de un segmento del agente. En una
+    llamada real, las 2 alertas de tono del agente eran la voz de la clienta (270-310 Hz) mezclada con
+    la del agente (110-150 Hz). Se usa el rango tipico del otro (percentiles 10 a 90) y no la cercania
+    a su tono, para no perder un grito real cuyo tono baja hacia el del otro hablante. Con voces del
+    mismo genero los rangos se solapan, y casi no quita nada.
+    """
+    limpio = np.asarray(f0, dtype=float).copy()
+    rangos = {}
+    for hablante, dentro in cuadros.items():
+        todos = np.concatenate(dentro) if dentro else np.array([], dtype=int)
+        voz = limpio[todos][~np.isnan(limpio[todos])]
+        if len(voz) >= CUADROS_MINIMOS_RANGO:
+            rangos[hablante] = np.percentile(voz, PERCENTILES_RANGO_TIPICO)
+    for hablante, dentro in cuadros.items():
+        otros = [r for h, r in rangos.items() if h != hablante]
+        if hablante not in rangos or not otros or not dentro:
+            continue
+        (propio_bajo, propio_alto), (otro_bajo, otro_alto) = rangos[hablante], otros[0]
+        todos = np.concatenate(dentro)
+        valores = limpio[todos]
+        del_otro = ((valores >= otro_bajo) & (valores <= otro_alto)
+                    & ~((valores >= propio_bajo) & (valores <= propio_alto)))
+        valores[del_otro] = np.nan
+        limpio[todos] = valores
+    return limpio
+
+
 def alertas_tono(f0, tiempos, segmentos, reglas_acusticas, factor_error_octava=2.0):
     """RN-02 por hablante: ventanas de un solo hablante con F0 que varia mas del 40 % de SU media."""
     tiempos = np.asarray(tiempos)
@@ -84,7 +117,7 @@ def alertas_tono(f0, tiempos, segmentos, reglas_acusticas, factor_error_octava=2
     for segmento in segmentos:
         dentro = np.flatnonzero((tiempos >= segmento["inicio"]) & (tiempos < segmento["fin"]))
         cuadros.setdefault(segmento["hablante"], []).append(dentro)
-    f0 = quitar_errores_de_octava(f0, cuadros, factor_error_octava)
+    f0 = quitar_voz_del_otro(quitar_errores_de_octava(f0, cuadros, factor_error_octava), cuadros)
 
     alertas = []
     for hablante, listas in cuadros.items():
