@@ -12,7 +12,8 @@ const AGENTES = [
 
 const CLASIFICACIONES = ['POSITIVO', 'NEUTRO', 'NEGATIVO', 'CRITICO'];
 // Rango de puntaje_final (0 a 100) de cada clasificacion.
-const RANGOS_PUNTAJE = { POSITIVO: [70, 98], NEUTRO: [45, 70], NEGATIVO: [25, 45], CRITICO: [5, 25] };
+// Los cortes 35 y 65 de docs/contrato_audio.md; con la v0.4 las positivas llegan hasta 100.
+const RANGOS_PUNTAJE = { POSITIVO: [65, 100], NEUTRO: [35, 65], NEGATIVO: [20, 35], CRITICO: [5, 30] };
 // Cuantas alertas suele tener una llamada de cada clasificacion (maximo).
 const ALERTAS_MAXIMAS = { POSITIVO: 0, NEUTRO: 1, NEGATIVO: 3, CRITICO: 5 };
 const TIPOS_ALERTA = ['EXCESO_VOLUMEN', 'ALTERACION_TONO', 'VOCABULARIO_INADECUADO', 'OMISION_SCRIPT'];
@@ -69,10 +70,13 @@ function generarLlamadas() {
           const [minimo, maximo] = RANGOS_PUNTAJE[clasificacion];
           llamada.clasificacion = clasificacion;
           llamada.puntaje = minimo + azar() * (maximo - minimo);
-          llamada.baja_confianza = azar() < 0.05;
+          // Con baja confianza no hay CRITICO ni alertas de voz (solo de vocabulario).
+          llamada.baja_confianza = clasificacion !== 'CRITICO' && azar() < 0.05;
           const totalAlertas = Math.round(azar() * ALERTAS_MAXIMAS[clasificacion]);
           for (let a = 0; a < totalAlertas; a += 1) {
-            llamada.alertas.push(TIPOS_ALERTA[elegir(azar, [0.32, 0.22, 0.27, 0.19])]);
+            // OMISION_SCRIPT todavia no se detecta: nunca aparece.
+            const tipo = TIPOS_ALERTA[elegir(azar, [0.4, 0.27, 0.33, 0])];
+            if (!llamada.baja_confianza || tipo === 'VOCABULARIO_INADECUADO') llamada.alertas.push(tipo);
           }
         }
         llamadas.push(llamada);

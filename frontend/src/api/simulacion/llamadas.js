@@ -1,7 +1,9 @@
 // Simulacion de GET /llamadas/:id_llamada (docs/api.md). Usa las llamadas de los
 // lotes simulados y les asigna una de tres conversaciones de ejemplo, para poder
 // ver la pantalla con resultados positivos, con un cliente problematico y con
-// una falla del agente.
+// una falla del agente. Los resultados siguen las reglas de docs/contrato_audio.md (v0.4):
+// score_acustico nunca es positivo, cortes 35 y 65, sin CRITICO ni alertas de voz con baja
+// confianza, y los mensajes de las alertas son los de audio-processing/reglas_alertas.json.
 import { ErrorApi } from '../cliente.js';
 import { buscarLlamada } from './lotes.js';
 
@@ -10,13 +12,14 @@ import { buscarLlamada } from './lotes.js';
 const CONVERSACIONES = [
   {
     resultado: {
-      puntaje_final: 86.4,
+      // Con baja confianza el puntaje usa solo el texto: (0,58 + 1) x 50.
+      puntaje_final: 79.0,
       clasificacion_final: 'POSITIVO',
       diagnostico_conflicto: 'SIN_CONFLICTO',
       score_global_nlp: 0.58,
-      score_acustico: 0.31,
+      score_acustico: 0.0,
     },
-    baja_confianza_audio: false,
+    baja_confianza_audio: true,
     fragmentos: [
       ['AGENTE', 'Buenas tardes, gracias por comunicarse con soporte. Le saluda Ana, ¿en que puedo ayudarle?', 6, 0.6, 61, 192],
       ['CLIENTE', 'Hola, buenas tardes. Queria saber por que mi factura de este mes vino un poco mas alta.', 7, -0.1, 63, 138],
@@ -34,7 +37,8 @@ const CONVERSACIONES = [
   },
   {
     resultado: {
-      puntaje_final: 41.2,
+      // 50 + 50 x (0,55 x -0,35 + 0,45 x -0,42)
+      puntaje_final: 30.9,
       clasificacion_final: 'NEGATIVO',
       diagnostico_conflicto: 'CLIENTE_PROBLEMATICO',
       score_global_nlp: -0.35,
@@ -54,34 +58,35 @@ const CONVERSACIONES = [
     ],
     alertas: [
       ['EXCESO_VOLUMEN', 'CLIENTE', 6, '-9.6 dBFS', 'Mantenga un tono calmado y valide la molestia del cliente.'],
-      ['VOCABULARIO_INADECUADO', 'CLIENTE', 21, 'Palabra: estafa', 'No responda a la provocacion; enfoquese en la solucion.'],
-      ['ALTERACION_TONO', 'CLIENTE', 22, '235 Hz', 'Hable mas despacio y resuma lo que hara a continuacion.'],
+      ['VOCABULARIO_INADECUADO', 'CLIENTE', 20.5, 'Palabra: estafa', 'No responda a la provocación; enfóquese en la solución.'],
+      ['ALTERACION_TONO', 'CLIENTE', 22, '235 Hz (variación 46 %)', 'Hable más despacio y resuma lo que hará a continuación.'],
     ],
   },
   {
     resultado: {
-      puntaje_final: 18.7,
+      // 50 + 50 x (0,55 x -0,62 + 0,45 x -0,55); CRITICO: grito de 2 s y texto menor a -0,3.
+      puntaje_final: 20.6,
       clasificacion_final: 'CRITICO',
       diagnostico_conflicto: 'FALLA_AGENTE',
       score_global_nlp: -0.62,
       score_acustico: -0.55,
     },
-    baja_confianza_audio: true,
+    baja_confianza_audio: false,
     fragmentos: [
       ['AGENTE', 'Diga.', 2, -0.2, 66, 175],
       ['CLIENTE', 'Hola, buenas, llamo porque me cobraron dos veces la mensualidad.', 6, -0.3, 62, 150],
       ['AGENTE', 'Eso no es asunto de este departamento.', 4, -0.6, 72, 190],
       ['CLIENTE', 'Pero me pasaron con ustedes. ¿Me puede ayudar o no?', 5, -0.5, 70, 165],
-      ['AGENTE', 'Ya le dije que no. Tiene que llamar a otro numero, no me haga perder el tiempo.', 6, -0.9, 85, 215],
+      ['AGENTE', 'Ya le dije que no, no sea inútil. Tiene que llamar a otro numero.', 6, -0.9, 85, 215],
       ['CLIENTE', 'Que mala atencion. Quiero hablar con un supervisor.', 4, -0.8, 78, 180],
       ['AGENTE', 'No hay ningun supervisor disponible.', 3, -0.7, 80, 205],
       ['CLIENTE', 'Voy a presentar un reclamo formal.', 3, -0.7, 74, 170],
     ],
     alertas: [
-      ['OMISION_SCRIPT', 'AGENTE', 0, 'Sin saludo ni identificacion', 'Salude, diga su nombre y ofrezca ayuda al iniciar la llamada.'],
-      ['VOCABULARIO_INADECUADO', 'AGENTE', 22, 'Frase: no me haga perder el tiempo', 'Evite frases que culpen al cliente; ofrezca una alternativa.'],
+      // OMISION_SCRIPT no va: el analisis todavia no la detecta (falta definir el guion).
+      ['VOCABULARIO_INADECUADO', 'AGENTE', 19, 'Palabra: inútil', 'Evite ese lenguaje: mantenga un trato respetuoso con el cliente.'],
       ['EXCESO_VOLUMEN', 'AGENTE', 20, '-8.5 dBFS', 'Baje el volumen y respire antes de responder.'],
-      ['OMISION_SCRIPT', 'AGENTE', 30, 'Escalamiento a supervisor negado', 'Si el cliente pide un supervisor, transfiera o agende la devolucion de la llamada.'],
+      ['ALTERACION_TONO', 'AGENTE', 20.5, '215 Hz (variación 44 %)', 'Respire, baje el ritmo y vuelva a un tono neutro.'],
     ],
   },
 ];
