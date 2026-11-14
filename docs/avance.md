@@ -4,7 +4,8 @@ Cada integrante (o su Claude) actualiza **solo su propia sección** al terminar 
 sesión de trabajo. Las secciones "Estado general" y "Acuerdos" se cambian en reunión.
 
 ## Estado general
-Avance aproximado: **75-80 %** (11/11/2026).
+Avance aproximado: **85-90 %** del sistema (14/11/2026). Falta sobre todo calibrar el análisis con
+llamadas reales; el informe y la presentación van aparte.
 
 | Parte | Responsable | Estado |
 |---|---|---|
@@ -12,11 +13,11 @@ Avance aproximado: **75-80 %** (11/11/2026).
 | Autenticación JWT, RBAC y auditoría | - | Hecho |
 | Gestión de usuarios (crear, editar, desactivar, asignar supervisor) | Willy y Javier | Hecho |
 | Carga de audios por lotes | Willy y Javier | Hecho |
-| Análisis de audio v0.3 (Whisper, sentimiento, puntaje, hablante, alertas) | David | Hecho; falta calibrar con llamadas reales |
+| Análisis de audio v0.3 (Whisper, sentimiento, puntaje, hablante, alertas) | David | Hecho; la v0.4 (puntaje de 0 a 100 y criterio de ruido) en revisión (PR #53 y #54); falta calibrar con llamadas reales |
 | Procesamiento en el backend (análisis automático, alertas en `TB_Alerta`) | Willy | Hecho; probado de punta a punta el 06/11 (laptop de David, sin alertas) y el 10/11 (laptop de Willy, v0.3 con alertas: 10 llamadas `COMPLETADO`) |
 | Inicio con estadísticas, detalle de llamada, panel del agente, búsqueda histórica, auditoría | Javier (endpoints de Willy) | Hecho |
-| Dashboard en tiempo real | Javier y Willy | Por definir (Blueprint) |
-| Reportes | Javier y Willy | Por definir (Blueprint) |
+| Dashboard en tiempo real | Javier | Hecho (PR #49): se actualiza cada 10 s con `GET /llamadas`, sin endpoints nuevos |
+| Reportes (CSV y PDF) | Javier | Hecho (PR #50), con `GET /llamadas`, sin endpoints nuevos |
 
 ## Acuerdos
 - Solo herramientas gratuitas; Whisper siempre en local (ver `CLAUDE.md`).
@@ -59,7 +60,7 @@ Avance aproximado: **75-80 %** (11/11/2026).
 ---
 
 ## Javier - Frontend
-_Última actualización: 11/11/2026_
+_Última actualización: 14/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] Proyecto React + Vite en `frontend/`.
@@ -140,14 +141,24 @@ de calidad sin las llamadas de cliente problemático), tendencia semanal y llama
 filtros de fechas y agente. Descarga CSV y PDF (impresión del navegador). También sin endpoints
 nuevos: junta las llamadas con `GET /llamadas`. Con esto **ningún módulo queda "En construcción"**.
 
+**Datos simulados según el contrato** (13/11/2026, PR #56, pedido por David en el #53): positivas hasta
+100 (v0.4), cortes 35 y 65 en la simulación del inicio, y ejemplos del detalle que el analizador real
+puede producir (acústico nunca positivo, sin `CRITICO` con baja confianza, sin `OMISION_SCRIPT`, y los
+mensajes de `reglas_alertas.json`). El mismo arreglo para el ejemplo de `docs/api.md` está en el PR #57.
+
 **En curso:** -
 
 **Pendiente:** registrar en la auditoría la descarga de reportes (necesitaría un endpoint de
 exportación en el backend; opcional).
 
+**Pendiente (yo):** medir cuánto tarda `analizar.py` con `base` en mi laptop (lo pidió David) y
+organizar las grabaciones de llamadas actuadas.
+
 **Necesito de otros:**
-- Willy y David: probar de punta a punta con audios reales ahora que el #15 está en `main`, para
-  ver resultados reales en la carga de lotes, el detalle y el inicio.
+- Willy: revisar el PR #57 (ejemplo de `docs/api.md`). Ya no hace falta definir contratos para el
+  Dashboard ni los Reportes: usan `GET /llamadas`.
+- Equipo, para David: el guion obligatorio (`OMISION_SCRIPT`), cómo detectar a un cliente que grita
+  casi toda la llamada y la escala del puntaje del PR #53 (lineal o en curva).
 
 ---
 
