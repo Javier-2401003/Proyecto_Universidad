@@ -11,6 +11,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "crear-superadmin": "node scripts/crear-superadmin.js",
+    "reprocesar": "node scripts/reprocesar.js",
     "test": "node --test \"tests/*.test.js\""
   },
   "dependencies": {
