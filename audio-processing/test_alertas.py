@@ -89,6 +89,23 @@ class PruebasTono(unittest.TestCase):
         t = tiempos(10)
         self.assertEqual(alertas_tono(np.full(len(t), np.nan), t, [segmento(0, 10, "AGENTE")], REGLAS_ACUSTICAS), [])
 
+    def test_la_voz_del_otro_dentro_de_un_segmento_no_es_alteracion(self):
+        # Llamada real: la clienta (270-310 Hz) hablaba encima del agente (110-150 Hz) y le daba alertas.
+        t = tiempos(40)
+        f0 = np.where(t < 20, 160.0, 330.0 + 45 * np.sin(t))
+        encima = np.flatnonzero((t >= 8) & (t < 9.5))
+        f0[encima[::2]] = 300.0
+        alertas = alertas_tono(f0, t, [segmento(0, 20, "AGENTE"), segmento(20, 40, "CLIENTE")], REGLAS_ACUSTICAS)
+        self.assertEqual(alertas, [])
+
+    def test_un_grito_que_baja_hacia_el_tono_del_otro_sigue_siendo_alteracion(self):
+        t = tiempos(20)
+        f0 = np.where(t < 10, 120.0 + 5 * np.sin(t), 330.0 + 30 * np.sin(t))
+        grito = np.flatnonzero((t >= 14) & (t < 16))
+        f0[grito] = np.where(np.arange(len(grito)) % 10 < 5, 160.0, 500.0)
+        alertas = alertas_tono(f0, t, [segmento(0, 10, "AGENTE"), segmento(10, 20, "CLIENTE")], REGLAS_ACUSTICAS)
+        self.assertEqual([a["origen_evento"] for a in alertas], ["CLIENTE"])
+
 
 class PruebasGenerar(unittest.TestCase):
     def generar(self, segmentos, eventos=(), baja_confianza=False):
