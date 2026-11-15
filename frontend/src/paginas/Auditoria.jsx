@@ -21,6 +21,7 @@ const ACCIONES = {
   ASIGNACION_SUPERVISOR: 'Asignacion de supervisor',
   CARGA_LOTE: 'Carga de lote',
   PROCESAMIENTO_LLAMADA: 'Analisis de llamada',
+  REPROCESO_LLAMADAS: 'Reproceso de llamadas',
 };
 
 const MODULOS = {
@@ -288,6 +289,10 @@ function Detalle({ registro, nombrePorId }) {
             : `: error. ${d.mensaje_error ?? ''}`}
         </>
       );
+    case 'REPROCESO_LLAMADAS':
+      return `${d.total} ${d.total === 1 ? 'llamada vuelve' : 'llamadas vuelven'} a analizarse${
+        d.antes_de ? ` (las analizadas antes de la v${d.antes_de})` : ' (todas las completadas)'
+      }${d.incluir_errores ? ', incluidas las que tenian error' : ''}.`;
     default:
       return <code className="auditoria__json">{JSON.stringify(d)}</code>;
   }
