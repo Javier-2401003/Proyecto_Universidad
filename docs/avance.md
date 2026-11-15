@@ -4,7 +4,8 @@ Cada integrante (o su Claude) actualiza **solo su propia sección** al terminar 
 sesión de trabajo. Las secciones "Estado general" y "Acuerdos" se cambian en reunión.
 
 ## Estado general
-Avance aproximado: **75-80 %** (11/11/2026).
+Avance aproximado: **85-90 %** del sistema (14/11/2026). Falta sobre todo calibrar el análisis con
+llamadas reales; el informe y la presentación van aparte.
 
 | Parte | Responsable | Estado |
 |---|---|---|
@@ -12,11 +13,11 @@ Avance aproximado: **75-80 %** (11/11/2026).
 | Autenticación JWT, RBAC y auditoría | - | Hecho |
 | Gestión de usuarios (crear, editar, desactivar, asignar supervisor) | Willy y Javier | Hecho |
 | Carga de audios por lotes | Willy y Javier | Hecho |
-| Análisis de audio v0.3 (Whisper, sentimiento, puntaje, hablante, alertas) | David | Hecho; falta calibrar con llamadas reales |
+| Análisis de audio v0.4 (Whisper, sentimiento, puntaje de 0 a 100, hablante, alertas) | David | Hecho (v0.4 en `main`, PR #53 y #54, escala lineal aprobada por Willy); falta calibrar con llamadas reales |
 | Procesamiento en el backend (análisis automático, alertas en `TB_Alerta`) | Willy | Hecho; probado de punta a punta el 06/11 (laptop de David, sin alertas) y el 10/11 (laptop de Willy, v0.3 con alertas: 10 llamadas `COMPLETADO`) |
 | Inicio con estadísticas, detalle de llamada, panel del agente, búsqueda histórica, auditoría | Javier (endpoints de Willy) | Hecho |
-| Dashboard en tiempo real | Javier y Willy | Por definir (Blueprint) |
-| Reportes | Javier y Willy | Por definir (Blueprint) |
+| Dashboard en tiempo real | Javier | Hecho (PR #49): se actualiza cada 10 s con `GET /llamadas`, sin endpoints nuevos |
+| Reportes (CSV y PDF) | Javier | Hecho (PR #50), con `GET /llamadas`, sin endpoints nuevos |
 
 ## Acuerdos
 - Solo herramientas gratuitas; Whisper siempre en local (ver `CLAUDE.md`).
@@ -55,11 +56,29 @@ Avance aproximado: **75-80 %** (11/11/2026).
      sale `NEUTRO`, 39,8). Lo ajusta **David**.
   5. **Solo el Supervisor sube lotes;** el SuperAdmin sigue solo consultando `CARGA_LOTES`. No hace
      falta el script `database/04_...sql`.
+- **Decisiones del 14/11/2026** (propuestas por Javier; David y Willy las revisan en el PR #59):
+  6. **Guion obligatorio (`OMISION_SCRIPT`):** cuatro pasos, buscados en los segmentos del agente:
+     - **Saludo**, en sus primeros 20 s: "buenos días", "buenas tardes", "buenas noches", "hola" o
+       "gracias por llamar / comunicarse".
+     - **Identificación**: "mi nombre es", "le saluda", "le atiende" o "habla" + nombre.
+     - **Ofrecer ayuda**: "en qué puedo ayudarle" o "en qué le puedo servir".
+     - **Cierre**, en sus últimos 30 s: "algo más en que pueda ayudarle", "gracias por llamar" o
+       "que tenga buen día / buena tarde / buena noche".
+
+     Una alerta `OMISION_SCRIPT` por cada paso que falte, con origen `AGENTE`: en el segundo 0 para los
+     tres de apertura y al inicio del último segmento del agente para el cierre. `valor_registrado`:
+     `"Falta: saludo"`, etc. La llamada "cumple el guion" si no falta ninguno. **David** define la lista
+     exacta de frases (editable, como el léxico) y cómo tolerar los errores de Whisper: en la prueba del
+     14/11 transcribió "Buenas tardes" como "Puede estarles".
+  7. **Cliente que grita casi toda la llamada:** se acepta la propuesta de David. Se compara el volumen
+     medio de cada hablante con el del otro; si uno supera al otro en 6 dB o más (el doble de amplitud)
+     durante la mayor parte de lo que habla, cuenta como subida sostenida: una alerta `EXCESO_VOLUMEN`
+     de ese hablante y baja `score_acustico`. **David** calibra el umbral de 6 dB con las grabaciones.
 
 ---
 
 ## Javier - Frontend
-_Última actualización: 11/11/2026_
+_Última actualización: 14/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] Proyecto React + Vite en `frontend/`.
@@ -140,14 +159,46 @@ de calidad sin las llamadas de cliente problemático), tendencia semanal y llama
 filtros de fechas y agente. Descarga CSV y PDF (impresión del navegador). También sin endpoints
 nuevos: junta las llamadas con `GET /llamadas`. Con esto **ningún módulo queda "En construcción"**.
 
+**Datos simulados según el contrato** (13/11/2026, PR #56, pedido por David en el #53): positivas hasta
+100 (v0.4), cortes 35 y 65 en la simulación del inicio, y ejemplos del detalle que el analizador real
+puede producir (acústico nunca positivo, sin `CRITICO` con baja confianza, sin `OMISION_SCRIPT`, y los
+mensajes de `reglas_alertas.json`). El mismo arreglo para el ejemplo de `docs/api.md` está en el PR #57.
+
 **En curso:** -
 
 **Pendiente:** registrar en la auditoría la descarga de reportes (necesitaría un endpoint de
 exportación en el backend; opcional).
 
+**Prueba de punta a punta con la v0.4** (14/11/2026, en la nube del Claude de Javier, 4 núcleos sin
+GPU, `base`): 5 llamadas armadas con voces sintéticas (`espeak-ng`), subidas como Supervisora. El
+backend las analizó solo en **34 s en total**: una de 46 s tarda unos 6 s. Las pantallas muestran bien
+los resultados y las alertas.
+
+| Llamada | Esperado | Resultado | Hablante |
+|---|---|---|---|
+| Positiva | `POSITIVO` | `POSITIVO` 79,4 | 9/9 |
+| Consulta neutra que termina con "gracias" | `NEUTRO` | `POSITIVO` **96,0** | 6/7 |
+| Cliente grita 3 s, "estafa", cancelar | `CRITICO` o `NEGATIVO`, cliente | `CRITICO` 0, cliente; grito y "estafa" en su segundo | 7/7 |
+| Agente no saluda, insulta y grita | `CRITICO` o `NEGATIVO`, **agente** | `NEGATIVO` 27,5, **cliente**; el grito se le atribuye al cliente | **0/7** |
+| Positiva con ruido de fondo grave y bocinas | baja confianza | `POSITIVO` 85,5, sin baja confianza; la transcripción no se degradó | 6/9 |
+
+**Pendiente (yo):** medir el tiempo en mi laptop (el de arriba es de la nube, más rápida) y organizar
+las grabaciones de llamadas actuadas.
+
 **Necesito de otros:**
-- Willy y David: probar de punta a punta con audios reales ahora que el #15 está en `main`, para
-  ver resultados reales en la carga de lotes, el detalle y el inicio.
+- Willy: revisar el PR #57 (ejemplo de `docs/api.md`). Ya no hace falta definir contratos para el
+  Dashboard ni los Reportes: usan `GET /llamadas`.
+- Willy: el reproceso de llamadas que propusiste en el #53. Mientras no exista, el inicio, el
+  Dashboard y los Reportes promedian llamadas de la v0.3 (máximo 77,5) junto con las de la v0.4.
+- **David** (de la prueba del 14/11):
+  - **Hablante invertido:** en la llamada del agente que insulta, el agente abre con una sola palabra
+    ("Diga") que Whisper no transcribió. Toda la llamada salió con los hablantes al revés (0/7), así que
+    el grito y el diagnóstico se le atribuyeron al cliente. Parece que se asume que quien habla primero
+    es el agente; es justo el caso que más importa detectar.
+  - **"inútil"** se transcribió "dinutil" y no dio alerta de vocabulario.
+  - **Consulta cortés:** una consulta neutra que termina con "Perfecto, gracias" sale `POSITIVO` 96.
+    Es el caso del punto 2 de "Para revisar con llamadas reales", pero llega casi al máximo.
+  - Implementar las decisiones 6 y 7 (guion y cliente que grita) cuando las aprueben.
 
 ---
 
