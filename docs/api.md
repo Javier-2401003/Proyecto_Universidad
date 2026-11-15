@@ -575,6 +575,7 @@ Acciones que existen hoy, para el filtro de la pantalla:
 | `ASIGNACION_SUPERVISOR` | `GESTION_USUARIOS` | `PUT /usuarios/:id_usuario/supervisor` |
 | `CARGA_LOTE` | `CARGA_LOTES` | `POST /llamadas/lotes` |
 | `PROCESAMIENTO_LLAMADA` | `CARGA_LOTES` | El análisis de una llamada terminó; se atribuye a quien cargó el lote. |
+| `REPROCESO_LLAMADAS` | `CARGA_LOTES` | `npm run reprocesar` (PR #60) devolvió llamadas a `PENDIENTE` para volver a analizarlas; se atribuye al SuperAdmin de `SEED_ADMIN_CORREO`. `detalle_cambio`: `{ total, ids_llamadas, origen: "SCRIPT", antes_de, incluir_errores }`. |
 
 Si más adelante aparecen acciones nuevas, se agregan a esta tabla en el mismo PR que las crea.
 
