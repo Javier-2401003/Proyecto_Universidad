@@ -70,6 +70,17 @@ llamadas reales; el informe y la presentación van aparte.
      `"Falta: saludo"`, etc. La llamada "cumple el guion" si no falta ninguno. **David** define la lista
      exacta de frases (editable, como el léxico) y cómo tolerar los errores de Whisper: en la prueba del
      14/11 transcribió "Buenas tardes" como "Puede estarles".
+
+     **Por ahora es solo informativo** (agregado el 15/11 por la duda de Willy: un error de Whisper o de
+     la separación de hablantes haría parecer que un agente correcto no cumplió):
+     - **No cambia la calificación:** `OMISION_SCRIPT` no afecta `puntaje_final`, `clasificacion_final`
+       ni `diagnostico_conflicto`. Solo se muestra como alerta (retroalimentación para el agente) y
+       como porcentaje de cumplimiento en los reportes.
+     - **No se evalúa cuando no es confiable:** con `baja_confianza_audio` o si el agente casi no habló,
+       el guion queda "Pendiente de evaluación" en lugar de "No cumple", y no se emiten alertas
+       `OMISION_SCRIPT`.
+     - **Solo pasará a afectar la calificación** si el equipo lo decide después de que David mida con
+       llamadas reales que la detección de cada paso acierta en al menos el 90 % de los casos.
   7. **Cliente que grita casi toda la llamada:** se acepta la propuesta de David. Se compara el volumen
      medio de cada hablante con el del otro; si uno supera al otro en 6 dB o más (el doble de amplitud)
      durante la mayor parte de lo que habla, cuenta como subida sostenida: una alerta `EXCESO_VOLUMEN`
@@ -186,10 +197,9 @@ los resultados y las alertas.
 las grabaciones de llamadas actuadas.
 
 **Necesito de otros:**
-- Willy: revisar el PR #57 (ejemplo de `docs/api.md`). Ya no hace falta definir contratos para el
-  Dashboard ni los Reportes: usan `GET /llamadas`.
-- Willy: el reproceso de llamadas que propusiste en el #53. Mientras no exista, el inicio, el
-  Dashboard y los Reportes promedian llamadas de la v0.3 (máximo 77,5) junto con las de la v0.4.
+- Equipo: el reproceso ya existe (`npm run reprocesar`, PR #60). Hay que correrlo en cada base con
+  llamadas de antes de la v0.4 (`npm run reprocesar -- --antes-de 0.4 --confirmar`, en `backend/`);
+  si no, el inicio, el Dashboard y los Reportes promedian puntajes de las dos escalas.
 - **David** (de la prueba del 14/11):
   - **Hablante invertido:** en la llamada del agente que insulta, el agente abre con una sola palabra
     ("Diga") que Whisper no transcribió. Toda la llamada salió con los hablantes al revés (0/7), así que
