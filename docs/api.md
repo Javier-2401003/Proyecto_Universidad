@@ -300,11 +300,11 @@ para no revelar que existe):
   "mensaje_error": null,
   "baja_confianza_audio": false,
   "resultado": {
-    "puntaje_final": 72.5,
-    "clasificacion_final": "POSITIVO",
+    "puntaje_final": 60.27,
+    "clasificacion_final": "NEUTRO",
     "diagnostico_conflicto": "SIN_CONFLICTO",
     "score_global_nlp": 0.41,
-    "score_acustico": 0.12
+    "score_acustico": -0.25
   },
   "transcripcion": [
     {
