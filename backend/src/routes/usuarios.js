@@ -1,25 +1,22 @@
 // Gestion minima de usuarios (Blueprint 3.1, Endpoint 2). Solo con permiso
 // sobre el modulo GESTION_USUARIOS (por defecto, el SuperAdmin).
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-import { config } from '../config.js';
 import { consultar, conTransaccion } from '../db.js';
 import { ErrorHttp, validar, obtenerIp } from '../errores.js';
 import { autenticar, requierePermiso } from '../middleware/auth.js';
+import { hashDePassword, passwordNueva } from '../contrasenas.js';
 
 export const rutasUsuarios = Router();
 
-// bcrypt solo usa los primeros 72 bytes de la contrasena.
 const esquemaCrearUsuario = z.object({
   nombre_completo: z.string().trim().min(2).max(100),
   correo_electronico: z.string().trim().toLowerCase().email().max(150),
-  password: z
-    .string()
-    .min(8, 'La contrasena debe tener al menos 8 caracteres.')
-    .refine((valor) => Buffer.byteLength(valor, 'utf8') <= 72, 'La contrasena es demasiado larga.'),
+  password: passwordNueva,
   rol: z.string().trim().min(1).max(50),
 });
+
+const esquemaRestablecerPassword = z.object({ password_nueva: passwordNueva });
 
 const esquemaIdUsuario = z.object({
   id_usuario: z.coerce.number({ invalid_type_error: 'Debe ser un numero.' }).int().positive(),
@@ -249,6 +246,35 @@ rutasUsuarios.patch(
   }
 );
 
+// El SuperAdmin restablece la contrasena de otro usuario que la olvido (docs/api.md, "Contrasenas").
+// La suya la cambia con PATCH /auth/password, que pide la actual.
+rutasUsuarios.put(
+  '/:id_usuario/password',
+  autenticar,
+  requierePermiso('GESTION_USUARIOS', 'escribir'),
+  async (req, res) => {
+    const { id_usuario: idUsuario } = validar(esquemaIdUsuario, req.params);
+    const { password_nueva: nueva } = validar(esquemaRestablecerPassword, req.body ?? {});
+    if (idUsuario === req.usuario.id) {
+      throw new ErrorHttp(
+        400,
+        'OPERACION_NO_PERMITIDA',
+        'Para cambiar su propia contrasena use "Cambiar contrasena", que pide la actual.'
+      );
+    }
+    await buscarUsuario(idUsuario); // 404 si no existe
+
+    const passwordHash = await hashDePassword(nueva);
+    await conTransaccion(async (conexion) => {
+      await conexion.execute('UPDATE TB_Usuario SET password_hash = ? WHERE id_usuario = ?', [passwordHash, idUsuario]);
+      // Nunca la contrasena ni su hash.
+      await registrarAuditoria(conexion, req, 'RESTABLECIMIENTO_PASSWORD', { id_usuario: idUsuario });
+    });
+
+    res.json(await buscarUsuario(idUsuario));
+  }
+);
+
 rutasUsuarios.post('/', autenticar, requierePermiso('GESTION_USUARIOS', 'escribir'), async (req, res) => {
   const datos = validar(esquemaCrearUsuario, req.body);
 
@@ -257,7 +283,7 @@ rutasUsuarios.post('/', autenticar, requierePermiso('GESTION_USUARIOS', 'escribi
     throw new ErrorHttp(400, 'ROL_INEXISTENTE', `El rol "${datos.rol}" no existe.`);
   }
   const idRol = roles[0].id_rol;
-  const passwordHash = await bcrypt.hash(datos.password, config.bcryptCosto);
+  const passwordHash = await hashDePassword(datos.password);
 
   let idNuevo;
   try {
