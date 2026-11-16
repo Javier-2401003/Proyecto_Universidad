@@ -149,6 +149,16 @@ lo decide `src/api/simulacion/activa.js`; las pantallas simuladas muestran el av
 - No registra la descarga en la auditoría: para eso haría falta un endpoint de exportación en el
   backend.
 
+### Contraseñas
+- **Cambiar contraseña** (`/cuenta/contrasena`, botón con una llave en la barra superior): para todos
+  los roles, con `PATCH /auth/password`. Pide la actual, la nueva y su confirmación. Una actual
+  equivocada responde `400 PASSWORD_INCORRECTA` (no `401`), así que no cierra la sesión.
+- **Restablecer contraseña** (botón con una llave en cada fila de Gestión de usuarios): el SuperAdmin
+  pone una nueva a otro usuario que la olvidó, con `PUT /usuarios/:id_usuario/password`. Está
+  deshabilitado en la fila propia.
+- La nueva debe tener de 8 a 72 **bytes**, como en el backend (`src/contrasenas.js`): las letras con
+  tilde cuentan doble.
+
 ## Sesión
 - El token se guarda en `sessionStorage`: sobrevive a una recarga y se borra al
   cerrar el navegador.

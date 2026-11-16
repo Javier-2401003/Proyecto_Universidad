@@ -1,5 +1,5 @@
-import { Outlet } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { Link, Outlet } from 'react-router-dom';
+import { KeyRound, LogOut } from 'lucide-react';
 import { useSesion } from '../sesion/SesionContexto.jsx';
 import { MenuLateral } from './MenuLateral.jsx';
 
@@ -15,6 +15,15 @@ export function Layout() {
             <strong>{usuario.nombre}</strong>
             <span className="texto-secundario">{usuario.roles.join(', ')}</span>
           </div>
+          <Link
+            to="/cuenta/contrasena"
+            className="boton boton--secundario"
+            title="Cambiar contrasena"
+            aria-label="Cambiar contrasena"
+          >
+            <KeyRound size={18} aria-hidden="true" />
+            <span className="barra-superior__texto">Cambiar contrasena</span>
+          </Link>
           <button type="button" className="boton boton--secundario" onClick={salir}>
             <LogOut size={18} aria-hidden="true" />
             Cerrar sesion

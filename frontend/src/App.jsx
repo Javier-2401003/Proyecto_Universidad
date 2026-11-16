@@ -6,6 +6,7 @@ import { MODULOS } from './modulos.js';
 import Login from './paginas/Login.jsx';
 import Inicio from './paginas/Inicio.jsx';
 import DetalleLlamada from './paginas/DetalleLlamada.jsx';
+import CambiarContrasena from './paginas/CambiarContrasena.jsx';
 
 export default function App() {
   const { usuario } = useSesion();
@@ -26,6 +27,8 @@ export default function App() {
         <Route index element={<Inicio />} />
         {/* Sin modulo: quien puede ver cada llamada lo decide el backend (docs/api.md). */}
         <Route path="/llamadas/:idLlamada" element={<DetalleLlamada />} />
+        {/* Para todos los roles: cada usuario cambia su propia contrasena. */}
+        <Route path="/cuenta/contrasena" element={<CambiarContrasena />} />
         {MODULOS.map(({ codigo, ruta, pantalla: Pantalla }) => (
           <Route
             key={codigo}

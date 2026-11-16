@@ -89,7 +89,7 @@ llamadas reales; el informe y la presentación van aparte.
 ---
 
 ## Javier - Frontend
-_Última actualización: 14/11/2026_
+_Última actualización: 16/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] Proyecto React + Vite en `frontend/`.
@@ -192,6 +192,12 @@ los resultados y las alertas.
 | Cliente grita 3 s, "estafa", cancelar | `CRITICO` o `NEGATIVO`, cliente | `CRITICO` 0, cliente; grito y "estafa" en su segundo | 7/7 |
 | Agente no saluda, insulta y grita | `CRITICO` o `NEGATIVO`, **agente** | `NEGATIVO` 27,5, **cliente**; el grito se le atribuye al cliente | **0/7** |
 | Positiva con ruido de fondo grave y bocinas | baja confianza | `POSITIVO` 85,5, sin baja confianza; la transcripción no se degradó | 6/9 |
+
+**Contraseñas** (16/11/2026, rama `javier-contrasenas`): revisé y fusioné el contrato de Willy (PR #64).
+"Cambiar contraseña" en la barra superior (todos los roles) y "Restablecer contraseña" en cada fila de
+Gestión de usuarios (SuperAdmin), con errores junto a cada campo y la regla de 8 a 72 bytes. La pantalla
+de Auditoría muestra `CAMBIO_PASSWORD`, `RESTABLECIMIENTO_PASSWORD` y el módulo `AUTENTICACION`.
+Probado contra el backend del PR #65.
 
 **Pendiente (yo):** medir el tiempo en mi laptop (el de arriba es de la nube, más rápida) y organizar
 las grabaciones de llamadas actuadas.

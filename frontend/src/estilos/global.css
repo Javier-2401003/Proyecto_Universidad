@@ -1539,6 +1539,30 @@ h2 {
   }
 }
 
+/* ---------- Cambiar contrasena ---------- */
+.cambiar-contrasena {
+  max-width: 560px;
+}
+
+.cambiar-contrasena .alerta {
+  margin-top: 0;
+}
+
+.cambiar-contrasena__campos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formulario__nota {
+  margin: -8px 0 16px;
+  font-size: 0.875rem;
+}
+
+a.boton {
+  text-decoration: none;
+}
+
 /* ---------- Pantallas pequenas ---------- */
 @media (max-width: 760px) {
   .disposicion {
@@ -1558,6 +1582,11 @@ h2 {
   .barra-superior,
   .contenido {
     padding: 12px 16px;
+  }
+
+  /* En el telefono el boton de contrasena queda solo con el icono. */
+  .barra-superior__texto {
+    display: none;
   }
 
   .resumen-resultado,

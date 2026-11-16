@@ -36,3 +36,11 @@ export function asignarSupervisor(idUsuario, idSupervisor) {
     cuerpo: { id_supervisor: idSupervisor },
   });
 }
+
+// El SuperAdmin restablece la contrasena de otro usuario. Responde el usuario actualizado.
+export function restablecerPassword(idUsuario, passwordNueva) {
+  return pedir(`/api/v1/usuarios/${idUsuario}/password`, {
+    metodo: 'PUT',
+    cuerpo: { password_nueva: passwordNueva },
+  });
+}
