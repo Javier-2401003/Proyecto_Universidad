@@ -21,12 +21,14 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 |---|---|---|
 | `POST /auth/login` | - | Hecho |
 | `GET /auth/me` | Sesión | Hecho |
+| `PATCH /auth/password` | Sesión | **Propuesto, pendiente (Willy)** |
 | `GET /roles` | `GESTION_USUARIOS` leer | Hecho (PR #17) |
 | `GET /usuarios` | `GESTION_USUARIOS` leer | Hecho |
 | `POST /usuarios` | `GESTION_USUARIOS` escribir | Hecho |
 | `PUT /usuarios/:id_usuario/supervisor` | `GESTION_USUARIOS` escribir | Hecho |
 | `PATCH /usuarios/:id_usuario` | `GESTION_USUARIOS` escribir | Hecho |
 | `PATCH /usuarios/:id_usuario/estado` | `GESTION_USUARIOS` escribir | Hecho |
+| `PUT /usuarios/:id_usuario/password` | `GESTION_USUARIOS` escribir | **Propuesto, pendiente (Willy)** |
 | `GET /agentes` | `CARGA_LOTES` leer | Hecho |
 | `POST /llamadas/lotes` | `CARGA_LOTES` escribir | Hecho |
 | `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | Hecho |
@@ -60,6 +62,51 @@ Errores: `400 DATOS_INVALIDOS`, `401 CREDENCIALES_INVALIDAS`, `429 DEMASIADOS_IN
 
 Cada permiso: `{ "modulo": "GESTION_USUARIOS", "nombre": "Gestion de Usuarios y Permisos", "leer": true, "escribir": true }`.
 Solo incluye módulos activos. El frontend arma el menú con esta lista.
+
+## Contraseñas (propuesto, pendiente de implementar)
+
+Propuesto por Willy el 15/11/2026, a revisar por Javier. Dos casos: cada usuario cambia la suya, y el
+SuperAdmin restablece la de quien la olvidó (no hay correo para recuperarla).
+
+### Reglas comunes
+- **La contraseña nueva** sigue las mismas reglas que en `POST /usuarios`: de 8 a 72 bytes.
+- **Nunca se devuelve ni se registra** una contraseña ni su hash, tampoco en la auditoría.
+- **Sesiones abiertas:** el token ya emitido sigue sirviendo hasta que vence (como máximo 60 minutos);
+  no hay lista de tokens revocados. Si hace falta cortar una sesión de inmediato, se desactiva al usuario
+  (`PATCH /usuarios/:id_usuario/estado`).
+
+### `PATCH /auth/password`
+Cualquier usuario con sesión cambia **su propia** contraseña.
+
+Cuerpo: `{ "password_actual": "...", "password_nueva": "..." }`
+
+`200`: `{ "mensaje": "La contraseña se cambió correctamente." }`
+
+| Estado y código | Cuándo |
+|---|---|
+| `400 DATOS_INVALIDOS` | Falta un campo o `password_nueva` no cumple las reglas. |
+| `400 PASSWORD_INCORRECTA` | `password_actual` no es la contraseña del usuario. Es `400` y no `401`, para que el frontend no cierre la sesión. |
+| `400 PASSWORD_REPETIDA` | `password_nueva` es igual a la actual. |
+| `429 DEMASIADOS_INTENTOS` | Más de 10 intentos con `password_actual` incorrecta por IP en 15 minutos, como en el login. |
+
+Auditoría: `CAMBIO_PASSWORD`, módulo `AUTENTICACION`, con `{ id_usuario }`.
+
+### `PUT /usuarios/:id_usuario/password`
+El SuperAdmin (`GESTION_USUARIOS` escribir) restablece la contraseña de **otro** usuario, activo o no.
+Luego se la comunica en persona.
+
+Cuerpo: `{ "password_nueva": "..." }`
+
+`200`: el usuario actualizado, con la misma forma que cada elemento de `GET /usuarios` (como las demás
+rutas de "Gestión de usuarios").
+
+| Estado y código | Cuándo |
+|---|---|
+| `400 DATOS_INVALIDOS` | `:id_usuario` no es un número o `password_nueva` no cumple las reglas. |
+| `400 OPERACION_NO_PERMITIDA` | Es su propio usuario: para eso está `PATCH /auth/password`, que pide la contraseña actual. |
+| `404 NO_ENCONTRADO` | El usuario no existe. |
+
+Auditoría: `RESTABLECIMIENTO_PASSWORD`, módulo `GESTION_USUARIOS`, con `{ id_usuario }`.
 
 ## Roles
 
@@ -126,7 +173,7 @@ Edita los datos de un usuario. Se envían solo los campos que cambian (al menos 
 
 `{ "nombre_completo"?, "correo_electronico"?, "rol"?: "AGENTE" | "SUPERVISOR" | "SUPERADMIN" }`
 
-La contraseña no se cambia aquí (quedará para un endpoint propio): si el cuerpo trae un
+La contraseña no se cambia aquí (ver "Contraseñas": `PUT /usuarios/:id_usuario/password`): si el cuerpo trae un
 campo que no es uno de esos tres (por ejemplo `password`), responde `400 DATOS_INVALIDOS`.
 El rol se acepta en mayúsculas o minúsculas y se guarda en mayúsculas; el correo, en minúsculas.
 
@@ -576,6 +623,8 @@ Acciones que existen hoy, para el filtro de la pantalla:
 | `CARGA_LOTE` | `CARGA_LOTES` | `POST /llamadas/lotes` |
 | `PROCESAMIENTO_LLAMADA` | `CARGA_LOTES` | El análisis de una llamada terminó; se atribuye a quien cargó el lote. |
 | `REPROCESO_LLAMADAS` | `CARGA_LOTES` | `npm run reprocesar` (PR #60) devolvió llamadas a `PENDIENTE` para volver a analizarlas; se atribuye al SuperAdmin de `SEED_ADMIN_CORREO`. `detalle_cambio`: `{ total, ids_llamadas, origen: "SCRIPT", antes_de, incluir_errores }`. |
+| `CAMBIO_PASSWORD` | `AUTENTICACION` | `PATCH /auth/password` (propuesto). `detalle_cambio`: `{ id_usuario }`, sin contraseñas. |
+| `RESTABLECIMIENTO_PASSWORD` | `GESTION_USUARIOS` | `PUT /usuarios/:id_usuario/password` (propuesto). `detalle_cambio`: `{ id_usuario }`, sin contraseñas. |
 
 Si más adelante aparecen acciones nuevas, se agregan a esta tabla en el mismo PR que las crea.
 
