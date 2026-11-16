@@ -1,11 +1,10 @@
 # Contrato: backend (Node) y análisis de audio (Python)
 
-**Estado: v0.4 (escala de `puntaje_final` y criterio de ruido de `baja_confianza_audio`), propuesta por
-David y pendiente de la revisión de Willy.**
-La v0.3 (alertas) la aprobó Willy el 10/11/2026 (PR #41), con los puntos de la sección 7 como
-provisionales, y la implementan `audio-processing/analizar.py` (PR #42) y el procesamiento del backend
-(`backend/src/procesamientoAudio.js`, PR #44). Si alguien necesita un cambio, se hace primero aquí, en un
-PR propio, y se avisa al otro.
+**Estado: v0.5 (gritos sostenidos en `EXCESO_VOLUMEN`), propuesta por David y pendiente de la revisión
+de Willy.** La v0.4 (escala de `puntaje_final` y criterio de ruido) la aprobó Willy el 14/11/2026 (PR
+#53), con los puntos de la sección 7 como provisionales, y la implementan `audio-processing/analizar.py`
+(PR #54) y el procesamiento del backend (`backend/src/procesamientoAudio.js`). Si alguien necesita un
+cambio, se hace primero aquí, en un PR propio, y se avisa al otro.
 
 - Script: `audio-processing/analizar.py` (instalación en `audio-processing/README.md`).
 - Quién llama: el backend, después de que `POST /llamadas/lotes` dejó la llamada en
@@ -61,7 +60,7 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 
 ```json
 {
-  "version_contrato": "0.4",
+  "version_contrato": "0.5",
   "archivo": "llamada_0001.mp3",
   "duracion_segundos": 268.553,
   "idioma": "es",
@@ -119,7 +118,7 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 | `modelo` | object | no | `motor`, `nombre` y `tipo_calculo` usados. | - (útil para auditoría) |
 | `baja_confianza_audio` | boolean | no | Flujo E1. Es `true` si no hubo segmentos, si `confianza_logprob_promedio < -1,5`, o si la relación señal/ruido medida es menor a 18 dB (**v0.4**; la v0.3 exigía además variaciones de volumen extremas). Con `true`, `puntaje_final` usa 100 % el texto. Criterio **provisional**. | `TB_Llamada.baja_confianza_audio` (0/1) |
 | `score_global_nlp` | number (3 dec.) | no | De -1 a +1. Promedio de las frases con palabras clave (RN-01); 0 si no hay ninguna. | `TB_Llamada.score_global_nlp` |
-| `score_acustico` | number (3 dec.) | no | De -1 a 0 por ahora: 0 sin subidas de volumen o tono; nunca es positivo (RN-02). | `TB_Llamada.score_acustico` |
+| `score_acustico` | number (3 dec.) | no | De -1 a 0 por ahora: 0 sin subidas de volumen (incluidos los gritos sostenidos de la v0.5) o tono; nunca es positivo (RN-02). | `TB_Llamada.score_acustico` |
 | `puntaje_final` | number (2 dec.) | no | De 0 a 100; 100 es lo mejor y 50 es neutro (RN-03). **v0.4:** usa toda la escala (fórmula en la sección 5); con la v0.3 el máximo era 77,5. | `TB_Llamada.puntaje_final` |
 | `clasificacion_final` | string | no | `"POSITIVO"`, `"NEUTRO"`, `"NEGATIVO"` o `"CRITICO"` (reglas en la sección 5). | `TB_Llamada.clasificacion_final` |
 | `diagnostico_conflicto` | string | no | `"FALLA_AGENTE"`, `"CLIENTE_PROBLEMATICO"` o `"SIN_CONFLICTO"` (reglas en la sección 5). | `TB_Llamada.diagnostico_conflicto` |
@@ -216,7 +215,7 @@ de `TB_Llamada` (puntaje 0, `NEUTRO`) como si fueran un resultado real.
 
 | `clasificacion_final` | Cuándo |
 |---|---|
-| `CRITICO` | Alerta roja: subida de volumen de 2 s o más **y** `score_global_nlp < -0,3`, sin baja confianza |
+| `CRITICO` | Alerta roja: subida de volumen de 2 s o más, incluidos los gritos sostenidos (v0.5), **y** `score_global_nlp < -0,3`, sin baja confianza |
 | `NEGATIVO` | `puntaje_final` menor a 35 |
 | `POSITIVO` | `puntaje_final` mayor a 65 |
 | `NEUTRO` | El resto |
@@ -257,7 +256,7 @@ El arreglo `alertas` va siempre en el primer nivel, vacío si no hay ninguna, y 
 
 | `tipo_alerta` | Cuándo | `origen_evento` y `timestamp_evento` | `valor_registrado` |
 |---|---|---|---|
-| `EXCESO_VOLUMEN` | Cada subida de volumen de RN-02 (más del 180 % del promedio móvil durante 2 s seguidos), la misma que usa `score_acustico` | El hablante con más tiempo dentro de la subida; el segundo en que empieza | El cuadro más fuerte, en dBFS del audio original: `"-8.5 dBFS"` |
+| `EXCESO_VOLUMEN` | Cada subida de volumen de RN-02 (más del 180 % del promedio móvil durante 2 s seguidos) **o grito sostenido (v0.5)**: un hablante 6 dB o más por encima del volumen típico del otro durante 2 s seguidos, si su texto en la llamada es negativo. Son las mismas que usa `score_acustico` | El hablante con más tiempo dentro de la subida; el segundo en que empieza | El cuadro más fuerte, en dBFS del audio original: `"-8.5 dBFS"` |
 | `ALTERACION_TONO` | Dentro de los segmentos de **un mismo hablante**, una ventana de 2 s cuyo F0 varía más del 40 % de la media de **ese hablante** (RN-02, "media del canal") | Ese hablante; el segundo en que empieza | La mediana del F0 en la ventana y la mayor variación medida (desviación estándar entre la media del hablante): `"235 Hz (variación 46 %)"` |
 | `VOCABULARIO_INADECUADO` | Un segmento que contiene una palabra de la lista `vocabulario_inadecuado` de `audio-processing/lexico_es.json` | El `hablante` del segmento; su `inicio` | `"Palabra: estafa"` |
 
@@ -304,8 +303,8 @@ Columnas que **no** son del análisis y siguen siendo del backend: `fecha_inicio
 
 ## 7. Decisiones del equipo
 
-Las decisiones 1 a 6, 8 y 9 son de Willy (28/10/2026, 02/11/2026, 06/11/2026 y 10/11/2026); la 7 es de
-Javier y la 10, del equipo.
+Las decisiones 1 a 6, 8, 9 y 11 son de Willy (28/10/2026, 02/11/2026, 06/11/2026, 10/11/2026 y
+14/11/2026); la 7 es de Javier y la 10, del equipo.
 
 1. **Variables de `.env`:** se usan los nombres de la sección 1.
 2. **`hablante` y `score_sentimiento`:** se espera a la v0.2 para guardar `TB_Transcripcion`,
@@ -335,8 +334,11 @@ Javier y la 10, del equipo.
     - `puntaje_final` se reescala para usar de 0 a 100: es la v0.4 (abajo).
     - Las palabras de cancelación o amenaza y los gritos pesan más que la cortesía. Se hizo en el
       léxico y en `score_acustico` (PR #52), sin cambiar este contrato.
+11. **v0.4 aprobada (14/11, PR #53):** con la fórmula lineal y el criterio de ruido de 18 dB, los dos
+    provisionales. Willy anota que el backend todavía no puede reprocesar una llamada `COMPLETADO`, así
+    que los promedios mezclan puntajes de la v0.3 y la v0.4 hasta que se reprocesen.
 
-### Por aprobar en la v0.4
+### v0.4 (aprobada el 14/11)
 
 - **La fórmula de `puntaje_final` de la sección 5.** Resuelve los dos efectos que señaló Willy en la
   v0.3:
@@ -384,6 +386,46 @@ Javier y la 10, del equipo.
   - Con `true`, el puntaje usa solo el texto, no hay `CRITICO` y solo salen alertas de vocabulario: un
     auto que pasa ya no puede contar como grito.
 
+### Por aprobar en la v0.5
+
+- **Gritos sostenidos (`EXCESO_VOLUMEN`, sección 5).** RN-02 compara con el promedio de los 30 s
+  anteriores: si un cliente grita casi toda la llamada, ese promedio ya es su grito y nunca lo supera. En
+  la llamada real con conflicto (8 min 56 s), la clienta grita e insulta todo el tiempo y no salía ningún
+  `EXCESO_VOLUMEN`, así que no llegaba a `CRITICO`. Se aparta de RN-02 a propósito: el análisis prioriza
+  funcionar con llamadas reales de distintos tipos por encima de seguir el Blueprint al pie de la letra.
+- **Propuesta:** implementa la decisión 7 del 14/11 (`docs/avance.md`). También es `EXCESO_VOLUMEN`
+  cuando un hablante está **6 dB o más por encima del volumen típico (la mediana) del otro**, en sus
+  propios segmentos, **durante 2 s seguidos** (con pausas de hasta 0,5 s), **y su texto en la llamada es
+  negativo**. Cuenta igual que las demás subidas: en `score_acustico`, en la alerta roja y en el
+  diagnóstico.
+- **Diferencias con la decisión 7**, para que el equipo las confirme:
+  - **Calibración:** el umbral de 6 dB se queda. Las llamadas sin gritos difieren como mucho 4,4 dB, y
+    las que tienen gritos, 6,8 dB o más.
+  - **Por tramos y no por "la mayor parte de lo que habla":** cada racha de 2 s o más es un
+    `EXCESO_VOLUMEN` en su momento. Así la alerta dice cuándo gritó, y también se detecta a quien grita
+    solo durante una parte de la llamada. Una llamada con gritos de principio a fin da muchas alertas: la
+    real con conflicto da 33.
+  - **El texto negativo** es una condición nueva (motivo abajo).
+- **Por qué el texto negativo:** en una grabación real, el canal del cliente puede sonar más fuerte que el
+  del agente por el micrófono, la línea o la distancia, sin que nadie grite. Probé señales de esfuerzo
+  vocal que no dependen del volumen del canal (los agudos frente a los graves, y el tono), pero cambian
+  más con el canal y la voz que con el grito: en la llamada real, la clienta que grita tenía menos agudos
+  que el agente. En un call center, un grito casi siempre va con palabras negativas, y un cliente
+  tranquilo con la línea más fuerte no se marca.
+- **Medido** con 27 llamadas (17 armadas, 5 de la demo, 2 de la prueba del 06/11 y 3 descargadas):
+
+  | Llamadas | Diferencia de volumen entre hablantes | Gritos sostenidos | Clase |
+  |---|---|---|---|
+  | 20 sin gritos (incluidas 2 reales) | de -4,4 a +4,4 dB | Ninguno | Sin cambios |
+  | 5 armadas con un cliente que grita | de +8,3 a +12,8 dB | Del cliente | Sin cambios: 3 ya eran `CRITICO`, y 2 siguen `NEGATIVO` porque su texto no llega a -0,3 |
+  | Demo con un agente grosero que habla más fuerte | el agente, +6,8 dB | 2, del agente | `NEGATIVO` → `CRITICO`, `FALLA_AGENTE` |
+  | Real con conflicto | +7,7 dB | 33, de la clienta | `NEGATIVO` → **`CRITICO`** |
+
+- **Riesgo:** solo hay 3 llamadas reales. Un cliente con la línea 6 dB más fuerte, que no grita pero sí
+  dice palabras negativas, se marcaría. Queda provisional.
+- **Backend:** no cambia. Son los mismos campos y valores; solo puede haber más `EXCESO_VOLUMEN` y más
+  `CRITICO` en llamadas con gritos sostenidos.
+
 ### Para revisar con llamadas reales
 
 1. Los cortes 35 y 65 (decisión 10).
@@ -393,3 +435,5 @@ Javier y la 10, del equipo.
 4. El corte de 18 dB: hay pocas llamadas reales para confirmarlo, y los recortes de la de radio quedan a
    1,4 dB. Con ruido de 10 dB la bandera no se activa, pero `hablante` ya puede invertirse (en una
    llamada, 9 % de acierto), porque Whisper deforma las frases típicas del agente.
+5. El margen de 6 dB de los gritos sostenidos (v0.5): cuánto difieren el canal del agente y el del
+   cliente en grabaciones reales, sin gritos.
