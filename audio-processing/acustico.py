@@ -171,14 +171,45 @@ def medir_ruido(cuadros_db, niveles_db, voz, reglas):
             "ruido_de_fondo": snr < reglas["snr_ruidoso_db"]}
 
 
-def evaluar(f0, rms, segundos_por_cuadro, reglas):
+def gritos_sostenidos(segmentos, frases_analizadas, reglas):
+    """Tramos (inicio, fin) de grito sostenido (contrato v0.5), con los segmentos ya analizados.
+
+    RN-02 compara con el promedio de los 30 s anteriores, y un cliente que grita casi toda la llamada
+    nunca lo supera: en una llamada real asi no salia ninguna subida. Un hablante grita si sus
+    segmentos estan "margen_grito_sostenido_db" o mas por encima del volumen tipico (mediana) del otro
+    durante "segundos_volumen_continuos" (con pausas de hasta "segundos_pausa_tolerada"), y solo si
+    su texto en la llamada es negativo: un canal mas fuerte por el microfono o la linea, con texto
+    tranquilo, no es un grito.
+    """
+    tramos = []
+    for hablante in sorted({s["hablante"] for s in segmentos}):
+        otros = [s["rms_dbfs"] for s in segmentos if s["hablante"] != hablante and s["rms_dbfs"] is not None]
+        propios = [(s, f) for s, f in zip(segmentos, frases_analizadas) if s["hablante"] == hablante]
+        if not otros or puntaje_global([f for _, f in propios]) >= 0:
+            continue
+        corte = float(np.median(otros)) + reglas["margen_grito_sostenido_db"]
+        racha = None
+        for segmento in [s for s, _ in propios] + [None]:
+            fuerte = segmento is not None and segmento["rms_dbfs"] is not None and segmento["rms_dbfs"] >= corte
+            if fuerte and racha and segmento["inicio"] - racha[1] <= reglas["segundos_pausa_tolerada"]:
+                racha[1] = segmento["fin"]
+                continue
+            if racha and racha[1] - racha[0] >= reglas["segundos_volumen_continuos"]:
+                tramos.append((racha[0], racha[1]))
+            racha = [segmento["inicio"], segmento["fin"]] if fuerte else None
+    return sorted(tramos)
+
+
+def evaluar(f0, rms, segundos_por_cuadro, reglas, gritos=()):
     """Devuelve score_acustico, la subida continua mas larga, los eventos y la medida de ruido.
 
     "rms" debe venir del audio de preparar_audio. Sin eventos el puntaje es 0, no positivo: una
     voz tranquila no prueba satisfaccion. Baja hasta -1 cuando los eventos llegan a
     "fraccion_saturacion" del tiempo con voz. Cada tramo de grito sostenido cuenta
     "peso_tramo_grito" veces (decision del equipo del 11/11: los gritos pesan mas); los tramos
-    de tono cuentan una vez, porque tambien aparecen en llamadas tranquilas.
+    de tono cuentan una vez, porque tambien aparecen en llamadas tranquilas. "gritos" son los tramos
+    de gritos_sostenidos: se suman a las subidas de RN-02, asi un grito que detectan las dos reglas
+    da un solo evento.
     """
     tramo = reglas["segundos_por_tramo"]
     cuadros_por_tramo = int(round(tramo / segundos_por_cuadro))
@@ -187,6 +218,8 @@ def evaluar(f0, rms, segundos_por_cuadro, reglas):
     voz = marcar_voz(niveles_db, reglas)
 
     volumen = marcar_volumen(amplitud, voz, reglas)
+    for inicio, fin in gritos:
+        volumen[int(round(inicio / tramo)):int(np.ceil(fin / tramo))] = True
     tono = marcar_tono(np.asarray(f0), cuadros_por_tramo, len(amplitud), reglas) & voz
     puntos = np.count_nonzero(tono & ~volumen) + reglas["peso_tramo_grito"] * np.count_nonzero(volumen)
 

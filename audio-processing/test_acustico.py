@@ -7,7 +7,8 @@ import unittest
 
 import numpy as np
 
-from acustico import RUTA_REGLAS, calcular_puntaje, cargar_reglas, evaluar, preparar_audio
+from acustico import RUTA_REGLAS, calcular_puntaje, cargar_reglas, evaluar, gritos_sostenidos, preparar_audio
+from lexico import analizar_frase, cargar_lexico
 
 REGLAS = cargar_reglas()
 SEGUNDOS_POR_CUADRO = 0.02
@@ -175,6 +176,63 @@ class PruebasRuido(unittest.TestCase):
         r = resultado(np.full(len(rms), 150.0), rms)
         self.assertGreater(r["snr_db"], REGLAS["snr_ruidoso_db"])
         self.assertFalse(r["ruido_de_fondo"])
+
+
+class PruebasGritosSostenidos(unittest.TestCase):
+    """Contrato v0.5: un hablante muy por encima del volumen tipico del otro, con texto negativo."""
+
+    LEXICO = cargar_lexico()
+
+    def gritos(self, turnos):
+        """turnos: (hablante, inicio, fin, rms_dbfs, texto)."""
+        segmentos = [{"hablante": h, "inicio": i, "fin": f, "rms_dbfs": v, "texto": t} for h, i, f, v, t in turnos]
+        return gritos_sostenidos(segmentos, [analizar_frase(s["texto"], self.LEXICO) for s in segmentos], REGLAS)
+
+    def llamada(self, nivel_cliente, texto_cliente):
+        turnos = []
+        for i in range(6):
+            turnos.append(("AGENTE", 6 * i, 6 * i + 3, -34.0, "le confirmo los datos"))
+            turnos.append(("CLIENTE", 6 * i + 3, 6 * i + 6, nivel_cliente, texto_cliente))
+        return turnos
+
+    def test_cliente_que_grita_toda_la_llamada_con_texto_negativo(self):
+        gritos = self.gritos(self.llamada(-22.0, "esto es un pésimo servicio"))
+        self.assertEqual(len(gritos), 6)
+        self.assertEqual(gritos[0], (3, 6))
+
+    def test_canal_mas_fuerte_con_texto_tranquilo_no_es_grito(self):
+        self.assertEqual(self.gritos(self.llamada(-22.0, "muchas gracias, todo bien")), [])
+
+    def test_menos_de_6_db_sobre_el_otro_no_es_grito(self):
+        # Las llamadas sin gritos medidas difieren como mucho 4,4 dB entre hablantes.
+        self.assertEqual(self.gritos(self.llamada(-29.0, "esto es un pésimo servicio")), [])
+
+    def test_un_agente_que_grita_tambien_cuenta(self):
+        turnos = [("AGENTE", 0, 3, -24.0, "no sea tonto"), ("CLIENTE", 3, 6, -32.0, "disculpe"),
+                  ("AGENTE", 6, 9, -24.0, "nunca hacemos devoluciones"), ("CLIENTE", 9, 12, -32.0, "bueno")]
+        self.assertEqual(self.gritos(turnos), [(0, 3), (6, 9)])
+
+    def test_segmentos_cortos_seguidos_suman_2_s(self):
+        turnos = [("AGENTE", 0, 5, -34.0, "buenas tardes"),
+                  ("CLIENTE", 5, 6, -22.0, "es una estafa"), ("CLIENTE", 6.3, 7.3, -22.0, "pésimo")]
+        self.assertEqual(self.gritos(turnos), [(5, 7.3)])
+
+    def test_un_segundo_suelto_no_alcanza(self):
+        turnos = [("AGENTE", 0, 5, -34.0, "buenas tardes"), ("CLIENTE", 5, 6, -22.0, "es una estafa")]
+        self.assertEqual(self.gritos(turnos), [])
+
+    def test_un_solo_hablante_no_falla(self):
+        self.assertEqual(self.gritos([("CLIENTE", 0, 5, -22.0, "pésimo")]), [])
+
+    def test_evaluar_cuenta_el_grito_sostenido_como_subida(self):
+        # Voz pareja: RN-02 no ve ninguna subida, pero el grito sostenido si cuenta.
+        f0, rms = senal([(30, 0.1)])
+        sin_gritos = resultado(f0, rms)
+        con_gritos = evaluar(f0, rms, SEGUNDOS_POR_CUADRO, REGLAS, [(10.0, 14.0)])
+        self.assertEqual(eventos_de_volumen(sin_gritos), [])
+        self.assertEqual(eventos_de_volumen(con_gritos), [{"tipo": "EXCESO_VOLUMEN", "inicio": 10.0, "fin": 14.0}])
+        self.assertGreaterEqual(con_gritos["subida_continua_segundos"], 2.0)
+        self.assertLess(con_gritos["score_acustico"], sin_gritos["score_acustico"])
 
 
 class PruebasPuntaje(unittest.TestCase):

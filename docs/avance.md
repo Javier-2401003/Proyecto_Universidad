@@ -213,7 +213,7 @@ las grabaciones de llamadas actuadas.
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 14/11/2026_
+_Última actualización: 15/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -321,17 +321,33 @@ terminan con "gracias": Willy lo acepta por ahora y queda para revisar con llama
   activaba ni a 0 dB (texto bien al 30-69 %); ahora se activa desde 5 dB (texto bien al 67-80 %). No marca
   ninguna llamada limpia; los recortes de la llamada real de radio quedan a 1,4 dB del corte.
 
-**Alertas de tono por voz cruzada (14/11, rama `david-tono-cruzado`):** en la llamada real con conflicto,
+**Alertas de tono por voz cruzada (14/11, PR #58, en `main`):** en la llamada real con conflicto,
 las 2 `ALTERACION_TONO` que le quedaban al agente eran la voz de la clienta (270-310 Hz) encima de la del
 agente (110-150 Hz). Ahora se descartan los cuadros en el rango típico del otro hablante y fuera del
 propio. En 75 llamadas, las alertas de tono falsas bajan de 8 a 3, y la llamada real queda en 0. Un
 grito que baja hacia el tono del otro se sigue detectando. 112 pruebas pasando.
 
+**En curso: decisión 7 del 14/11, gritos sostenidos (contrato v0.5 en la rama `david-contrato-v05`,
+implementación en `david-gritos-sostenidos`).** También es `EXCESO_VOLUMEN` que un hablante esté 6 dB o
+más por encima del volumen típico del otro durante 2 s seguidos, si su texto en la llamada es negativo.
+- Con 27 llamadas no marca ninguna de las 20 sin gritos (diferencias de -4,4 a +4,4 dB). La real con
+  conflicto pasa de `NEGATIVO` a `CRITICO` (33 alertas de la clienta), y la demo del agente grosero que
+  habla más fuerte, a `CRITICO` con `FALLA_AGENTE`. 120 pruebas pasando.
+- Diferencias con la decisión 7, a confirmar en la revisión: por tramos de 2 s (la alerta dice cuándo
+  gritó) en lugar de "la mayor parte de lo que habla", y exige texto negativo para no marcar a quien solo
+  tiene el canal más fuerte.
+
 **Pendiente:**
-- **Ruido (prueba de Willy del 10/11):** la diarización (#55) y la baja confianza (v0.4) ya están. Queda que,
-  con mucho ruido, Whisper deforma las frases típicas del agente y los roles pueden invertirse.
-- **Reprocesar llamadas v0.3** (de Willy): hasta que el backend pueda reprocesarlas, los promedios
-  mezclan puntajes de la v0.3 y la v0.4.
+- **Guion obligatorio (decisión 6 del 14/11):** agregarlo al contrato (lista de frases editable,
+  tolerancia a errores de Whisper, estado `CUMPLE`/`NO_CUMPLE`/`PENDIENTE`) y después implementarlo.
+- **Roles invertidos (prueba de Javier del 14/11):** si el agente abre con una sola palabra que Whisper
+  no transcribe ("Diga") y no dice frases típicas, toda la llamada sale al revés. Pasa también con mucho
+  ruido, cuando Whisper deforma esas frases.
+- **Diagnóstico (prueba de Willy):** el agente que dice "voy a registrar su queja" sin que el cliente la
+  haya dicho sigue culpándose a sí mismo (`FALLA_AGENTE`).
+- **Errores de Whisper en el vocabulario:** "inútil" transcrito "dinutil" no da alerta.
+- **Consulta cortés:** una consulta neutra con "Perfecto, gracias" sale `POSITIVO` 96 (punto 2 de "Para
+  revisar con llamadas reales").
 - Repetir la prueba de punta a punta con llamadas reales de call center, junto con Willy y Javier.
 - Medir `hablante` con llamadas reales etiquetadas (espero 65-85 % en mono, sin medir) y usarlo en el
   promedio móvil de RN-02.
@@ -346,19 +362,12 @@ grito que baja hacia el tono del otro se sigue detectando. 112 pruebas pasando.
   reales de call center ni acceso a las otras laptops.
 - `ALTERACION_TONO`: sin los errores de octava, el 40 % de RN-02 no se cumplió en ningún audio; hay que
   ver con llamadas reales si alguna vez se dispara. Las falsas que quedan son de llamadas con ruido.
-- **Gritos sostenidos:** si el cliente grita casi toda la llamada, RN-02 no lo detecta, porque compara con
-  el promedio de los 30 s anteriores, que ya es su grito. En la llamada real la clienta hablaba unos 8 dB
-  más fuerte que el agente y no hubo ningún `EXCESO_VOLUMEN`. Arreglarlo cambia RN-02 (ver "Necesito").
 
 **Necesito de otros:**
-- Willy: tu grabación de 52 s (por fuera de GitHub, como dijiste), para el umbral de baja confianza. Y
-  revisar el #57 de Javier (ejemplo de `docs/api.md`): sale a mi nombre, así que yo no puedo aprobarlo.
+- Willy: revisar el contrato v0.5 (gritos sostenidos) y confirmar las dos diferencias con la decisión 7.
+  Y tu grabación de 52 s (por fuera de GitHub, como dijiste), para el umbral de baja confianza.
 - Willy o Javier: correr `analizar.py` con `base` en su laptop y anotar cuánto tarda, para medir en la
   más lenta del equipo.
-- Equipo: definir el guion obligatorio para `OMISION_SCRIPT` (por ejemplo, saludo, identificación y
-  despedida).
-- Equipo: decidir cómo detectar a un cliente que grita casi toda la llamada (cambia RN-02); propongo
-  comparar su volumen con el del agente. Lo de RN-02, RN-03 y los cortes 35 y 65 ya quedó decidido el 11/11.
 
 ---
 
