@@ -363,68 +363,67 @@ grito que baja hacia el tono del otro se sigue detectando. 112 pruebas pasando.
 ---
 
 ## Willy - Backend
-_Última actualización: 10/11/2026_
+_Última actualización: 15/11/2026_
 
 **Objetivo para la próxima reunión**
-- [x] Carga de lotes, gestión de usuarios, detalle de llamada, estadísticas, roles y procesamiento de audio (PRs #7, #11, #13, #15 a #18, fusionados).
-- [x] Auditoría: contrato (PR #29) y `GET /auditoria` (PR #36).
-- [x] Listado de llamadas: revisión del contrato de Javier (PR #30) y `GET /llamadas` (PR #37).
-- [x] Alertas: revisar la v0.3 del contrato (PR #41) y guardarlas en `TB_Alerta` (PR #44).
-- [x] Prueba de punta a punta con el `analizar.py` real (10/11, abajo).
+- [x] Carga de lotes, gestión de usuarios, detalle de llamada, estadísticas, roles y procesamiento de audio (PRs #7, #11, #13, #15 a #18).
+- [x] Auditoría (PRs #29 y #36) y listado de llamadas (PRs #30 y #37).
+- [x] Alertas de la v0.3 en `TB_Alerta` (PR #44) y prueba de punta a punta con el `analizar.py` real (10/11).
+- [x] Reproceso de llamadas tras la v0.4 (PR #60) y su acción de auditoría (PR #61).
+- [ ] Cambio y restablecimiento de contraseña: contrato (PR #64, espera a Javier) y código (PR #65).
 
 **Hecho:**
 - Carga de lotes (PR #7). Usa `multer` (MIT): después de `git pull` hay que correr `npm install` en
   `backend/`. Los audios quedan en `backend/uploads/lotes/<id_lote>/`.
 - `GET /llamadas/:id_llamada` y `/audio` (PR #13), `GET /estadisticas/resumen` (PR #16) y `GET /llamadas`
   (PR #37). Los tres tienen la misma visibilidad, sin módulo de permisos: el Agente ve sus llamadas, el
-  Supervisor las de sus agentes asignados y el SuperAdmin todas.
-- `GET /auditoria` (PR #36), con `AUDITORIA` leer. Del usuario solo devuelve id, nombre y correo.
-  `src/listados.js` reúne la paginación y las fechas de los dos listados.
-- `GET /roles` (PR #17), con `GESTION_USUARIOS` leer.
-- Procesamiento de audio (PR #15). Una llamada a la vez con `execFile`, según `docs/contrato_audio.md`.
-  Si `AUDIO_PYTHON` o `AUDIO_SCRIPT` de `backend/.env` faltan o no existen, no arranca y las llamadas
-  siguen en `PENDIENTE`.
-- Alertas de la v0.3 en `TB_Alerta` (PR #44). Si una alerta no es válida, la llamada queda en `ERROR`
-  con `CONTRATO_INCOMPLETO` (decisión de la sección 6 del contrato). Un reproceso no las duplica.
-- Revisiones: contrato v0.2 (PRs #21 y #32), v0.3 (PR #41) y decisiones del 11/11 (PR #46).
-- Regla de `CLAUDE.md` (PR #24): el autor puede fusionar su propio PR si solo toca su área.
-- `npm test` en `backend/`: 135 pruebas pasando con MySQL real.
+  Supervisor las de sus agentes asignados y el SuperAdmin todas. El Dashboard y los Reportes de Javier
+  usan `GET /llamadas` y no necesitaron endpoints nuevos.
+- `GET /auditoria` (PR #36), con `AUDITORIA` leer, y `GET /roles` (PR #17).
+- Procesamiento de audio (PR #15) y alertas en `TB_Alerta` (PR #44). Si `AUDIO_PYTHON` o `AUDIO_SCRIPT`
+  de `backend/.env` faltan, el procesamiento no arranca y las llamadas siguen en `PENDIENTE`.
+- **Reproceso (PR #60):** `npm run reprocesar -- --antes-de 0.4` (en `backend/`) muestra las llamadas
+  analizadas con un contrato anterior. Con `--confirmar` las vuelve a `PENDIENTE` y el backend las
+  analiza otra vez; con `--procesar`, las analiza en el mismo comando. Queda en la auditoría como
+  `REPROCESO_LLAMADAS`. **Hay que correrlo en cada base que tenga llamadas de antes de la v0.4**, para
+  que el inicio, el Dashboard y los Reportes no mezclen las dos escalas. En mi base ya lo corrí (14/11):
+  las 10 llamadas de mi prueba quedaron con la v0.4.
+- Revisiones: contratos v0.2 (#21, #32), v0.3 (#41) y v0.4 (#53, escala lineal); ejemplo de
+  `docs/api.md` (#57); decisiones del 11/11 (#46), del 14/11 (#59) y el guion informativo (#63).
+- `npm test` en `backend/`: 142 pruebas en `main`, 151 con el PR #65.
 
-**Prueba de punta a punta (10/11, en mi laptop, `main` con la v0.3):** venv de `audio-processing/` con
-Python 3.13 (606 MB) y modelo `base`. Usé 5 llamadas armadas con voces de Windows, de 72 a 89 s: el
-agente con la voz de Raúl y la cliente con la de Sabina. **No son llamadas humanas.** Creé un Supervisor
-y un Agente por la API, los asigné y subí el lote como Supervisor. El backend las procesó solo, junto
-con las 5 que seguían `PENDIENTE` del lote 6. **Las 10 quedaron `COMPLETADO` y los dos lotes se
-cerraron, sin ningún `ERROR`.** El análisis tardó de 22 a 36 s por llamada.
+**Resultados de mi prueba del 10/11, reprocesada con la v0.4 (14/11).** Son 5 llamadas armadas con voces
+de Windows, **no llamadas humanas**:
 
-| Llamada | Resultado | ¿Tiene sentido? |
+| Llamada | v0.3 | v0.4 |
 |---|---|---|
-| Positiva ("excelente", "muchas gracias, fue muy amable") | `NEUTRO`, 62,36 | No llega a `POSITIVO` (máximo 77,5): decisión 3 del 11/11 |
-| Neutra (cambio de dirección) | `NEUTRO`, 62,04 | Sí |
-| Cliente grita, dice "estafa" y "ladrones", quiere cancelar | `CRITICO`, 19,02; 2 `EXCESO_VOLUMEN` y 2 `VOCABULARIO_INADECUADO` del cliente | Sí, salvo el diagnóstico `FALLA_AGENTE` (ver David) |
-| Agente grosero ("no sea tonta") | `NEGATIVO`, 34,14, `FALLA_AGENTE`; alerta de vocabulario del agente | Sí |
-| Con ruido de calle | `NEUTRO`, 63,75, sin baja confianza | No (ver David) |
+| Positiva | `NEUTRO` 62,36 | `POSITIVO` 72,46 |
+| Neutra (cambio de dirección) | `NEUTRO` 62,04 | `POSITIVO` 71,89 (consulta cortés: punto 2 de "Para revisar con llamadas reales") |
+| Cliente grita, "estafa", "ladrones", cancelar | `CRITICO` 19,02 | `CRITICO` 5,5; sigue `FALLA_AGENTE` (ver David) |
+| Agente grosero | `NEGATIVO` 34,14 | `NEGATIVO` 31,38, `FALLA_AGENTE` |
+| Con ruido de calle | `NEUTRO` 63,75, sin baja confianza | `POSITIVO` 75, **con** baja confianza |
 
-En las 4 llamadas sin ruido, la transcripción y el `hablante` salieron casi perfectos (13 a 27 segmentos).
-Solo hubo detalles menores, como "Telecomandina" o "señor a Torres".
-
-**En curso:** -
+**En curso:**
+- Contraseñas: `PATCH /auth/password` (cada usuario cambia la suya con la actual) y
+  `PUT /usuarios/:id_usuario/password` (el SuperAdmin restablece la de otro). El contrato está en el
+  PR #64, que espera la revisión de Javier, y el código en el PR #65, que fusiono cuando se apruebe el
+  contrato.
 
 **Pendiente:**
-- Dashboard en tiempo real y Reportes: definir el contrato con Javier (están "Por definir").
-- Endpoint para cambiar la contraseña (`docs/api.md` lo deja "para un endpoint propio").
+- **Guion (`OMISION_SCRIPT`), cuando David lo agregue al contrato (decisiones 6 y #63):**
+  - revisar que el JSON traiga el estado del guion (`CUMPLE`, `NO_CUMPLE` o `PENDIENTE`);
+  - agregar la columna `TB_Llamada.estado_guion` en un script `database/04_...sql`, que necesita revisión;
+  - guardarla y devolverla en `GET /llamadas/:id_llamada` y `GET /llamadas`.
 - Repetir la prueba con llamadas humanas reales cuando el equipo las tenga.
 
 **Necesito de otros:**
-- **David** (de la prueba del 10/11):
-  - **Diagnóstico:** en la llamada del cliente que grita sale `FALLA_AGENTE` porque el agente dice
-    "voy a registrar su **queja**" (-0,5). Debería ser `CLIENTE_PROBLEMATICO`; parece lo que corrige tu
-    PR #45.
-  - **Ruido:** con ruido de calle, Whisper degrada el texto ("Buenas noches de recorrandito a la Lama")
-    y la mayoría de los `hablante` salen cruzados: 13 `AGENTE` contra 6 `CLIENTE` en una llamada
-    pareja. Además, `baja_confianza_audio` queda en `false`.
-  - **Puntaje:** la llamada positiva confirma que hace falta reescalar `puntaje_final` (decisión 3).
-  - Te paso mi grabación de 52 s por fuera de GitHub, para el umbral de baja confianza.
-- **Javier:** qué necesita el Dashboard en tiempo real y los Reportes, para proponer los contratos.
+- **Javier:** revisar el contrato de contraseñas (PR #64) y decir dónde irían en la app ("Cambiar
+  contraseña" del usuario y "Restablecer contraseña" en Gestión de usuarios).
+- **David:**
+  - **Diagnóstico:** en la llamada del cliente que grita sigue saliendo `FALLA_AGENTE`, incluso con tu
+    PR #45 y la v0.4. El agente dice "voy a registrar su **queja**", una palabra que el cliente no usó,
+    así que el arreglo de repeticiones no lo cubre. Debería ser `CLIENTE_PROBLEMATICO`.
+  - **Mi grabación de 52 s** (para revisar el criterio de baja confianza): te la paso por fuera de
+    GitHub, porque los audios no se suben al repositorio.
 - **Usuarios de la prueba:** `sup.real.9d2bec@prueba.test` (Supervisor) y `age.real.9d2bec@prueba.test`
   (Agente), solo en mi MySQL local. Las contraseñas están en mi `backend/.env`.
