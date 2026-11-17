@@ -213,7 +213,7 @@ las grabaciones de llamadas actuadas.
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 15/11/2026_
+_Última actualización: 17/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -327,19 +327,22 @@ agente (110-150 Hz). Ahora se descartan los cuadros en el rango típico del otro
 propio. En 75 llamadas, las alertas de tono falsas bajan de 8 a 3, y la llamada real queda en 0. Un
 grito que baja hacia el tono del otro se sigue detectando. 112 pruebas pasando.
 
-**En curso: decisión 7 del 14/11, gritos sostenidos (contrato v0.5 en la rama `david-contrato-v05`,
-implementación en `david-gritos-sostenidos`).** También es `EXCESO_VOLUMEN` que un hablante esté 6 dB o
-más por encima del volumen típico del otro durante 2 s seguidos, si su texto en la llamada es negativo.
-- Con 27 llamadas no marca ninguna de las 20 sin gritos (diferencias de -4,4 a +4,4 dB). La real con
-  conflicto pasa de `NEGATIVO` a `CRITICO` (33 alertas de la clienta), y la demo del agente grosero que
-  habla más fuerte, a `CRITICO` con `FALLA_AGENTE`. 120 pruebas pasando.
-- Diferencias con la decisión 7, a confirmar en la revisión: por tramos de 2 s (la alerta dice cuándo
-  gritó) en lugar de "la mayor parte de lo que habla", y exige texto negativo para no marcar a quien solo
-  tiene el canal más fuerte.
+**Hecho: decisión 7 del 14/11, gritos sostenidos (contrato v0.5, PRs #68 y #69, en `main`).** Willy la
+aprobó con las dos diferencias (por tramos y con texto negativo). También es `EXCESO_VOLUMEN` que un
+hablante esté 6 dB o más por encima del volumen típico del otro durante 2 s seguidos, si su texto en la
+llamada es negativo. La real con conflicto pasa a `CRITICO` (33 alertas de la clienta); ninguna llamada
+sin gritos cambia. Hay que correr `npm run reprocesar -- --antes-de 0.5 --confirmar` en cada base.
+
+**En curso: decisión 6 del 14/11, guion obligatorio (contrato v0.6 en el PR #71, que revisa Willy;
+implementación en la rama `david-guion`).** Campo nuevo `estado_guion` (`CUMPLE`, `NO_CUMPLE` o
+`PENDIENTE`) y una `OMISION_SCRIPT` por cada paso que falte: saludo (primeros 20 s), identificación y
+ofrecer ayuda (primeros 60 s) y cierre (últimos 30 s), buscados en los segmentos del agente.
+- Frases editables en `audio-processing/guion.json`; una frase cuenta con un 80 % de parecido, para
+  tolerar errores chicos de Whisper. Solo informativo: no cambia el puntaje.
+- Con las 16 llamadas armadas: 68 de 68 pasos sin ruido y 44 de 48 con ruido de 10 y 20 dB; con 5 y 0 dB
+  queda `PENDIENTE` por la baja confianza. 132 pruebas pasando. Falta medirlo con llamadas reales.
 
 **Pendiente:**
-- **Guion obligatorio (decisión 6 del 14/11):** agregarlo al contrato (lista de frases editable,
-  tolerancia a errores de Whisper, estado `CUMPLE`/`NO_CUMPLE`/`PENDIENTE`) y después implementarlo.
 - **Roles invertidos (prueba de Javier del 14/11):** si el agente abre con una sola palabra que Whisper
   no transcribe ("Diga") y no dice frases típicas, toda la llamada sale al revés. Pasa también con mucho
   ruido, cuando Whisper deforma esas frases.
@@ -364,8 +367,10 @@ más por encima del volumen típico del otro durante 2 s seguidos, si su texto e
   ver con llamadas reales si alguna vez se dispara. Las falsas que quedan son de llamadas con ruido.
 
 **Necesito de otros:**
-- Willy: revisar el contrato v0.5 (gritos sostenidos) y confirmar las dos diferencias con la decisión 7.
-  Y tu grabación de 52 s (por fuera de GitHub, como dijiste), para el umbral de baja confianza.
+- Willy: revisar el contrato v0.6 del guion (PR #71) y agregar `TB_Llamada.estado_guion`. Y tu grabación
+  de 52 s (por fuera de GitHub, como dijiste), para el umbral de baja confianza.
+- Javier: el porcentaje de cumplimiento del guion en los reportes sale de `estado_guion` (sin contar los
+  `PENDIENTE`).
 - Willy o Javier: correr `analizar.py` con `base` en su laptop y anotar cuánto tarda, para medir en la
   más lenta del equipo.
 
