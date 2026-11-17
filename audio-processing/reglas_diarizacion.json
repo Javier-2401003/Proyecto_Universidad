@@ -20,7 +20,22 @@
     "lamento mucho",
     "voy a revisar",
     "su numero de contrato",
-    "algo mas en lo que"
+    "algo mas en lo que",
+    "su",
+    "sus",
+    "señor",
+    "señora",
+    "permítame",
+    "con gusto",
+    "le confirmo",
+    "me indica",
+    "me confirma",
+    "le envío",
+    "le explico",
+    "lo reviso",
+    "le paso",
+    "le ayudo",
+    "un momento"
   ],
   "frases_cliente": [
     "quiero cancelar",
@@ -33,6 +48,15 @@
     "mi factura",
     "mi cuenta",
     "ya estoy muy molesto",
-    "ya estoy muy molesta"
+    "ya estoy muy molesta",
+    "mi",
+    "mis",
+    "quiero",
+    "necesito",
+    "llamo",
+    "me cobraron",
+    "me cortaron",
+    "me dijeron",
+    "me aparece"
   ]
 }

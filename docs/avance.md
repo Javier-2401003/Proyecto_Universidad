@@ -213,7 +213,7 @@ las grabaciones de llamadas actuadas.
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 15/11/2026_
+_Última actualización: 17/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -271,6 +271,12 @@ señaló Willy, encontré que la diarización fallaba en llamadas cortas aunque 
 - `baja_confianza_audio` con ruido: lo repetí con ruido dentro de la banda de la voz. El criterio de la
   v0.3 no se activaba nunca con ruido de calle; el nuevo (señal/ruido menor a 18 dB) va en el contrato
   v0.4 (#53) y su implementación en el #54.
+- **Roles invertidos (prueba de Javier del 14/11), corregido el 17/11 en la rama `david-roles-pistas`:**
+  quién es el agente se decidía casi solo con frases de apertura; si Whisper no transcribía un "Diga" o el
+  agente no se presentaba, toda la llamada salía al revés. Ahora cuentan pistas de toda la llamada ("su"
+  frente a "mi", "permítame", "con gusto", "quiero", "necesito"…). Sin el primer turno del agente, de 18
+  llamadas se invertían 14; ahora, 1. La llamada del agente grosero sin su "Sí, diga" pasa de
+  `CLIENTE_PROBLEMATICO` a `FALLA_AGENTE`. 123 pruebas pasando.
 
 **v0.3 (alertas):**
 - Contrato v0.3 (PR #41): Willy lo aprobó y lo fusionó el 10/11. Arreglo `alertas` con los valores

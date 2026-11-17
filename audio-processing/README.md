@@ -360,8 +360,12 @@ siempre es `AGENTE` o `CLIENTE`, aunque la separación no sea segura:
    de sus cuadros con voz) y tono (F0 mediano, con peso 4). Antes agrupaba ventanas de 1 s, con el
    timbre promediado también sobre pausas y ruido, y las suavizaba con un filtro de mediana: en
    llamadas de 40 s eso agrupaba por pausas y por lo que se decía, no por quién hablaba (ver abajo).
-3. **Quién es el agente:** el grupo con más frases típicas de agente (`reglas_diarizacion.json`); si
-   empatan, quien habla primero.
+3. **Quién es el agente:** el grupo con más pistas de agente frente a pistas de cliente, en **toda la
+   llamada** (`reglas_diarizacion.json`). Pistas de agente: frases de atención ("le atiende", "permítame",
+   "con gusto", "le confirmo") y hablar de las cosas del otro ("su", "sus", "señor"). De cliente: hablar de
+   lo propio ("mi", "mis") y pedir ("quiero", "necesito", "llamo"). Se cuentan como palabras completas y
+   las de varias palabras pesan doble ("mi nombre es" sigue siendo del agente). Si empatan, quien habla
+   primero.
 
 **Precisión medida** (13/11) con llamadas armadas de call center de unos 40 s, con voces de Windows y
 la verdad de cada turno guardada al armarlas. Es el porcentaje del tiempo con el hablante correcto;
@@ -387,8 +391,12 @@ real. Falta medirla con llamadas etiquetadas.
 **Límites conocidos:**
 
 - **Voces parecidas:** dos personas del mismo género y tono casi no se separan.
-- **Roles invertidos:** si no hay frases típicas y el cliente habla primero, se invierten **todos** los
-  hablantes de la llamada, aunque la separación sea buena.
+- **Roles invertidos:** si no hay pistas suficientes y el cliente habla primero, se invierten **todos** los
+  hablantes de la llamada, aunque la separación sea buena. Antes solo contaban las frases de apertura:
+  si Whisper no transcribía un "Diga" corto, o el agente no se presentaba, la llamada salía al revés (en
+  la prueba de Javier del 14/11, el agente grosero quedó como cliente). Quitando el primer turno del agente
+  a 18 llamadas con la verdad de cada turno, se invertían 14; con las pistas de toda la llamada, 1. En 27
+  llamadas completas no cambia ninguna.
 - **Un hablante por segmento:** si dos personas hablan dentro de un mismo segmento de Whisper, sus voces
   se mezclan en el promedio. Con ruido, Whisper junta más turnos: es la mayor parte de los errores que
   quedan con ruido. En una llamada real hubo segmentos de más de 60 s con muy poco texto.

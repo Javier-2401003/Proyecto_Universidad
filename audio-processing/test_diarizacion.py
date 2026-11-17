@@ -89,6 +89,23 @@ class PruebasRoles(unittest.TestCase):
         segmentos = [segmento(0, 1, "buenas"), segmento(1, 2, "hola")]
         self.assertEqual(grupo_del_agente(segmentos, [1, 0], REGLAS), 1)
 
+    def test_sin_apertura_deciden_las_pistas_de_toda_la_llamada(self):
+        # Whisper no transcribio el "Diga" del agente: el primero que habla es el cliente.
+        segmentos = [segmento(0, 3, "Llamo porque mi póliza vino con un cargo que no reconozco."),
+                     segmento(3, 6, "Su póliza tiene un cargo de mantenimiento, señora."),
+                     segmento(6, 9, "Quiero que me lo quiten."),
+                     segmento(9, 12, "Permítame, le confirmo en un momento.")]
+        self.assertEqual(grupo_del_agente(segmentos, [1, 0, 1, 0], REGLAS), 0)
+
+    def test_las_pistas_cuentan_como_palabras_completas(self):
+        # "consulta" lleva "su" adentro y "camisa" lleva "mi": no son pistas.
+        segmentos = [segmento(0, 1, "una consulta"), segmento(1, 2, "la camisa")]
+        self.assertEqual(grupo_del_agente(segmentos, [1, 0], REGLAS), 1)
+
+    def test_mi_nombre_es_cuenta_para_el_agente(self):
+        segmentos = [segmento(0, 1, "buenas"), segmento(1, 2, "mi nombre es Carla")]
+        self.assertEqual(grupo_del_agente(segmentos, [1, 0], REGLAS), 0)
+
 
 class PruebasAsignacion(unittest.TestCase):
     def test_sin_segmentos_no_hay_hablantes(self):
