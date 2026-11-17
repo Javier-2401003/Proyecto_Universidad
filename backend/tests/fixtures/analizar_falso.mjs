@@ -72,6 +72,17 @@ const ALERTAS = [
 const V03 = { ...V02, version_contrato: '0.3', alertas: ALERTAS };
 const conAlerta = (cambio) => JSON.stringify({ ...V03, alertas: [ALERTAS[0], { ...ALERTAS[1], ...cambio }] });
 
+// v0.6: estado_guion, y una OMISION_SCRIPT por cada paso que falte.
+const OMISION = {
+  tipo_alerta: 'OMISION_SCRIPT',
+  origen_evento: 'AGENTE',
+  timestamp_evento: 0,
+  valor_registrado: 'Falta: identificación',
+  mensaje_sugerencia: 'Preséntese con su nombre al inicio de la llamada.',
+};
+const V06 = { ...V03, version_contrato: '0.6', estado_guion: 'CUMPLE' };
+const v06 = (cambios) => JSON.stringify({ ...V06, ...cambios });
+
 registrar('inicio');
 process.stderr.write('Cargando modelo... (stderr no indica error)\n');
 
@@ -83,8 +94,32 @@ switch (modo) {
     await esperar(150);
     salir(0, JSON.stringify(V02));
     break;
-  case 'version_menor_nueva':
-    salir(0, JSON.stringify({ ...V02, version_contrato: '0.9', campo_del_futuro: { a: 1 } }));
+  case 'version_menor_nueva': // desde la v0.6 trae estado_guion
+    salir(0, JSON.stringify({ ...V02, version_contrato: '0.9', estado_guion: 'CUMPLE', campo_del_futuro: { a: 1 } }));
+    break;
+  case 'v06_cumple':
+    salir(0, v06({}));
+    break;
+  case 'v06_no_cumple':
+    salir(0, v06({ estado_guion: 'NO_CUMPLE', alertas: [OMISION, ...ALERTAS] }));
+    break;
+  case 'v06_pendiente':
+    salir(0, v06({ estado_guion: 'PENDIENTE', baja_confianza_audio: true }));
+    break;
+  case 'v06_sin_estado':
+    salir(0, v06({ estado_guion: undefined }));
+    break;
+  case 'v06_estado_invalido':
+    salir(0, v06({ estado_guion: 'A_MEDIAS' }));
+    break;
+  case 'v06_cumple_con_omision':
+    salir(0, v06({ alertas: [OMISION] }));
+    break;
+  case 'v06_pendiente_con_omision':
+    salir(0, v06({ estado_guion: 'PENDIENTE', alertas: [OMISION] }));
+    break;
+  case 'v06_no_cumple_sin_omision':
+    salir(0, v06({ estado_guion: 'NO_CUMPLE' }));
     break;
   case 'sin_voz':
     salir(0, JSON.stringify(SIN_VOZ));

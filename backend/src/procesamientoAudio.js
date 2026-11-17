@@ -54,7 +54,28 @@ const esquemaResultado = z.object({
   ),
   // Sin el campo (v0.2) la llamada se guarda sin alertas; si viene, cada una debe ser valida.
   alertas: z.array(esquemaAlerta).default([]),
+  // v0.6 (guion obligatorio). Antes de la v0.6 no viene y se guarda NULL ("no evaluado").
+  estado_guion: z.enum(['CUMPLE', 'NO_CUMPLE', 'PENDIENTE']).optional(),
 });
+
+const PRIMERA_VERSION_CON_GUION = 6; // 0.6
+
+// Reglas del guion que zod no puede ver solo: desde la v0.6 el campo es obligatorio, y debe
+// coincidir con las alertas OMISION_SCRIPT (seccion 5 del contrato). Devuelve el problema o null.
+function problemaDelGuion(datos, version) {
+  const menor = Number(version.split('.')[1]);
+  if (datos.estado_guion === undefined) {
+    return menor >= PRIMERA_VERSION_CON_GUION ? 'falta estado_guion' : null;
+  }
+  const omisiones = datos.alertas.filter((alerta) => alerta.tipo_alerta === 'OMISION_SCRIPT').length;
+  if (datos.estado_guion === 'NO_CUMPLE' && omisiones === 0) {
+    return 'estado_guion NO_CUMPLE sin alertas OMISION_SCRIPT';
+  }
+  if (datos.estado_guion !== 'NO_CUMPLE' && omisiones > 0) {
+    return `estado_guion ${datos.estado_guion} con alertas OMISION_SCRIPT`;
+  }
+  return null;
+}
 
 function recortar(mensaje) {
   return Array.from(mensaje).slice(0, MAX_MENSAJE_ERROR).join('');
@@ -128,6 +149,8 @@ function validarResultado(json) {
     );
     return fallo(`CONTRATO_INCOMPLETO: faltan o no son validos: ${[...new Set(campos)].join(', ')}`);
   }
+  const guion = problemaDelGuion(validacion.data, version);
+  if (guion) return fallo(`CONTRATO_INCOMPLETO: ${guion}`);
   return { exito: true, datos: validacion.data, versionContrato: version };
 }
 
@@ -192,7 +215,7 @@ async function guardarExito(llamada, { datos, versionContrato }) {
       `UPDATE TB_Llamada
           SET estado_procesamiento = 'COMPLETADO', mensaje_error = NULL, duracion_segundos = ?,
               baja_confianza_audio = ?, score_global_nlp = ?, score_acustico = ?, puntaje_final = ?,
-              clasificacion_final = ?, diagnostico_conflicto = ?
+              clasificacion_final = ?, diagnostico_conflicto = ?, estado_guion = ?
         WHERE id_llamada = ? AND estado_procesamiento = 'PROCESANDO'`,
       [
         Math.round(datos.duracion_segundos),
@@ -202,6 +225,7 @@ async function guardarExito(llamada, { datos, versionContrato }) {
         datos.puntaje_final,
         datos.clasificacion_final,
         datos.diagnostico_conflicto,
+        datos.estado_guion ?? null, // un reproceso con una version sin guion lo deja en NULL
         llamada.id_llamada,
       ]
     );
@@ -249,6 +273,7 @@ async function guardarExito(llamada, { datos, versionContrato }) {
       version_contrato: versionContrato,
       segmentos: datos.segmentos.length,
       alertas: datos.alertas.length,
+      estado_guion: datos.estado_guion ?? null,
     });
   });
 }

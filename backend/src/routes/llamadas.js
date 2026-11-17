@@ -37,7 +37,7 @@ async function buscarLlamadaVisible(req) {
     `SELECT c.id_llamada, c.id_lote, l.codigo_lote, c.nombre_archivo_original,
             c.id_agente, u.nombre_completo AS nombre_agente, c.id_cliente, c.fecha_inicio,
             c.duracion_segundos, c.estado_procesamiento, c.mensaje_error, c.baja_confianza_audio,
-            c.puntaje_final, c.clasificacion_final, c.diagnostico_conflicto,
+            c.puntaje_final, c.clasificacion_final, c.diagnostico_conflicto, c.estado_guion,
             c.score_global_nlp, c.score_acustico, c.ruta_audio_storage
        FROM TB_Llamada c
        JOIN TB_Usuario u ON u.id_usuario = c.id_agente
@@ -107,6 +107,8 @@ rutasDetalleLlamada.get('/:id_llamada', autenticar, async (req, res) => {
           diagnostico_conflicto: llamada.diagnostico_conflicto,
           score_global_nlp: llamada.score_global_nlp,
           score_acustico: llamada.score_acustico,
+          // Guion obligatorio (contrato de audio v0.6): CUMPLE, NO_CUMPLE, PENDIENTE o null (no evaluado).
+          estado_guion: llamada.estado_guion,
         }
       : null,
     transcripcion,
