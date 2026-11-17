@@ -231,7 +231,7 @@ mensajes están en `reglas_alertas.json` y son los mismos textos de los datos si
 
 | `tipo_alerta` | Cómo se detecta |
 |---|---|
-| `EXCESO_VOLUMEN` | Cada subida de volumen de RN-02, la misma que usa `score_acustico`. El origen es el hablante que ocupa más tiempo en la subida; el valor, el cuadro más fuerte del audio original en dBFS |
+| `EXCESO_VOLUMEN` | Cada subida de volumen de RN-02 **o grito sostenido** (contrato v0.5, ver abajo), las mismas que usa `score_acustico`. El origen es el hablante que ocupa más tiempo en la subida; el valor, el cuadro más fuerte del audio original en dBFS |
 | `ALTERACION_TONO` | RN-02 **por hablante**: dentro de sus propios segmentos, una ventana de 2 s cuyo F0 varía más del 40 % de su media. Antes se descartan los errores de octava de `pyin` (más del doble o menos de la mitad de su mediana) y la voz del otro hablante dentro de sus segmentos (cuadros en el rango típico del otro, percentiles 10 a 90, y fuera del propio) |
 | `VOCABULARIO_INADECUADO` | Una palabra de `vocabulario_inadecuado` en `lexico_es.json` (lista **provisional**); una alerta por palabra y segmento |
 
@@ -245,15 +245,25 @@ defina el guion obligatorio.
 | Conversación armada en la que el cliente grita (×3) | 1 `EXCESO_VOLUMEN` del cliente, a los 9 s, justo cuando empieza a gritar |
 | Conversación armada tranquila | Ninguna |
 | Llamada real de radio (4 min 44 s) | Ninguna. Sin el filtro de octavas daba **7 `ALTERACION_TONO` falsas**: todas eran errores de `pyin` |
-| Llamada real de soporte técnico, la clienta grita e insulta (8 min 56 s) | 10 `VOCABULARIO_INADECUADO` de la clienta y **ningún `EXCESO_VOLUMEN`**. Daba 3 `ALTERACION_TONO` **falsas** del agente: 1 era de la diarización vieja y 2 de la voz de la clienta encima de la suya; ahora, ninguna |
+| Llamada real de soporte técnico, la clienta grita e insulta (8 min 56 s) | 10 `VOCABULARIO_INADECUADO` y 33 `EXCESO_VOLUMEN` de la clienta (gritos sostenidos; antes, ninguno). Daba 3 `ALTERACION_TONO` **falsas** del agente: 1 era de la diarización vieja y 2 de la voz de la clienta encima de la suya; ahora, ninguna |
 
 **Límites conocidos:**
 
-- **Solo el primer grito de una racha:** el promedio móvil se adapta, así que un cliente que grita en
-  todos sus turnos da una sola alerta de volumen. Y si grita casi toda la llamada no da ninguna: en
-  la llamada real de 8 min 56 s la clienta habla unos 8 dB más fuerte que el agente y ocupa el 73 %
-  del tiempo, así que el promedio de los 30 s anteriores ya es su grito. Corregirlo cambia RN-02
-  (por ejemplo, comparar con el volumen del agente): lo decide el equipo.
+- **Gritos sostenidos (contrato v0.5):** el promedio móvil se adapta, así que un cliente que grita casi
+  toda la llamada no supera nunca el promedio de sus propios 30 s anteriores. Por eso también cuenta
+  como `EXCESO_VOLUMEN` que un hablante esté **6 dB o más por encima del volumen típico (mediana) del
+  otro**, en sus segmentos, durante 2 s seguidos, **si su texto en la llamada es negativo**
+  (`gritos_sostenidos` en `acustico.py`, `margen_grito_sostenido_db`; decisión 7 del 14/11).
+  - Con 27 llamadas, las 20 sin gritos se separan entre -4,4 y +4,4 dB y no se marcan. Se marcan las 6
+    con un cliente que grita (de +7,7 a +12,8 dB) y la demo del agente grosero que habla más fuerte
+    (+6,8 dB). La real de 8 min 56 s pasa de `NEGATIVO` a `CRITICO`, con 33 alertas de la clienta.
+  - El texto negativo evita marcar a quien solo tiene el canal más fuerte (micrófono, línea o
+    distancia). Se probaron señales que no dependen del volumen del canal (agudos frente a graves, tono),
+    pero en la llamada real cambiaban más con el canal y la voz que con el grito.
+  - Cada racha de 2 s o más es una alerta en su momento: una llamada con gritos de principio a fin da
+    muchas.
+  - Límite: un cliente con la línea 6 dB más fuerte, que no grita pero dice palabras negativas, se
+    marcaría. Hay pocas llamadas reales para confirmar el margen.
 - **Voz cruzada:** cuando un hablante habla encima del otro, su voz queda dentro de los segmentos del
   otro. Se descartan los cuadros en el rango típico del otro y fuera del propio: en 75 llamadas (armadas,
   con ruido y reales), las `ALTERACION_TONO` falsas bajaron de 8 a 3, todas en llamadas con ruido o con

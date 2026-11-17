@@ -14,7 +14,7 @@ import os
 import sys
 import time
 
-VERSION_CONTRATO = "0.4"
+VERSION_CONTRATO = "0.5"
 FRECUENCIA_MUESTREO = 16000  # Whisper trabaja a 16 kHz
 SALTO_MUESTRAS = 320         # 20 ms entre cuadros de analisis acustico
 CUADRO_MUESTRAS = 1024       # 64 ms por cuadro (alcanza para F0 desde 65 Hz)
@@ -155,7 +155,7 @@ def construir_resultado(args, audio, segmentos, hablantes, info, f0, rms, rms_pr
                         duraciones, lexico, reglas_acusticas, reglas_alertas):
     import numpy as np
 
-    from acustico import calcular_diagnostico, calcular_puntaje, evaluar
+    from acustico import calcular_diagnostico, calcular_puntaje, evaluar, gritos_sostenidos
     from alertas import generar_alertas
     from lexico import analizar_frase, puntaje_global
 
@@ -186,7 +186,8 @@ def construir_resultado(args, audio, segmentos, hablantes, info, f0, rms, rms_pr
     else:
         logprob_promedio = None
 
-    acustico = evaluar(f0, rms_preparado, SALTO_MUESTRAS / FRECUENCIA_MUESTREO, reglas_acusticas)
+    gritos = gritos_sostenidos(salida_segmentos, frases_analizadas, reglas_acusticas)
+    acustico = evaluar(f0, rms_preparado, SALTO_MUESTRAS / FRECUENCIA_MUESTREO, reglas_acusticas, gritos)
     # Sin segmentos no hay voz que evaluar: el contrato pide 0, aunque el ruido suba y baje.
     score_acustico = acustico["score_acustico"] if segmentos else 0.0
     subida_continua = acustico["subida_continua_segundos"] if segmentos else 0.0
