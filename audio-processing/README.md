@@ -274,7 +274,9 @@ defina el guion obligatorio.
   ni los audios armados llegaron a ese nivel. Hay que medirlo con llamadas reales de call center.
 - **Qué cuenta como vocabulario inadecuado** (`vocabulario_inadecuado` en `lexico_es.json`, editable):
   - **La palabra exacta** de la lista ("bruto", "cabrón", "gilipollas"…). Una palabra normal nunca
-    cuenta por contener una grosería: "imputa", "vehículo", "computadora", "ridículo".
+    cuenta por contener una grosería: hay una prueba con 56 ("vehículo", "artículo", "computadora",
+    "diputado", "reputación", "penetrar", "cacao", "hermano", "albergar", "envergadura", "capitán"…),
+    solas y todas seguidas. "Ano" no se puede agregar a la lista: sin tildes, "año" se escribe igual.
   - **Frases enteras** ("vete a la mierda", "me vale verga", "no me toques los cojones", "qué porquería de
     servicio"…): gana la más larga, así que da una sola alerta con la frase y no otra por "mierda". En el
     sentimiento también cuenta una vez.

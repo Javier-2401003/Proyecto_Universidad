@@ -91,6 +91,11 @@ class PruebasInsultos(unittest.TestCase):
         self.assertEqual(analizar_frase("vete a la mierda", LEXICO), (-1.0, 1))
         self.assertEqual(analizar_frase("no me jodas", LEXICO), (-1.0, 1))
 
+    def test_palabras_inocentes_no_restan(self):
+        from test_alertas import INOCENTES
+        for palabra in INOCENTES:
+            self.assertEqual(analizar_frase(f"Es por el {palabra}", LEXICO), (0.0, 0), palabra)
+
     def test_bruto_en_cuentas_no_resta(self):
         self.assertEqual(analizar_frase("Su sueldo bruto es de dos millones", LEXICO), (0.0, 0))
         self.assertEqual(analizar_frase("usted es un bruto", LEXICO), (-1.0, 1))

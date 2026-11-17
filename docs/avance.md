@@ -286,11 +286,12 @@ señaló Willy, encontré que la diarización fallaba en llamadas cortas aunque 
 - **"inútil" transcrito "dinutil" (prueba de Javier del 14/11), corregido el 17/11 en la rama
   `david-vocabulario-tolerante`:** no daba `VOCABULARIO_INADECUADO`. Ahora, en las groserías de 6 letras o
   más, se acepta la palabra pegada a la anterior (1 o 2 letras de más al principio) o partida en dos ("in
-  útil"); una palabra normal nunca cuenta por contener una grosería ("imputa", "vehículo"). También
+  útil"); una palabra normal nunca cuenta por contener una grosería (prueba con 56: "vehículo",
+  "computadora", "reputación", "albergar"…). También
   amplié la lista con las groserías y frases que pedí ("bruto", "cabrón", "gilipollas", "vete a la
   mierda", "me vale verga", "no me toques los cojones"…): una frase da una sola alerta con la frase
   entera. "Sueldo bruto" y "peso bruto" no cuentan. En 769 frases de llamadas solo cambia una alerta
-  ("hijo de puta" en vez de "puta") y ningún sentimiento. 138 pruebas pasando.
+  ("hijo de puta" en vez de "puta") y ningún sentimiento. 140 pruebas pasando.
 
 **v0.3 (alertas):**
 - Contrato v0.3 (PR #41): Willy lo aprobó y lo fusionó el 10/11. Arreglo `alertas` con los valores

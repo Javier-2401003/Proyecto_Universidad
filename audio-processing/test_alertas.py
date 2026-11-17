@@ -26,6 +26,15 @@ def tiempos(segundos):
     return np.arange(int(segundos / SEGUNDOS_POR_CUADRO)) * SEGUNDOS_POR_CUADRO
 
 
+INOCENTES = ["cálculo", "calcular", "cálculos", "vehículo", "vehículos", "artículo", "artículos", "partícula",
+             "ridículo", "obstáculo", "obstáculos", "oráculo", "especular", "inocular", "maculado", "vincular",
+             "círculo", "computadora", "computadoras", "computación", "diputado", "diputados", "reputación",
+             "amputar", "disputa", "disputas", "imputar", "imputa", "apenes", "penetrar", "Penélope", "cacao",
+             "cacahuate", "cacatúa", "plano", "sano", "hermano", "verano", "ciudadano", "baño", "año", "aljodar",
+             "enjoda", "albergar", "albergue", "envergadura", "vergantín", "esteta", "pateta", "capitán",
+             "capitan", "palpito", "palpitar", "precipito", "espíritu", "compito"]
+
+
 class PruebasVocabulario(unittest.TestCase):
     def test_encuentra_la_palabra_sin_importar_tildes_ni_mayusculas(self):
         self.assertEqual(palabras_inadecuadas("¡Esto es una ESTAFA, son unos INUTILES!", LEXICO),
@@ -50,6 +59,14 @@ class PruebasVocabulario(unittest.TestCase):
                       "Es muy competente", "El cupón es inutilizable", "La calle se llama Bolívar",
                       "porque está bien", "tanto tiempo esperando", "mientras tanto", "me siento feliz"]:
             self.assertEqual(palabras_inadecuadas(texto, LEXICO), [], texto)
+
+    def test_palabras_inocentes_que_contienen_una_groseria(self):
+        # Lista de David del 17/11: contienen "culo", "puta", "pene", "caca", "ano", "joder", "verga",
+        # "teta" o "pito", pero no son malas palabras.
+        for palabra in INOCENTES:
+            self.assertEqual(palabras_inadecuadas(f"Es por el {palabra}", LEXICO), [], palabra)
+        # Todas seguidas: unir dos palabras vecinas tampoco forma una groseria.
+        self.assertEqual(palabras_inadecuadas(" ".join(INOCENTES), LEXICO), [])
 
     def test_bruto_en_cuentas_no_es_insulto(self):
         for texto in ["Su sueldo bruto es de dos millones", "el peso bruto del paquete",
