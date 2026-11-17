@@ -272,6 +272,25 @@ defina el guion obligatorio.
   los rangos se solapan y el filtro casi no actúa.
 - **El 40 % de RN-02 casi nunca se cumple con voz real:** sin los errores de octava, ni la llamada real
   ni los audios armados llegaron a ese nivel. Hay que medirlo con llamadas reales de call center.
+- **Qué cuenta como vocabulario inadecuado** (`vocabulario_inadecuado` en `lexico_es.json`, editable):
+  - **La palabra exacta** de la lista ("bruto", "cabrón", "gilipollas"…). Una palabra normal nunca
+    cuenta por contener una grosería: hay una prueba con 56 ("vehículo", "artículo", "computadora",
+    "diputado", "reputación", "penetrar", "cacao", "hermano", "albergar", "envergadura", "capitán"…),
+    solas y todas seguidas. "Ano" no se puede agregar a la lista: sin tildes, "año" se escribe igual.
+  - **Frases enteras** ("vete a la mierda", "me vale verga", "no me toques los cojones", "qué porquería de
+    servicio"…): gana la más larga, así que da una sola alerta con la frase y no otra por "mierda". En el
+    sentimiento también cuenta una vez.
+  - **Excepciones** (`no_inadecuadas`): expresiones con una grosería que no lo son, como "sueldo bruto",
+    "peso bruto" o "a lo bruto". No dan alerta ni restan en el sentimiento.
+  - **Errores de Whisper**, solo en groserías de 6 letras o más: pegada a la palabra anterior, con 1 o 2
+    letras de más al principio ("de inútil" sale "dinutil"), o partida en dos ("in útil"), si la segunda
+    parte tiene 4 letras o más ("la calle se llama" no es "cállese"). Las letras de más al final no
+    cuentan: "estafado" no es "estafa".
+  - En 769 frases de llamadas (armadas, con ruido y reales), con 21 alertas: solo cambia una, de la
+    llamada real ("hijo de puta" en vez de "puta"), y ningún puntaje de sentimiento. El parecido de
+    letras del 80 % que usa el guion se descartó: daba decenas de alertas falsas ("porque" por
+    "porquería", "esta" por "estafa", "tanto" por "tonto", "mientras" por "mierdas").
+  - Solo las alertas toleran errores de Whisper: el sentimiento cuenta la palabra o frase exacta.
 - **Vocabulario sin contexto:** "no es una estafa" también se marca, y la alerta usa el inicio del
   segmento, porque Whisper no da la hora de cada palabra.
 - **Origen:** depende de `hablante`, así que hereda sus errores.
