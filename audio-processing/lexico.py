@@ -24,14 +24,14 @@ LETRAS_RAIZ = 5
 # Con "su"/"sus" el agente habla de lo del cliente: "registro su queja" no es una queja suya.
 POSESIVOS = {"su", "sus"}
 # Whisper pega o parte palabras: "de inútil" sale "dinutil" y "inútil" sale "in útil". Para el
-# vocabulario inadecuado se toleran esos dos errores, pero solo en groserias de 6 letras o mas:
-# "culo" esta dentro de "vehículo" y "puta" dentro de "computadora". Medido en 769 frases de
-# llamadas, esta tolerancia no agrega ninguna alerta falsa. El parecido de letras del 80 % (el
-# del guion) daba decenas: "porque" -> porquería, "esta" -> estafa, "tanto" -> tonto,
-# "mientras" -> mierdas, "feliz" -> infeliz.
+# vocabulario inadecuado se toleran esos dos errores, pero solo en groserias de 6 letras o mas;
+# una palabra normal nunca cuenta por contener una corta: "imputa", "vehículo", "computadora".
+# El parecido de letras del 80 % (el del guion) daba decenas de alertas falsas en 769 frases de
+# llamadas: "porque" -> porquería, "esta" -> estafa, "tanto" -> tonto, "mientras" -> mierdas.
 LARGO_MINIMO_TOLERANTE = 6
-LETRAS_DE_MAS = 2
-# Al unir dos palabras, la segunda debe tener al menos 4 letras: "la calle se llama" no es "cállese".
+# Pegada: lo que sobra va al principio y es lo que queda de la palabra anterior ("d" de "de").
+LETRAS_PEGADAS = 2
+# Partida: la segunda parte debe tener al menos 4 letras, para que "la calle se llama" no sea "cállese".
 LETRAS_MINIMAS_SEGUNDA = 4
 
 
@@ -70,68 +70,98 @@ def cargar_lexico(ruta=RUTA_LEXICO):
     for expresion in graves:
         pesos[expresion] = -datos.get("peso_grave", datos["peso_por_palabra"])
 
+    # Lista provisional para VOCABULARIO_INADECUADO (contrato v0.3): palabras y frases enteras
+    # ("vete a la mierda"), como tuplas de palabras normalizadas.
+    inadecuadas = {tuple(normalizar(p).split()): p for p in datos.get("vocabulario_inadecuado", [])}
+    # Expresiones que contienen una groseria pero no lo son: "sueldo bruto", "peso bruto".
+    no_inadecuadas = {tuple(normalizar(p).split()) for p in datos.get("no_inadecuadas", [])}
     return {
         "pesos": pesos,
         "peso_por_palabra": datos["peso_por_palabra"],
-        "largo_maximo": max(len(frase) for frase in pesos),
+        "largo_maximo": max(len(frase) for frase in list(pesos) + list(no_inadecuadas)),
         "negadores": {normalizar(n) for n in datos["negadores"]},
         "ventana_negacion": datos["ventana_negacion"],
         "insultos_sin_negacion": insultos,
-        # Lista provisional para VOCABULARIO_INADECUADO (contrato v0.3): el Blueprint solo da "estafa".
-        "inadecuadas": {normalizar(palabra): palabra for palabra in datos.get("vocabulario_inadecuado", [])},
+        "inadecuadas": inadecuadas,
+        "no_inadecuadas": no_inadecuadas,
+        # Groserias de una palabra que toleran errores de Whisper, la mas larga primero.
+        "tolerables": sorted((e[0] for e in inadecuadas if len(e) == 1 and len(e[0]) >= LARGO_MINIMO_TOLERANTE),
+                             key=len, reverse=True),
     }
 
 
-def inadecuada_tolerante(palabra, siguiente, lexico):
-    """Groseria larga mal transcrita: (clave, palabras que ocupa) o (None, 1).
+def expresion_mas_larga(palabras, inicio, expresiones, largo_maximo):
+    """La expresion (tupla de palabras) mas larga del conjunto que empieza en esa posicion, o None."""
+    for largo in range(min(largo_maximo, len(palabras) - inicio), 0, -1):
+        candidata = tuple(palabras[inicio:inicio + largo])
+        if candidata in expresiones:
+            return candidata
+    return None
 
-    Cuenta si la palabra la contiene con como mucho LETRAS_DE_MAS letras de mas ("dinutil"), o
-    si la palabra y la siguiente juntas la forman ("in util"). Gana la groseria mas larga.
+
+def excepcion_en(palabras, inicio, lexico):
+    """Expresion que contiene una groseria pero no lo es ("sueldo bruto"), o None."""
+    return expresion_mas_larga(palabras, inicio, lexico["no_inadecuadas"], lexico["largo_maximo"])
+
+
+def groseria_mal_transcrita(palabras, inicio, lexico):
+    """Groseria larga que Whisper pego o partio: (expresion, palabras que ocupa) o (None, 1).
+
+    Pegada: la palabra termina con la groseria y le sobran 1 o 2 letras al principio ("dinutil").
+    Partida: la palabra y la siguiente juntas la forman ("in util"). Gana la groseria mas larga.
     """
-    largas = sorted((clave for clave in lexico["inadecuadas"] if len(clave) >= LARGO_MINIMO_TOLERANTE),
-                    key=len, reverse=True)
-    for clave in largas:
-        if clave in palabra and len(palabra) - len(clave) <= LETRAS_DE_MAS:
-            return clave, 1
+    palabra = palabras[inicio]
+    siguiente = palabras[inicio + 1] if inicio + 1 < len(palabras) else ""
+    for clave in lexico["tolerables"]:
+        if palabra.endswith(clave) and 0 < len(palabra) - len(clave) <= LETRAS_PEGADAS:
+            return (clave,), 1
         if len(siguiente) >= LETRAS_MINIMAS_SEGUNDA and palabra + siguiente == clave:
-            return clave, 2
+            return (clave,), 2
     return None, 1
 
 
 def palabras_inadecuadas(texto, lexico):
-    """Palabras de "vocabulario_inadecuado" en el texto, una vez cada una y tal como estan en la lista.
+    """Palabras y frases de "vocabulario_inadecuado" en el texto, una vez cada una y como estan en la lista.
 
-    Primero busca la palabra exacta; si no esta, tolera los errores de Whisper de inadecuada_tolerante.
+    En cada posicion: una excepcion ("sueldo bruto") no cuenta; si no, gana la frase mas larga
+    ("vete a la mierda" y no solo "mierda"); si no hay ninguna exacta, una groseria larga que
+    Whisper pego o partio (groseria_mal_transcrita).
     """
     encontradas = []
     for palabras in separar_clausulas(texto):
         i = 0
         while i < len(palabras):
-            clave, ocupa = palabras[i], 1
-            if clave not in lexico["inadecuadas"]:
-                siguiente = palabras[i + 1] if i + 1 < len(palabras) else ""
-                clave, ocupa = inadecuada_tolerante(palabras[i], siguiente, lexico)
-            original = lexico["inadecuadas"].get(clave)
-            if original is not None and original not in encontradas:
-                encontradas.append(original)
+            excepcion = excepcion_en(palabras, i, lexico)
+            if excepcion is not None:
+                i += len(excepcion)
+                continue
+            expresion = expresion_mas_larga(palabras, i, lexico["inadecuadas"], lexico["largo_maximo"])
+            ocupa = len(expresion) if expresion is not None else 1
+            if expresion is None:
+                expresion, ocupa = groseria_mal_transcrita(palabras, i, lexico)
+            if expresion is not None and lexico["inadecuadas"][expresion] not in encontradas:
+                encontradas.append(lexico["inadecuadas"][expresion])
             i += ocupa
     return encontradas
 
 
 def buscar_coincidencia(palabras, inicio, lexico):
     """Devuelve la expresion mas larga del lexico que empieza en esa posicion, o None."""
-    for largo in range(lexico["largo_maximo"], 0, -1):
-        candidata = tuple(palabras[inicio:inicio + largo])
-        if len(candidata) == largo and candidata in lexico["pesos"]:
-            return candidata
-    return None
+    return expresion_mas_larga(palabras, inicio, lexico["pesos"], lexico["largo_maximo"])
 
 
 def expresiones_con_contexto(texto, lexico):
-    """Expresiones del lexico en el texto, en orden, con si estan negadas y las palabras de antes."""
+    """Expresiones del lexico en el texto, en orden, con si estan negadas y las palabras de antes.
+
+    Las excepciones ("sueldo bruto") se saltan: no restan en el sentimiento.
+    """
     for palabras in separar_clausulas(texto):
         indice = 0
         while indice < len(palabras):
+            excepcion = excepcion_en(palabras, indice, lexico)
+            if excepcion is not None:
+                indice += len(excepcion)
+                continue
             expresion = buscar_coincidencia(palabras, indice, lexico)
             if expresion is None:
                 indice += 1
