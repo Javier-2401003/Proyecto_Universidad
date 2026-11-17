@@ -1,10 +1,10 @@
 # Contrato: backend (Node) y análisis de audio (Python)
 
-**Estado: v0.5 (gritos sostenidos en `EXCESO_VOLUMEN`), propuesta por David y pendiente de la revisión
-de Willy.** La v0.4 (escala de `puntaje_final` y criterio de ruido) la aprobó Willy el 14/11/2026 (PR
-#53), con los puntos de la sección 7 como provisionales, y la implementan `audio-processing/analizar.py`
-(PR #54) y el procesamiento del backend (`backend/src/procesamientoAudio.js`). Si alguien necesita un
-cambio, se hace primero aquí, en un PR propio, y se avisa al otro.
+**Estado: v0.6 (guion obligatorio: `estado_guion` y `OMISION_SCRIPT`), propuesta por David y pendiente
+de la revisión de Willy.** La v0.5 (gritos sostenidos) la aprobó Willy en el PR #68, con los puntos de la
+sección 7 como provisionales; la implementan `audio-processing/analizar.py` (PR #69) y el procesamiento
+del backend (`backend/src/procesamientoAudio.js`). Si alguien necesita un cambio, se hace primero aquí,
+en un PR propio, y se avisa al otro.
 
 - Script: `audio-processing/analizar.py` (instalación en `audio-processing/README.md`).
 - Quién llama: el backend, después de que `POST /llamadas/lotes` dejó la llamada en
@@ -60,7 +60,7 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 
 ```json
 {
-  "version_contrato": "0.5",
+  "version_contrato": "0.6",
   "archivo": "llamada_0001.mp3",
   "duracion_segundos": 268.553,
   "idioma": "es",
@@ -72,6 +72,7 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
   "puntaje_final": 64.77,
   "clasificacion_final": "NEUTRO",
   "diagnostico_conflicto": "SIN_CONFLICTO",
+  "estado_guion": "CUMPLE",
   "resumen_acustico": {
     "f0_mediana_hz": 213.64,
     "f0_desviacion_hz": 36.43,
@@ -122,6 +123,7 @@ porque descarga el modelo y compila numba. Detalle en `audio-processing/README.m
 | `puntaje_final` | number (2 dec.) | no | De 0 a 100; 100 es lo mejor y 50 es neutro (RN-03). **v0.4:** usa toda la escala (fórmula en la sección 5); con la v0.3 el máximo era 77,5. | `TB_Llamada.puntaje_final` |
 | `clasificacion_final` | string | no | `"POSITIVO"`, `"NEUTRO"`, `"NEGATIVO"` o `"CRITICO"` (reglas en la sección 5). | `TB_Llamada.clasificacion_final` |
 | `diagnostico_conflicto` | string | no | `"FALLA_AGENTE"`, `"CLIENTE_PROBLEMATICO"` o `"SIN_CONFLICTO"` (reglas en la sección 5). | `TB_Llamada.diagnostico_conflicto` |
+| `estado_guion` | string | no | **v0.6.** `"CUMPLE"`, `"NO_CUMPLE"` o `"PENDIENTE"` (sección 5, "Guion obligatorio"). Solo informativo: no cambia `puntaje_final`, `clasificacion_final` ni `diagnostico_conflicto`. | `TB_Llamada.estado_guion` (columna nueva, en un script `database/04_...sql` de Willy) |
 | `resumen_acustico` | object | no | Ver abajo. | - |
 | `tiempos_proceso_segundos` | object | no | `transcripcion`, `acustico` (incluye la diarización), `total`. | - (registro) |
 | `segmentos` | array | no (puede ser `[]`) | Fragmentos en orden de tiempo. | una fila de `TB_Transcripcion` cada uno |
@@ -235,8 +237,33 @@ con texto positivo y sin subidas, da lo mismo que una llamada limpia. En la v0.3
 **Diagnóstico (provisional).** Solo en llamadas `NEGATIVO` o `CRITICO`; en las demás es
 `SIN_CONFLICTO`. Es `FALLA_AGENTE` si el agente tiene texto negativo (promedio menor a -0,3) o
 subidas de volumen, y `CLIENTE_PROBLEMATICO` si solo los tiene el cliente. Si no se puede atribuir a
-nadie, es `SIN_CONFLICTO`. Con baja confianza no cuentan las subidas de volumen. **Todavía no revisa si
-el agente omitió el script o interrumpió**, y depende de que `hablante` sea correcto.
+nadie, es `SIN_CONFLICTO`. Con baja confianza no cuentan las subidas de volumen. **No revisa si el
+agente omitió el guion** (eso va aparte, en `estado_guion`, y no cambia el diagnóstico) **ni si
+interrumpió**, y depende de que `hablante` sea correcto.
+
+**Guion obligatorio (v0.6, decisión 6 del 14/11).** Cuatro pasos, buscados solo en los segmentos del
+`AGENTE`:
+
+| Paso | Dónde se busca | Frases (lista completa y editable en `audio-processing/guion.json`) |
+|---|---|---|
+| Saludo | Segmentos del agente que empiezan en los primeros 20 s | "buenos días", "buenas tardes", "buenas noches", "hola", "gracias por llamar", "gracias por comunicarse" |
+| Identificación | Primeros 60 s | "mi nombre es", "le saluda", "le atiende", "le habla", "habla con" |
+| Ofrecer ayuda | Primeros 60 s | "en qué le puedo ayudar", "en qué puedo ayudarle", "en qué le puedo servir", "en qué le puedo colaborar"… |
+| Cierre | Segmentos del agente que terminan en los últimos 30 s | "algo más en que pueda ayudarle", "gracias por llamar", "que tenga buen día / buena tarde / una excelente…", "hasta luego"… |
+
+- **Tolerancia a errores de Whisper:** una frase cuenta si un grupo de palabras del agente se le parece en
+  un 80 % o más, sin mirar tildes, mayúsculas ni signos ("buenas tarde", "en que le puedo ayudar"). No
+  alcanza para errores grandes ("Puede estarles" por "Buenas tardes").
+- **`estado_guion`:** `"CUMPLE"` si están los cuatro pasos, y `"NO_CUMPLE"` si falta alguno. Es
+  `"PENDIENTE"` si no es confiable evaluarlo: con `baja_confianza_audio: true`, sin segmentos del agente
+  o si el agente habló menos de 8 s en total.
+- **Alertas:** una `OMISION_SCRIPT` por cada paso que falte (sección 5, "Alertas"). Con `"PENDIENTE"` no
+  se emite ninguna.
+- **Solo informativo:** no cambia `puntaje_final`, `clasificacion_final` ni `diagnostico_conflicto`. Pasará
+  a afectar la calificación solo si el equipo lo decide después de medir con llamadas reales que cada paso
+  acierta en al menos el 90 % de los casos.
+- **Depende de `hablante`:** si los roles salen invertidos, las frases del agente quedan como del cliente
+  y la llamada sale `"NO_CUMPLE"` aunque el agente haya seguido el guion.
 
 **Para que los campos nunca vayan nulos**, porque las columnas son NOT NULL:
 
@@ -252,13 +279,15 @@ el agente omitió el script o interrumpió**, y depende de que `hablante` sea co
 ### Alertas (v0.3)
 
 El arreglo `alertas` va siempre en el primer nivel, vacío si no hay ninguna, y ordenado por
-`timestamp_evento`. Cada alerta es una fila de `TB_Alerta`. Lo que detecta la v0.3:
+`timestamp_evento`. Cada alerta es una fila de `TB_Alerta`. Lo que detecta (v0.3, y `OMISION_SCRIPT`
+desde la v0.6):
 
 | `tipo_alerta` | Cuándo | `origen_evento` y `timestamp_evento` | `valor_registrado` |
 |---|---|---|---|
 | `EXCESO_VOLUMEN` | Cada subida de volumen de RN-02 (más del 180 % del promedio móvil durante 2 s seguidos) **o grito sostenido (v0.5)**: un hablante 6 dB o más por encima del volumen típico del otro durante 2 s seguidos, si su texto en la llamada es negativo. Son las mismas que usa `score_acustico` | El hablante con más tiempo dentro de la subida; el segundo en que empieza | El cuadro más fuerte, en dBFS del audio original: `"-8.5 dBFS"` |
 | `ALTERACION_TONO` | Dentro de los segmentos de **un mismo hablante**, una ventana de 2 s cuyo F0 varía más del 40 % de la media de **ese hablante** (RN-02, "media del canal") | Ese hablante; el segundo en que empieza | La mediana del F0 en la ventana y la mayor variación medida (desviación estándar entre la media del hablante): `"235 Hz (variación 46 %)"` |
 | `VOCABULARIO_INADECUADO` | Un segmento que contiene una palabra de la lista `vocabulario_inadecuado` de `audio-processing/lexico_es.json` | El `hablante` del segmento; su `inicio` | `"Palabra: estafa"` |
+| `OMISION_SCRIPT` | **v0.6.** Un paso del guion obligatorio que el agente no dijo ("Guion obligatorio", arriba): una alerta por paso. No se emite con `estado_guion: "PENDIENTE"` | `AGENTE`; el segundo 0 para saludo, identificación y ofrecer ayuda, y el inicio del último segmento del agente para el cierre | `"Falta: saludo"`, `"Falta: identificación"`, `"Falta: ofrecer ayuda"` o `"Falta: cierre"` |
 
 - **Una alerta por evento:** una subida o una ventana de tono que dura varios segundos da una sola
   alerta. Una palabra da una alerta por segmento, aunque se repita.
@@ -276,8 +305,6 @@ El arreglo `alertas` va siempre en el primer nivel, vacío si no hay ninguna, y 
 
 **Quedan para después:**
 
-- **`OMISION_SCRIPT`:** necesita que el equipo defina el guion obligatorio (por ejemplo, saludo,
-  identificación y despedida) y cómo se verifica en el texto.
 - **Frases inadecuadas** ("no me haga perder el tiempo") y **sarcasmo** (RN-07): un léxico de palabras
   sueltas no las detecta.
 - **Interrupciones** del agente: necesitan saber cuándo hablan los dos a la vez.
@@ -303,8 +330,8 @@ Columnas que **no** son del análisis y siguen siendo del backend: `fecha_inicio
 
 ## 7. Decisiones del equipo
 
-Las decisiones 1 a 6, 8, 9 y 11 son de Willy (28/10/2026, 02/11/2026, 06/11/2026, 10/11/2026 y
-14/11/2026); la 7 es de Javier y la 10, del equipo.
+Las decisiones 1 a 6, 8, 9, 11 y 12 son de Willy (28/10/2026, 02/11/2026, 06/11/2026, 10/11/2026,
+14/11/2026 y PR #68); la 7 es de Javier, y la 10 y la 13, del equipo.
 
 1. **Variables de `.env`:** se usan los nombres de la sección 1.
 2. **`hablante` y `score_sentimiento`:** se espera a la v0.2 para guardar `TB_Transcripcion`,
@@ -386,7 +413,14 @@ Las decisiones 1 a 6, 8, 9 y 11 son de Willy (28/10/2026, 02/11/2026, 06/11/2026
   - Con `true`, el puntaje usa solo el texto, no hay `CRITICO` y solo salen alertas de vocabulario: un
     auto que pasa ya no puede contar como grito.
 
-### Por aprobar en la v0.5
+12. **v0.5 aprobada (PR #68):** gritos sostenidos por tramos y con texto negativo, y el margen de 6 dB
+    provisional. Willy anota que una llamada con gritos de principio a fin da muchas alertas (33 en la
+    real); si molesta en pantalla, se pueden unir los tramos cercanos más adelante.
+13. **Guion obligatorio (decisión 6 del 14/11, PRs #59 y #63):** cuatro pasos buscados en los segmentos
+    del agente, solo informativo, y "pendiente" cuando no es confiable evaluarlo. David define las
+    frases y la tolerancia a errores de Whisper: es la v0.6 (abajo).
+
+### v0.5 (aprobada)
 
 - **Gritos sostenidos (`EXCESO_VOLUMEN`, sección 5).** RN-02 compara con el promedio de los 30 s
   anteriores: si un cliente grita casi toda la llamada, ese promedio ya es su grito y nunca lo supera. En
@@ -426,6 +460,32 @@ Las decisiones 1 a 6, 8, 9 y 11 son de Willy (28/10/2026, 02/11/2026, 06/11/2026
 - **Backend:** no cambia. Son los mismos campos y valores; solo puede haber más `EXCESO_VOLUMEN` y más
   `CRITICO` en llamadas con gritos sostenidos.
 
+### Por aprobar en la v0.6
+
+- **El guion obligatorio de la sección 5:** el campo nuevo `estado_guion` (`"CUMPLE"`, `"NO_CUMPLE"` o
+  `"PENDIENTE"`) y las alertas `OMISION_SCRIPT`. Implementa la decisión 13 (decisión 6 del 14/11).
+- **Ventanas que no fijó la decisión:** identificación y ofrecer ayuda se buscan en los primeros 60 s,
+  igual que el saludo pero con más margen, porque algunos agentes se presentan después de saludar a la
+  empresa. "Casi no habló" es menos de 8 s de voz del agente.
+- **Tolerancia:** 80 % de parecido por grupo de palabras. Probé además una comparación "fonética"
+  (juntar palabras e igualar b/v, s/z/c, k/qu, h muda, ll/y). Recuperaba solo 2 de los 15 pasos perdidos
+  con ruido y "encontraba" un saludo y una presentación en un agente grosero que no los dice, así que la
+  descarté.
+- **Medido** con las 16 llamadas armadas, cuyos guiones conozco (qué pasos dice cada agente), y con 6 de
+  ellas mezcladas con ruido de calle:
+
+  | Audio | Pasos bien detectados | `estado_guion` |
+  |---|---|---|
+  | Sin ruido | 68 de 68 | Correcto en todas |
+  | Ruido de 20 y 10 dB | 44 de 48 | Los errores son de una llamada con los roles invertidos por el ruido y de un cierre mal transcrito |
+  | Ruido de 5 y 0 dB | — | `"PENDIENTE"`: esas llamadas tienen `baja_confianza_audio` |
+
+- **Llamadas reales:** no hay ninguna con el guion conocido, así que el 90 % por paso que pide la decisión
+  todavía no se puede medir.
+- **Backend:** el campo nuevo sube la versión menor (sección 6). Willy agrega `TB_Llamada.estado_guion`
+  en un script `database/04_...sql` y lo devuelve en `GET /llamadas` y `GET /llamadas/:id_llamada`.
+  `OMISION_SCRIPT` ya es un valor válido de `TB_Alerta`.
+
 ### Para revisar con llamadas reales
 
 1. Los cortes 35 y 65 (decisión 10).
@@ -437,3 +497,5 @@ Las decisiones 1 a 6, 8, 9 y 11 son de Willy (28/10/2026, 02/11/2026, 06/11/2026
    llamada, 9 % de acierto), porque Whisper deforma las frases típicas del agente.
 5. El margen de 6 dB de los gritos sostenidos (v0.5): cuánto difieren el canal del agente y el del
    cliente en grabaciones reales, sin gritos.
+6. El guion (v0.6): cuánto acierta cada paso con llamadas reales, antes de que pueda afectar la
+   calificación (decisión 13), y si las ventanas de 20, 60 y 30 s alcanzan.
