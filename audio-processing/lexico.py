@@ -23,6 +23,16 @@ RUTA_LEXICO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lexico_e
 LETRAS_RAIZ = 5
 # Con "su"/"sus" el agente habla de lo del cliente: "registro su queja" no es una queja suya.
 POSESIVOS = {"su", "sus"}
+# Whisper pega o parte palabras: "de inútil" sale "dinutil" y "inútil" sale "in útil". Para el
+# vocabulario inadecuado se toleran esos dos errores, pero solo en groserias de 6 letras o mas:
+# "culo" esta dentro de "vehículo" y "puta" dentro de "computadora". Medido en 769 frases de
+# llamadas, esta tolerancia no agrega ninguna alerta falsa. El parecido de letras del 80 % (el
+# del guion) daba decenas: "porque" -> porquería, "esta" -> estafa, "tanto" -> tonto,
+# "mientras" -> mierdas, "feliz" -> infeliz.
+LARGO_MINIMO_TOLERANTE = 6
+LETRAS_DE_MAS = 2
+# Al unir dos palabras, la segunda debe tener al menos 4 letras: "la calle se llama" no es "cállese".
+LETRAS_MINIMAS_SEGUNDA = 4
 
 
 def normalizar(texto):
@@ -72,14 +82,39 @@ def cargar_lexico(ruta=RUTA_LEXICO):
     }
 
 
+def inadecuada_tolerante(palabra, siguiente, lexico):
+    """Groseria larga mal transcrita: (clave, palabras que ocupa) o (None, 1).
+
+    Cuenta si la palabra la contiene con como mucho LETRAS_DE_MAS letras de mas ("dinutil"), o
+    si la palabra y la siguiente juntas la forman ("in util"). Gana la groseria mas larga.
+    """
+    largas = sorted((clave for clave in lexico["inadecuadas"] if len(clave) >= LARGO_MINIMO_TOLERANTE),
+                    key=len, reverse=True)
+    for clave in largas:
+        if clave in palabra and len(palabra) - len(clave) <= LETRAS_DE_MAS:
+            return clave, 1
+        if len(siguiente) >= LETRAS_MINIMAS_SEGUNDA and palabra + siguiente == clave:
+            return clave, 2
+    return None, 1
+
+
 def palabras_inadecuadas(texto, lexico):
-    """Palabras de "vocabulario_inadecuado" en el texto, una vez cada una y tal como estan en la lista."""
+    """Palabras de "vocabulario_inadecuado" en el texto, una vez cada una y tal como estan en la lista.
+
+    Primero busca la palabra exacta; si no esta, tolera los errores de Whisper de inadecuada_tolerante.
+    """
     encontradas = []
     for palabras in separar_clausulas(texto):
-        for palabra in palabras:
-            original = lexico["inadecuadas"].get(palabra)
+        i = 0
+        while i < len(palabras):
+            clave, ocupa = palabras[i], 1
+            if clave not in lexico["inadecuadas"]:
+                siguiente = palabras[i + 1] if i + 1 < len(palabras) else ""
+                clave, ocupa = inadecuada_tolerante(palabras[i], siguiente, lexico)
+            original = lexico["inadecuadas"].get(clave)
             if original is not None and original not in encontradas:
                 encontradas.append(original)
+            i += ocupa
     return encontradas
 
 

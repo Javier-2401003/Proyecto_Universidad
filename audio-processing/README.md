@@ -272,6 +272,16 @@ defina el guion obligatorio.
   los rangos se solapan y el filtro casi no actúa.
 - **El 40 % de RN-02 casi nunca se cumple con voz real:** sin los errores de octava, ni la llamada real
   ni los audios armados llegaron a ese nivel. Hay que medirlo con llamadas reales de call center.
+- **Vocabulario mal transcrito:** Whisper pega o parte palabras ("de inútil" sale "dinutil"; "inútil",
+  "in útil"). En las palabras de la lista con 6 letras o más se aceptan esos dos errores: la palabra que
+  la contiene con hasta 2 letras de más, y dos palabras seguidas que juntas la forman, si la segunda
+  tiene 4 letras o más ("la calle se llama" no es "cállese"). La alerta dice la palabra de la lista.
+  - Las cortas solo cuentan exactas: "culo" está dentro de "vehículo", "puta" dentro de "computadora" e
+    "imputa".
+  - En 769 frases de llamadas (armadas, con ruido y reales), con 21 alertas, no cambia ninguna. El
+    parecido de letras del 80 % que usa el guion se descartó aquí: daba decenas de alertas falsas
+    ("porque" por "porquería", "esta" por "estafa", "tanto" por "tonto", "mientras" por "mierdas").
+  - Solo afecta a las alertas: el sentimiento sigue contando la palabra exacta.
 - **Vocabulario sin contexto:** "no es una estafa" también se marca, y la alerta usa el inicio del
   segmento, porque Whisper no da la hora de cada palabra.
 - **Origen:** depende de `hablante`, así que hereda sus errores.

@@ -38,6 +38,26 @@ class PruebasVocabulario(unittest.TestCase):
         self.assertEqual(palabras_inadecuadas("¡Son unos malparidos, qué mierdas, hijueputas!", LEXICO),
                          ["malparidos", "mierdas", "hijueputas"])
 
+    def test_groseria_pegada_a_la_palabra_anterior(self):
+        # Prueba de Javier del 14/11: Whisper escribio "dinutil" por "de inútil".
+        self.assertEqual(palabras_inadecuadas("Usted es un pedazo dinutil", LEXICO), ["inútil"])
+        self.assertEqual(palabras_inadecuadas("son unos dinutiles", LEXICO), ["inútiles"])
+
+    def test_groseria_partida_en_dos_palabras(self):
+        self.assertEqual(palabras_inadecuadas("Es un in útil", LEXICO), ["inútil"])
+        # La segunda parte ya no cuenta sola: "hijue puta" es una alerta, no dos.
+        self.assertEqual(palabras_inadecuadas("hijue puta", LEXICO), ["hijueputa"])
+
+    def test_la_tolerancia_no_inventa_groserias(self):
+        for texto in ["Revise el vehículo", "Se me dañó la computadora", "Es muy competente",
+                      "El cupón es inutilizable", "La calle se llama Bolívar", "porque está bien",
+                      "tanto tiempo esperando", "mientras tanto", "me siento feliz"]:
+            self.assertEqual(palabras_inadecuadas(texto, LEXICO), [], texto)
+
+    def test_las_cortas_solo_cuentan_exactas(self):
+        # "imputa" contiene "puta" con 2 letras de mas: por eso la tolerancia es solo para las largas.
+        self.assertEqual(palabras_inadecuadas("El banco le imputa el cargo", LEXICO), [])
+
     def test_una_alerta_por_palabra_y_segmento_aunque_se_repita(self):
         alertas = alertas_vocabulario([segmento(3.5, 6, "CLIENTE", "estafa, estafa y más estafa")], LEXICO)
         self.assertEqual(alertas, [{"tipo_alerta": "VOCABULARIO_INADECUADO", "origen_evento": "CLIENTE",
