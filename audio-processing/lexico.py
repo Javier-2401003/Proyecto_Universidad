@@ -21,6 +21,8 @@ RUTA_LEXICO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lexico_e
 # Una familia de palabras comparte las primeras letras: "queja" y "quejas", "cancelar" y
 # "cancelación", "pésimo" y "pésima".
 LETRAS_RAIZ = 5
+# Con "su"/"sus" el agente habla de lo del cliente: "registro su queja" no es una queja suya.
+POSESIVOS = {"su", "sus"}
 
 
 def normalizar(texto):
@@ -90,8 +92,8 @@ def buscar_coincidencia(palabras, inicio, lexico):
     return None
 
 
-def encontrar_expresiones(texto, lexico):
-    """Expresiones del lexico en el texto, en orden, junto con si estan negadas."""
+def expresiones_con_contexto(texto, lexico):
+    """Expresiones del lexico en el texto, en orden, con si estan negadas y las palabras de antes."""
     for palabras in separar_clausulas(texto):
         indice = 0
         while indice < len(palabras):
@@ -102,8 +104,14 @@ def encontrar_expresiones(texto, lexico):
             previas = palabras[max(0, indice - lexico["ventana_negacion"]):indice]
             negada = (expresion not in lexico["insultos_sin_negacion"]
                       and any(palabra in lexico["negadores"] for palabra in previas))
-            yield expresion, negada
+            yield expresion, negada, previas
             indice += len(expresion)
+
+
+def encontrar_expresiones(texto, lexico):
+    """Expresiones del lexico en el texto, en orden, junto con si estan negadas."""
+    for expresion, negada, _ in expresiones_con_contexto(texto, lexico):
+        yield expresion, negada
 
 
 def raiz(expresion):
@@ -117,16 +125,31 @@ def raices_negativas(texto, lexico):
             if lexico["pesos"][expresion] < 0}
 
 
-def analizar_frase(texto, lexico, ignorar_negativas=()):
+def tiene_posesivo(texto):
+    """Si el texto tiene "su" o "sus" como palabra."""
+    return any(POSESIVOS & set(palabras) for palabras in separar_clausulas(texto))
+
+
+def nombra_lo_del_otro(expresion, previas, lexico):
+    """Si la palabra negativa va despues de "su"/"sus": "su queja", "su solicitud de cancelacion".
+
+    Asi el agente nombra el problema del cliente, no es hostil. Un insulto puro no se salva con eso.
+    """
+    return expresion not in lexico["insultos_sin_negacion"] and any(p in POSESIVOS for p in previas)
+
+
+def analizar_frase(texto, lexico, ignorar_negativas=(), ignorar_lo_del_otro=False):
     """Devuelve (puntaje de -1 a +1, cuantas palabras clave se encontraron).
 
-    Las palabras negativas cuya familia esta en ignorar_negativas no cuentan.
+    Las palabras negativas cuya familia esta en ignorar_negativas no cuentan. Con ignorar_lo_del_otro,
+    tampoco las que van despues de "su"/"sus" (ver nombra_lo_del_otro).
     """
     total = 0.0
     coincidencias = 0
-    for expresion, negada in encontrar_expresiones(texto, lexico):
+    for expresion, negada, previas in expresiones_con_contexto(texto, lexico):
         peso = lexico["pesos"][expresion]
-        if peso < 0 and raiz(expresion) in ignorar_negativas:
+        if peso < 0 and (raiz(expresion) in ignorar_negativas
+                         or (ignorar_lo_del_otro and nombra_lo_del_otro(expresion, previas, lexico))):
             continue
         if negada:
             peso = lexico["peso_por_palabra"] if peso < 0 else -lexico["peso_por_palabra"]

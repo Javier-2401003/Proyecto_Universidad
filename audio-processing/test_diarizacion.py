@@ -155,6 +155,22 @@ class PruebasDiagnostico(unittest.TestCase):
             (CLIENTE, "Quiero poner una queja."),
             (AGENTE, "Su queja es una pésima idea, nunca devolvemos nada.")), "FALLA_AGENTE")
 
+    def test_el_agente_que_nombra_la_queja_del_cliente_no_es_su_falla(self):
+        # Prueba de Willy del 14/11: el cliente nunca dijo "queja", pero el agente la registra.
+        self.assertEqual(self.diagnostico_de_turnos(
+            (CLIENTE, "Esto es una estafa, son unos ladrones."),
+            (AGENTE, "Voy a registrar su queja.")), "CLIENTE_PROBLEMATICO")
+
+    def test_su_solicitud_de_cancelacion_tampoco_es_falla_del_agente(self):
+        self.assertEqual(self.diagnostico_de_turnos(
+            (CLIENTE, "El servicio es pésimo."),
+            (AGENTE, "Dejo registrada su solicitud de cancelación.")), "CLIENTE_PROBLEMATICO")
+
+    def test_un_insulto_despues_de_sus_sigue_siendo_falla_del_agente(self):
+        self.assertEqual(self.diagnostico_de_turnos(
+            (CLIENTE, "Buenas tardes, tengo un problema."),
+            (AGENTE, "Usted y sus tontos reclamos.")), "FALLA_AGENTE")
+
     def test_llamada_buena_no_tiene_conflicto(self):
         self.assertEqual(self.diagnostico("NEUTRO", [(-1.0, 2), (-1.0, 2)]), "SIN_CONFLICTO")
 
