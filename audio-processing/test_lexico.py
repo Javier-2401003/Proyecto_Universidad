@@ -64,6 +64,15 @@ class PruebasFamilias(unittest.TestCase):
     def test_solo_ignora_negativas(self):
         self.assertEqual(analizar_frase("excelente", LEXICO, {"excel"}), (0.5, 1))
 
+    def test_lo_del_otro_solo_se_ignora_si_se_pide(self):
+        # El puntaje de la frase no cambia; solo el diagnostico pide ignorarlo.
+        self.assertEqual(analizar_frase("Registro su queja", LEXICO), (-0.5, 1))
+        self.assertEqual(analizar_frase("Registro su queja", LEXICO, ignorar_lo_del_otro=True), (0.0, 0))
+        self.assertEqual(analizar_frase("su reporte de fraude", LEXICO, ignorar_lo_del_otro=True), (0.0, 0))
+
+    def test_sin_posesivo_cerca_la_palabra_cuenta(self):
+        self.assertEqual(analizar_frase("es una queja", LEXICO, ignorar_lo_del_otro=True), (-0.5, 1))
+
 
 class PruebasInsultos(unittest.TestCase):
     def test_todo_el_vocabulario_inadecuado_resta(self):

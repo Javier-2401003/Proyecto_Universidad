@@ -408,8 +408,13 @@ real. Falta medirla con llamadas etiquetadas.
   el final del turno del agente (antes eso bastaba para dar `FALLA_AGENTE`). Al agente no le cuentan
   las palabras negativas que el cliente ya dijo antes, comparadas por familia (las 5 primeras letras:
   "cancelar" y "cancelación"), para no culparlo por "registro su queja". Por eso, si el cliente dijo
-  "nunca" y el agente contesta con otro "nunca" grosero, ese tampoco cuenta. Esto solo cambia el
-  diagnóstico: el puntaje y el `score_sentimiento` de cada frase siguen igual.
+  "nunca" y el agente contesta con otro "nunca" grosero, ese tampoco cuenta. Tampoco le cuentan las
+  palabras negativas que van después de "su" o "sus" (hasta 3 palabras antes): con "voy a registrar su
+  queja" o "su solicitud de cancelación" el agente nombra el problema del cliente, aunque el cliente no
+  haya dicho esa palabra (prueba de Willy del 14/11: salía `FALLA_AGENTE`). Los insultos sí cuentan
+  aunque vayan después de "su"; "su queja no me importa" deja de contar, pero un agente grosero suele
+  decir más ("nunca", "tonto"). Esto solo cambia el diagnóstico: el puntaje y el `score_sentimiento` de
+  cada frase siguen igual.
 - **RN-02:** el promedio móvil todavía mezcla las dos voces.
 
 ## Pendiente
