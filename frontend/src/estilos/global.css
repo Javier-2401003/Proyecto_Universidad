@@ -1608,3 +1608,7 @@ a.boton {
     padding-left: 0;
   }
 }
+
+.guion-estado {
+  margin: 0 0 12px;
+}

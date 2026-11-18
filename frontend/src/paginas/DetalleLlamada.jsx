@@ -15,6 +15,13 @@ const CLASIFICACIONES = {
   CRITICO: 'Critica',
 };
 
+// Guion obligatorio (contrato de audio v0.6, docs/api.md). Solo informativo: no cambia el puntaje.
+const ESTADOS_GUION = {
+  CUMPLE: { texto: 'Cumple el guion', clase: 'positivo' },
+  NO_CUMPLE: { texto: 'No cumple el guion', clase: 'negativo' },
+  PENDIENTE: { texto: 'Guion pendiente de evaluacion', clase: 'neutro' },
+};
+
 const DIAGNOSTICOS = {
   SIN_CONFLICTO: { texto: 'Sin conflicto', detalle: 'La llamada se desarrollo con normalidad.' },
   CLIENTE_PROBLEMATICO: { texto: 'Cliente problematico', detalle: 'La tension vino del cliente; el agente mantuvo el control.' },
@@ -206,6 +213,15 @@ function ResumenResultado({ resultado }) {
         <p className="diagnostico">
           <strong>{diagnostico?.texto ?? resultado.diagnostico_conflicto}</strong>
           <span className="texto-secundario">{diagnostico?.detalle}</span>
+        </p>
+        <p className="guion-estado">
+          {ESTADOS_GUION[resultado.estado_guion] ? (
+            <span className={`etiqueta etiqueta--${ESTADOS_GUION[resultado.estado_guion].clase}`}>
+              {ESTADOS_GUION[resultado.estado_guion].texto}
+            </span>
+          ) : (
+            <span className="texto-secundario">Guion no evaluado (analizada antes de la v0.6)</span>
+          )}
         </p>
         <BarraScore etiqueta="Texto (lexico)" valor={resultado.score_global_nlp} />
         <BarraScore etiqueta="Voz (acustico)" valor={resultado.score_acustico} />
