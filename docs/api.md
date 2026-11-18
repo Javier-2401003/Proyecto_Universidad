@@ -352,7 +352,8 @@ para no revelar que existe):
     "clasificacion_final": "NEUTRO",
     "diagnostico_conflicto": "SIN_CONFLICTO",
     "score_global_nlp": 0.41,
-    "score_acustico": -0.25
+    "score_acustico": -0.25,
+    "estado_guion": "CUMPLE"
   },
   "transcripcion": [
     {
@@ -381,6 +382,15 @@ para no revelar que existe):
 ```
 - `resultado` es `null` mientras `estado_procesamiento` no sea `COMPLETADO`; `transcripcion`
   y `alertas` llegan vacías en ese caso.
+- `resultado.estado_guion` (guion obligatorio, contrato de audio v0.6; solo informativo, no cambia el
+  puntaje ni el diagnóstico):
+  - `"CUMPLE"`: el agente dijo los cuatro pasos (saludo, identificación, ofrecer ayuda y cierre).
+  - `"NO_CUMPLE"`: faltó alguno; cada paso que falta es una alerta `OMISION_SCRIPT` con
+    `valor_registrado` `"Falta: saludo"`, etc.
+  - `"PENDIENTE"`: no era confiable evaluarlo (audio de baja confianza o el agente casi no habló). No
+    hay alertas `OMISION_SCRIPT`. La pantalla lo muestra como "Pendiente de evaluación".
+  - `null`: no evaluado, porque la llamada se analizó antes de la v0.6. Se evalúa al reprocesarla
+    (`npm run reprocesar -- --antes-de 0.6 --confirmar`, en `backend/`).
 - `transcripcion` ordenada por `timestamp_inicio`; `alertas` por `timestamp_evento`.
 - Números como números (no texto): el backend ya usa `decimalNumbers: true`.
 - El volumen está en **dBFS** (`docs/contrato_audio.md`): `nivel_volumen_rms` es negativo (0 es el
@@ -532,7 +542,8 @@ Orden: de la más reciente a la más antigua (`fecha_inicio` y luego `id_llamada
       "resultado": {
         "puntaje_final": 72.5,
         "clasificacion_final": "POSITIVO",
-        "diagnostico_conflicto": "SIN_CONFLICTO"
+        "diagnostico_conflicto": "SIN_CONFLICTO",
+        "estado_guion": "CUMPLE"
       },
       "total_alertas": 0
     }
@@ -544,6 +555,9 @@ Orden: de la más reciente a la más antigua (`fecha_inicio` y luego `id_llamada
   de la página pedida. Una página después de la última responde `200` con `llamadas: []`.
 - `resultado` es `null` mientras `estado_procesamiento` no sea `COMPLETADO` (igual que en el
   detalle); `total_alertas` es `0` en ese caso.
+- `resultado.estado_guion`: igual que en el detalle (`CUMPLE`, `NO_CUMPLE`, `PENDIENTE` o `null`). Para
+  el porcentaje de cumplimiento de los Reportes, cuentan solo `CUMPLE` y `NO_CUMPLE`; `PENDIENTE` y
+  `null` no son llamadas evaluadas.
 - Si se filtra por `clasificacion` o `diagnostico`, solo entran llamadas `COMPLETADO`, porque
   las demás tienen los valores por defecto de la columna.
 - Un `id_agente` o `id_lote` que el usuario no puede ver no es un error: simplemente no hay
