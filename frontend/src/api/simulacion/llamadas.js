@@ -18,6 +18,8 @@ const CONVERSACIONES = [
       diagnostico_conflicto: 'SIN_CONFLICTO',
       score_global_nlp: 0.58,
       score_acustico: 0.0,
+      // Con baja confianza el guion no se evalua.
+      estado_guion: 'PENDIENTE',
     },
     baja_confianza_audio: true,
     fragmentos: [
@@ -43,6 +45,7 @@ const CONVERSACIONES = [
       diagnostico_conflicto: 'CLIENTE_PROBLEMATICO',
       score_global_nlp: -0.35,
       score_acustico: -0.42,
+      estado_guion: 'CUMPLE',
     },
     baja_confianza_audio: false,
     fragmentos: [
@@ -70,6 +73,7 @@ const CONVERSACIONES = [
       diagnostico_conflicto: 'FALLA_AGENTE',
       score_global_nlp: -0.62,
       score_acustico: -0.55,
+      estado_guion: 'NO_CUMPLE',
     },
     baja_confianza_audio: false,
     fragmentos: [
@@ -83,7 +87,10 @@ const CONVERSACIONES = [
       ['CLIENTE', 'Voy a presentar un reclamo formal.', 3, -0.7, 74, 170],
     ],
     alertas: [
-      // OMISION_SCRIPT no va: el analisis todavia no la detecta (falta definir el guion).
+      ['OMISION_SCRIPT', 'AGENTE', 0, 'Falta: saludo', 'Salude al cliente al inicio de la llamada.'],
+      ['OMISION_SCRIPT', 'AGENTE', 0, 'Falta: identificacion', 'Diga su nombre al cliente.'],
+      ['OMISION_SCRIPT', 'AGENTE', 0, 'Falta: ofrecer ayuda', 'Pregunte en que puede ayudar.'],
+      ['OMISION_SCRIPT', 'AGENTE', 33, 'Falta: cierre', 'Despidase y pregunte si puede ayudar en algo mas.'],
       ['VOCABULARIO_INADECUADO', 'AGENTE', 19, 'Palabra: inútil', 'Evite ese lenguaje: mantenga un trato respetuoso con el cliente.'],
       ['EXCESO_VOLUMEN', 'AGENTE', 20, '-8.5 dBFS', 'Baje el volumen y respire antes de responder.'],
       ['ALTERACION_TONO', 'AGENTE', 20.5, '215 Hz (variación 44 %)', 'Respire, baje el ritmo y vuelva a un tono neutro.'],

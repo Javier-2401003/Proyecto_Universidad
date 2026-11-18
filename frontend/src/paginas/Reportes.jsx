@@ -114,6 +114,9 @@ function calcularReporte(llamadas) {
     porClasificacion,
     alertas: analizadas.reduce((s, l) => s + l.total_alertas, 0),
     bajaConfianza: analizadas.filter((l) => l.baja_confianza_audio).length,
+    // Solo cuentan las llamadas evaluadas (CUMPLE o NO_CUMPLE), como dice docs/api.md.
+    guionEvaluadas: analizadas.filter((l) => ['CUMPLE', 'NO_CUMPLE'].includes(l.resultado.estado_guion)).length,
+    guionCumple: analizadas.filter((l) => l.resultado.estado_guion === 'CUMPLE').length,
     agentes,
     semanas,
     criticas,
@@ -133,6 +136,7 @@ function descargarCsv(llamadas, nombreArchivo) {
     ['puntaje_final', (l) => l.resultado?.puntaje_final],
     ['clasificacion', (l) => l.resultado?.clasificacion_final],
     ['diagnostico', (l) => l.resultado?.diagnostico_conflicto],
+    ['estado_guion', (l) => l.resultado?.estado_guion],
     ['alertas', (l) => (l.resultado ? l.total_alertas : '')],
     ['baja_confianza_audio', (l) => (l.resultado ? (l.baja_confianza_audio ? 'si' : 'no') : '')],
     ['duracion_segundos', (l) => (l.resultado ? l.duracion_segundos : '')],
@@ -334,6 +338,15 @@ function ResumenEjecutivo({ reporte }) {
           valor={reporte.alertas}
           detalle={`${reporte.bajaConfianza} con audio de baja confianza`}
         />
+        <Indicador
+          etiqueta="Cumplimiento del guion"
+          valor={reporte.guionEvaluadas ? `${porcentaje(reporte.guionCumple, reporte.guionEvaluadas)} %` : '-'}
+          detalle={
+            reporte.guionEvaluadas
+              ? `${reporte.guionCumple} de ${reporte.guionEvaluadas} evaluadas`
+              : 'Ninguna llamada evaluada todavia'
+          }
+        />
       </ul>
       {reporte.analizadas > 0 && (
         <div className="reporte__barra">
@@ -504,7 +517,11 @@ function ComoSeCalcula() {
         <li>
           <strong>Variacion:</strong> diferencia del puntaje promedio contra la semana anterior del mismo reporte.
         </li>
-        <li>El cumplimiento del guion todavia no se mide: la omision del guion aun no se detecta.</li>
+        <li>
+          <strong>Cumplimiento del guion:</strong> llamadas que cumplen los cuatro pasos (saludo, identificacion,
+          ofrecer ayuda y cierre) entre las evaluadas. No cuentan las pendientes de evaluacion ni las analizadas
+          antes de que existiera el guion. Es solo informativo: no cambia el puntaje.
+        </li>
       </ul>
     </div>
   );

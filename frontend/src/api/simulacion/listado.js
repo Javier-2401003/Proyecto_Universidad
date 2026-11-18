@@ -68,6 +68,8 @@ function generarLlamadas() {
                 diagnostico_conflicto: conflicto
                   ? DIAGNOSTICOS[elegir(azar, [0.4, 0.5, 0.1])]
                   : 'SIN_CONFLICTO',
+                // Sin llamar a azar(), para no cambiar el resto de los datos simulados.
+                estado_guion: clasificacion === 'CRITICO' || n % 5 === 0 ? 'NO_CUMPLE' : 'CUMPLE',
               }
             : null,
         total_alertas: estado === 'COMPLETADO' ? Math.round(azar() * ALERTAS_MAXIMAS[clasificacion]) : 0,

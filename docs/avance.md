@@ -89,7 +89,7 @@ llamadas reales; el informe y la presentación van aparte.
 ---
 
 ## Javier - Frontend
-_Última actualización: 16/11/2026_
+_Última actualización: 18/11/2026_
 
 **Objetivo para la próxima reunión**
 - [x] Proyecto React + Vite en `frontend/`.
@@ -199,8 +199,29 @@ Gestión de usuarios (SuperAdmin), con errores junto a cada campo y la regla de 
 de Auditoría muestra `CAMBIO_PASSWORD`, `RESTABLECIMIENTO_PASSWORD` y el módulo `AUTENTICACION`.
 Probado contra el backend del PR #65.
 
-**Pendiente (yo):** medir el tiempo en mi laptop (el de arriba es de la nube, más rápida) y organizar
-las grabaciones de llamadas actuadas.
+**Guion en pantalla** (18/11/2026, rama `javier-guion-frontend`, contrato del PR #75): el detalle de la
+llamada muestra "Cumple el guion", "No cumple el guion", "Guion pendiente de evaluación" o "Guion no
+evaluado" (`null`, analizada antes de la v0.6). Reportes suma el indicador **Cumplimiento del guion**
+(solo cuenta `CUMPLE` y `NO_CUMPLE`) y la columna `estado_guion` en el CSV. Se quitó el aviso "la omisión
+del guion todavía no se detecta" del inicio.
+
+**Medición con 10 llamadas reales** (16/11 y 18/11/2026, audios en el Drive del equipo, no en el repo).
+Etiqueté cada segmento leyendo la transcripción (quién habla de verdad) y lo esperado de cada llamada.
+Los CSV de etiquetas están en el Drive.
+
+| | `main` del 16/11 (v0.4) | `main` del 18/11 (v0.5, #73, #74, #76) |
+|---|---|---|
+| Hablante correcto (segmentos) | 75 % | 66 % |
+| Clasificación esperada | 7 de 10 | 7 de 10 |
+| Diagnóstico esperado | 8 de 10 | 8 de 10 |
+
+- Mejoró: la llamada 9 (la agente contesta primero) pasó de 6 % a 94 % de hablante, y la de cobranza con
+  insultos y gritos sale `CRITICO`.
+- Empeoró: la 7 (venta saliente) de 79 % a 21 % y la 5 de 76 % a 39 %, con los roles invertidos. La 5 sale
+  `POSITIVO` 71,6 porque la única frase con puntaje es "Perfecto.".
+- Sigue: la 3 (cliente muy molesto sin groserías) queda `NEUTRO`; el IVR de la 6 cuenta como cliente.
+
+**Pendiente (yo):** medir el tiempo en mi laptop y preparar la presentación del 19/11.
 
 **Necesito de otros:**
 - Equipo: el reproceso ya existe (`npm run reprocesar`, PR #60). Hay que correrlo en cada base con

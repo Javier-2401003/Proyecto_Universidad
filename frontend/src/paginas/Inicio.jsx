@@ -178,17 +178,10 @@ function BarrasAlertas({ porTipo }) {
   const filas = Object.entries(porTipo).sort((a, b) => b[1] - a[1]);
   const maximo = Math.max(1, ...filas.map(([, cantidad]) => cantidad));
 
-  // OMISION_SCRIPT todavia no se detecta (docs/contrato_audio.md, v0.3): se avisa para que
-  // su 0 no se lea como "nadie omitio el guion".
-  const notaGuion = (
-    <p className="texto-secundario nota-grafico">La omision del guion todavia no se detecta.</p>
-  );
-
   if (filas.every(([, cantidad]) => cantidad === 0)) {
     return (
       <>
         <p className="texto-secundario">No hubo alertas en este periodo.</p>
-        {notaGuion}
       </>
     );
   }
@@ -206,7 +199,6 @@ function BarrasAlertas({ porTipo }) {
           </li>
         ))}
       </ul>
-      {notaGuion}
     </>
   );
 }
