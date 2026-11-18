@@ -22,6 +22,8 @@ const ACCIONES = {
   CARGA_LOTE: 'Carga de lote',
   PROCESAMIENTO_LLAMADA: 'Analisis de llamada',
   REPROCESO_LLAMADAS: 'Reproceso de llamadas',
+  CAMBIO_PASSWORD: 'Cambio de contrasena',
+  RESTABLECIMIENTO_PASSWORD: 'Restablecimiento de contrasena',
 };
 
 const MODULOS = {
@@ -32,6 +34,7 @@ const MODULOS = {
   REPORTES: 'Reportes',
   PANEL_AGENTE: 'Panel del agente',
   AUDITORIA: 'Auditoria',
+  AUTENTICACION: 'Autenticacion',
 };
 
 const CAMPOS_EDITABLES = { nombre_completo: 'nombre', correo_electronico: 'correo', rol: 'rol' };
@@ -293,6 +296,10 @@ function Detalle({ registro, nombrePorId }) {
       return `${d.total} ${d.total === 1 ? 'llamada vuelve' : 'llamadas vuelven'} a analizarse${
         d.antes_de ? ` (las analizadas antes de la v${d.antes_de})` : ' (todas las completadas)'
       }${d.incluir_errores ? ', incluidas las que tenian error' : ''}.`;
+    case 'CAMBIO_PASSWORD':
+      return `${persona(d.id_usuario)} cambio su contrasena.`;
+    case 'RESTABLECIMIENTO_PASSWORD':
+      return `Restablecio la contrasena de ${persona(d.id_usuario)}.`;
     default:
       return <code className="auditoria__json">{JSON.stringify(d)}</code>;
   }
