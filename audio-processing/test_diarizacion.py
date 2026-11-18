@@ -7,7 +7,7 @@ import numpy as np
 from acustico import calcular_diagnostico, cargar_reglas as cargar_reglas_acusticas, hablante_del_evento
 from diarizacion import (AGENTE, CLIENTE, agrupar, asignar_hablantes, canales_distintos, cargar_reglas,
                          caracteristicas_por_segmento, completar_sin_voz, grupo_del_agente,
-                         hablante_por_canal)
+                         hablante_por_canal, refinar_por_cuadros, tonos_parecidos)
 from lexico import analizar_frase, cargar_lexico
 
 REGLAS = cargar_reglas()
@@ -59,6 +59,42 @@ class PruebasAgrupacion(unittest.TestCase):
         caracteristicas = np.array([sem.normal(3 * (i % 2), 0.1, 14) for i in range(7)])
         grupos = list(agrupar(caracteristicas, REGLAS))
         self.assertEqual(grupos, [grupos[0], 1 - grupos[0]] * 3 + [grupos[0]])
+
+    def test_un_segmento_corto_y_raro_no_se_queda_con_un_grupo(self):
+        # Dos voces parecidas (0 y 1) con segmentos largos y un segmento corto con un timbre raro (6).
+        # Sin pesos, el arranque desde los puntos mas lejanos dejaba al corto solo en un grupo.
+        sem = np.random.default_rng(5)
+        voces = [0, 1, 0, 1, 0, 1, 0, 1]
+        caracteristicas = np.array([sem.normal(v, 0.15, 14) for v in voces] + [np.full(14, 6.0)])
+        pesos = [200] * len(voces) + [12]
+        grupos = list(agrupar(caracteristicas, REGLAS, pesos))
+        self.assertEqual(grupos[:8], [grupos[0], 1 - grupos[0]] * 4)
+
+    def test_siempre_da_el_mismo_resultado(self):
+        sem = np.random.default_rng(6)
+        caracteristicas = sem.normal(0, 1, (30, 14))
+        pesos = sem.integers(10, 300, 30)
+        self.assertEqual(list(agrupar(caracteristicas, REGLAS, pesos)), list(agrupar(caracteristicas, REGLAS, pesos)))
+
+    def test_refinar_corrige_un_segmento_mal_agrupado(self):
+        sem = np.random.default_rng(7)
+        matrices = [sem.normal(0.0 if i % 2 == 0 else 1.5, 0.5, (150, 3)) for i in range(8)]
+        mal = [0, 1, 0, 1, 1, 1, 0, 1]  # el segmento 4 es de la primera voz
+        self.assertEqual(list(refinar_por_cuadros(matrices, mal)), [0, 1, 0, 1, 0, 1, 0, 1])
+
+    def test_refinar_nunca_deja_un_grupo_vacio(self):
+        sem = np.random.default_rng(8)
+        matrices = [sem.normal(0, 1, (100, 3)) for _ in range(4)]
+        grupos = refinar_por_cuadros(matrices, [0, 0, 0, 1])
+        self.assertEqual(len(set(grupos)), 2)
+
+    def test_solo_se_refina_si_los_tonos_se_parecen(self):
+        # Ultima columna: log del tono. Hombre y mujer (110 y 220 Hz) no; dos hombres (110 y 125 Hz) si.
+        def caracteristicas(tono_b):
+            return np.array([[0.0] * 13 + [np.log(110.0)], [0.0] * 13 + [np.log(tono_b)]])
+        self.assertFalse(tonos_parecidos(caracteristicas(220.0), np.array([0, 1]), REGLAS))
+        self.assertTrue(tonos_parecidos(caracteristicas(125.0), np.array([0, 1]), REGLAS))
+        self.assertFalse(tonos_parecidos(caracteristicas(125.0), np.array([0, 0]), REGLAS))
 
     def test_segmento_sin_voz_medida_hereda_el_anterior(self):
         self.assertEqual(completar_sin_voz(3, [0, 2], [1, 0]), [1, 1, 0])
@@ -126,6 +162,25 @@ class PruebasAsignacion(unittest.TestCase):
         hablantes = asignar_hablantes([segmento(0, 4, "gracias por llamar"), segmento(4, 8, "quiero cancelar")],
                                       audio, f0, FRECUENCIA, SALTO, REGLAS)
         self.assertEqual(hablantes, [AGENTE, CLIENTE])
+
+    def test_dos_voces_del_mismo_genero_con_turnos_cortos(self):
+        # Tonos de 118 y 132 Hz (mismo genero) y timbres distintos; turnos de 3 s y uno de 0,5 s.
+        turnos = [(0, 3), (3, 6), (6, 9), (9, 9.5), (9.5, 12.5), (12.5, 15.5)]
+        voces = [0, 1, 0, 1, 1, 0]
+        tiempo = np.arange(int(FRECUENCIA * 15.5)) / FRECUENCIA
+        cuadros = np.arange(int(15.5 * FRECUENCIA / SALTO) + 1) * SALTO / FRECUENCIA
+        audio = np.zeros_like(tiempo)
+        f0 = np.full(len(cuadros), np.nan)
+        for (inicio, fin), voz in zip(turnos, voces):
+            tono, armonicos = (118.0, [1, 0.6, 0.4, 0.2]) if voz == 0 else (132.0, [0.3, 0.5, 1, 0.8, 0.6])
+            tramo = (tiempo >= inicio) & (tiempo < fin)
+            audio[tramo] = sum(a * np.sin(2 * np.pi * tono * (k + 1) * tiempo[tramo]) for k, a in enumerate(armonicos))
+            f0[(cuadros >= inicio) & (cuadros < fin)] = tono
+        textos = ["gracias por llamar, en qué le puedo ayudar", "quiero cancelar", "con gusto", "sí", "necesito",
+                  "permítame"]
+        hablantes = asignar_hablantes([segmento(i, f, t) for (i, f), t in zip(turnos, textos)],
+                                      (audio * 0.1).astype(np.float32), f0, FRECUENCIA, SALTO, REGLAS)
+        self.assertEqual(hablantes, [AGENTE if v == 0 else CLIENTE for v in voces])
 
 
 class PruebasDiagnostico(unittest.TestCase):

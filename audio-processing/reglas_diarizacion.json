@@ -2,6 +2,8 @@
   "segundos_minimos_voz": 0.2,
   "numero_mfcc": 13,
   "peso_f0": 4.0,
+  "segmentos_para_arrancar": 12,
+  "razon_tonos_para_refinar": 1.4,
   "correlacion_maxima_canales": 0.7,
   "frases_agente": [
     "en que le puedo ayudar",
