@@ -240,7 +240,25 @@ Los CSV de etiquetas están en el Drive.
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 17/11/2026_
+_Última actualización: 18/11/2026_
+
+**Para la presentación (18/11):** el análisis queda congelado en `main` con el guion (#72) y la
+separación de voces del mismo género (#79); no lo toco más.
+- **El #79, medido con las 10 llamadas reales de Javier:** no cambia ninguna clasificación ni diagnóstico
+  (siguen 7 de 10 y 8 de 10). Cambia el hablante de 75 de 387 segmentos, en 4 llamadas; leyendo la
+  transcripción, 40 pasan a estar bien, 24 a estar mal y 11 no se pueden decidir. Mejoran la 5 (la
+  recepcionista vuelve a ser el agente) y la 4; empeoran la 7 (venta saliente) y la 8. Neto: quién habla
+  pasa de 66 % a cerca de 70 %, por mi lectura (falta confirmarlo con los CSV de Javier). La 3 y la 10
+  traen canales distintos y se separan por canal.
+- **Whisper puede transcribir distinto en otra laptop:** en la mía, la llamada 5 no tiene el "Perfecto."
+  que anotó Javier y sale `NEUTRO` 48,1 en vez de `POSITIVO` 71,6. Conviene ensayar la demo en la laptop
+  de la presentación.
+- **Whisper sin internet:** verificado en mi laptop (`base` y `small` descargados en
+  `%USERPROFILE%\.cache\huggingface`). El análisis completo funciona con `HF_HUB_OFFLINE=1` y también sin
+  conexión y sin la variable. Para la demo: `$env:HF_HUB_OFFLINE = "1"` en la terminal antes de
+  `npm start`, así no espera a que falle la conexión.
+- Mi parte de la presentación (cómo funciona el análisis, resultados, límites y lista para el ensayo) está
+  en un documento aparte que comparto con el equipo.
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -319,13 +337,13 @@ señaló Willy, encontré que la diarización fallaba en llamadas cortas aunque 
   mierda", "me vale verga", "no me toques los cojones"…): una frase da una sola alerta con la frase
   entera. "Sueldo bruto" y "peso bruto" no cuentan. En 769 frases de llamadas solo cambia una alerta
   ("hijo de puta" en vez de "puta") y ningún sentimiento. 140 pruebas pasando.
-- **Voces del mismo género, 17/11 en la rama `david-mismo-genero`:** cada segmento pesa lo que dura su voz
+- **Voces del mismo género, 17/11 (PR #79, en `main`):** cada segmento pesa lo que dura su voz
   (un "sí" corto y raro ya no se queda con un grupo), se prueban varios arranques del k-means y, si los
   tonos de los dos grupos se parecen, un ajuste cuadro a cuadro. Medido con voces distintas del mismo
   género (también las de Windows en inglés leyendo en español): dos hombres de 83-96 % a 97-99,8 %, dos
   mujeres de 88-93 % a 95-99,9 %; hombre y mujer sigue en 99,3 %. En 27 llamadas completas cambia el
-  resultado de una sola (una demo, con el agente bien elegido). 159 pruebas pasando. Falta medirlo con
-  llamadas reales del mismo género.
+  resultado de una sola (una demo, con el agente bien elegido). 159 pruebas pasando. Con las 10
+  llamadas reales de Javier: ver "Para la presentación".
 
 **v0.3 (alertas):**
 - Contrato v0.3 (PR #41): Willy lo aprobó y lo fusionó el 10/11. Arreglo `alertas` con los valores
@@ -408,24 +426,25 @@ ofrecer ayuda (primeros 60 s) y cierre (últimos 30 s), buscados en los segmento
 - **Consulta cortés:** una consulta neutra con "Perfecto, gracias" sale `POSITIVO` 96 (punto 2 de "Para
   revisar con llamadas reales").
 - Repetir la prueba de punta a punta con llamadas reales de call center, junto con Willy y Javier.
-- Medir `hablante` con llamadas reales etiquetadas (espero 65-85 % en mono, sin medir) y usarlo en el
-  promedio móvil de RN-02.
+- `hablante` con llamadas reales: 66 % en las 10 de Javier, cerca de 70 % con el #79. Los roles se
+  invierten en ventas salientes (llamada 7). Falta usarlo en el promedio móvil de RN-02.
 - Medir con gritos reales: el Blueprint pide 88 % sobre 50 muestras y la recalibración bajó la
   sensibilidad.
 - Recalibrar `baja_confianza_audio` con grabaciones reales, y revisar que con ruido el puntaje sube
   (usa solo el texto) y que `POSITIVO` exige `score_global_nlp` mayor a 0,545.
 - Investigar por qué Whisper casi no transcribió a quien llama en una llamada real.
 - `diagnostico_conflicto` todavía no revisa si el agente omitió el script o interrumpió.
-- Mediciones con llamadas reales (tarea 3): tiempos con `base` en la laptop más lenta, acierto de
-  `hablante`, detección de gritos y umbral de `baja_confianza_audio`. **Bloqueado:** no tengo llamadas
-  reales de call center ni acceso a las otras laptops.
+- Mediciones con llamadas reales (tarea 3): el acierto de `hablante` ya está medido con las 10 de Javier.
+  Faltan los tiempos con `base` en la laptop más lenta, la detección de gritos y el umbral de
+  `baja_confianza_audio`.
 - `ALTERACION_TONO`: sin los errores de octava, el 40 % de RN-02 no se cumplió en ningún audio; hay que
   ver con llamadas reales si alguna vez se dispara. Las falsas que quedan son de llamadas con ruido.
 
 **Necesito de otros:**
-- Willy: `TB_Llamada.estado_guion` (`database/04_estado_guion.sql`) y la API, como dijiste al aprobar el
-  #71. Cuando estén, y con el #72 en `main`, correr `npm run reprocesar -- --antes-de 0.6 --confirmar` en
-  cada base. Y tu grabación de 52 s (por fuera de GitHub, como dijiste), para el umbral de baja confianza.
+- Todos, antes del ensayo: en cada base, aplicar `database/04_estado_guion.sql` (PR #78 de Willy) y
+  correr `npm run reprocesar -- --antes-de 0.6 --confirmar` en `backend/`.
+- Javier: los CSV de etiquetas de las 10 llamadas, para confirmar el "cerca de 70 %" de `hablante`.
+- Willy: tu grabación de 52 s (por fuera de GitHub, como dijiste), para el umbral de baja confianza.
 - Javier: el porcentaje de cumplimiento del guion en los reportes sale de `estado_guion` (sin contar los
   `PENDIENTE`).
 - Willy o Javier: correr `analizar.py` con `base` en su laptop y anotar cuánto tarda, para medir en la
