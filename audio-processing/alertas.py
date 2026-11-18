@@ -1,8 +1,8 @@
-"""Alertas para TB_Alerta (contrato v0.3).
+"""Alertas para TB_Alerta (contrato v0.3, y OMISION_SCRIPT desde la v0.6).
 
-Detecta EXCESO_VOLUMEN (las subidas de RN-02 que ya usa score_acustico), ALTERACION_TONO medida por
-hablante y VOCABULARIO_INADECUADO por palabras. OMISION_SCRIPT queda para cuando el equipo defina el
-guion. Los mensajes estan en reglas_alertas.json.
+Detecta EXCESO_VOLUMEN (las subidas de RN-02 y los gritos sostenidos que ya usa score_acustico),
+ALTERACION_TONO medida por hablante, VOCABULARIO_INADECUADO por palabras y OMISION_SCRIPT por cada paso
+del guion que falta (guion.py). Los mensajes estan en reglas_alertas.json.
 """
 
 import json
@@ -161,12 +161,22 @@ def alertas_vocabulario(segmentos, lexico):
             for segmento in segmentos for palabra in palabras_inadecuadas(segmento["texto"], lexico)]
 
 
+def alertas_guion(faltan):
+    """Una OMISION_SCRIPT del agente por cada paso del guion que falta (contrato v0.6)."""
+    return [{"tipo_alerta": "OMISION_SCRIPT", "origen_evento": "AGENTE", "timestamp_evento": momento,
+             "valor_registrado": f"Falta: {nombre}"} for nombre, momento in faltan]
+
+
 def generar_alertas(segmentos, eventos, f0, rms, tiempos, segundos_por_cuadro, baja_confianza,
-                    lexico, reglas_acusticas, reglas):
-    """Todas las alertas, ordenadas por tiempo. Con baja confianza solo las de vocabulario (flujo E1)."""
+                    lexico, reglas_acusticas, reglas, faltan_guion=()):
+    """Todas las alertas, ordenadas por tiempo. Con baja confianza solo las de vocabulario (flujo E1).
+
+    faltan_guion son los pasos de guion.evaluar_guion; con baja confianza el guion queda PENDIENTE y
+    no trae ninguno.
+    """
     if not segmentos:
         return []
-    alertas = alertas_vocabulario(segmentos, lexico)
+    alertas = alertas_vocabulario(segmentos, lexico) + alertas_guion(faltan_guion)
     if not baja_confianza:
         alertas += alertas_volumen(eventos, segmentos, rms, segundos_por_cuadro)
         alertas += alertas_tono(f0, tiempos, segmentos, reglas_acusticas, reglas["factor_error_octava"])

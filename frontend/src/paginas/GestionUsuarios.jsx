@@ -1,7 +1,7 @@
 // Gestion de usuarios (contrato en docs/api.md): lista para quien puede leer el modulo;
 // crear, editar, asignar supervisor y activar o desactivar para quien puede escribir.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pencil, Plus, Power, RefreshCw, TriangleAlert, X } from 'lucide-react';
+import { KeyRound, Pencil, Plus, Power, RefreshCw, TriangleAlert, X } from 'lucide-react';
 import { useSesion } from '../sesion/SesionContexto.jsx';
 import {
   asignarSupervisor,
@@ -10,7 +10,9 @@ import {
   editarUsuario,
   listarRoles,
   listarUsuarios,
+  restablecerPassword,
 } from '../api/usuarios.js';
+import { erroresDeApi, erroresPasswordNueva } from '../contrasenas.js';
 import { Cargando } from '../componentes/Cargando.jsx';
 
 // Nombre visible de cada rol; un rol nuevo en TB_Rol se muestra con su codigo.
@@ -29,7 +31,7 @@ export default function GestionUsuarios({ nombre }) {
   const [roles, setRoles] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [errorLista, setErrorLista] = useState('');
-  // null: sin formulario; { modo: 'crear' } o { modo: 'editar', usuario }.
+  // null: sin formulario; { modo: 'crear' }, { modo: 'editar', usuario } o { modo: 'restablecer', usuario }.
   const [formulario, setFormulario] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [cambiandoEstado, setCambiandoEstado] = useState(null);
@@ -123,7 +125,17 @@ export default function GestionUsuarios({ nombre }) {
         </p>
       )}
 
-      {formulario && (
+      {formulario?.modo === 'restablecer' && (
+        <FormularioRestablecer
+          key={`restablecer-${formulario.usuario.id_usuario}`}
+          usuario={formulario.usuario}
+          alCambiar={reemplazar}
+          alTerminar={alTerminar}
+          alCancelar={() => setFormulario(null)}
+        />
+      )}
+
+      {formulario && formulario.modo !== 'restablecer' && (
         <FormularioUsuario
           key={formulario.usuario?.id_usuario ?? 'nuevo'}
           usuario={formulario.usuario}
@@ -153,6 +165,7 @@ export default function GestionUsuarios({ nombre }) {
             puedeEscribir={puedeEscribir}
             cambiandoEstado={cambiandoEstado}
             alEditar={(usuario) => abrir({ modo: 'editar', usuario })}
+            alRestablecer={(usuario) => abrir({ modo: 'restablecer', usuario })}
             alAlternarEstado={alternarEstado}
           />
         )
@@ -161,7 +174,15 @@ export default function GestionUsuarios({ nombre }) {
   );
 }
 
-function TablaUsuarios({ usuarios, idSesion, puedeEscribir, cambiandoEstado, alEditar, alAlternarEstado }) {
+function TablaUsuarios({
+  usuarios,
+  idSesion,
+  puedeEscribir,
+  cambiandoEstado,
+  alEditar,
+  alRestablecer,
+  alAlternarEstado,
+}) {
   if (usuarios.length === 0) {
     return <p className="vacio">No hay usuarios registrados.</p>;
   }
@@ -224,6 +245,21 @@ function TablaUsuarios({ usuarios, idSesion, puedeEscribir, cambiandoEstado, alE
                       >
                         <Power size={16} aria-hidden="true" />
                         {activo ? 'Desactivar' : 'Activar'}
+                      </button>
+                      <button
+                        type="button"
+                        className="boton boton--secundario boton--chico"
+                        onClick={() => alRestablecer(usuario)}
+                        disabled={esUnoMismo}
+                        aria-label={`Restablecer la contrasena de ${usuario.nombre_completo}`}
+                        title={
+                          esUnoMismo
+                            ? 'Para su propia contrasena use "Cambiar contrasena" en la barra superior.'
+                            : 'Restablecer la contrasena'
+                        }
+                      >
+                        {/* Solo el icono, para que la tabla quepa con tres acciones. */}
+                        <KeyRound size={16} aria-hidden="true" />
                       </button>
                     </div>
                   </td>
@@ -439,6 +475,77 @@ function FormularioUsuario({ usuario, roles, usuarios, esUnoMismo, alCambiar, al
         </button>
         <button type="submit" className="boton boton--primario" disabled={enviando}>
           {enviando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Crear usuario'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// Restablecer la contrasena de otro usuario (PUT /usuarios/:id_usuario/password): el SuperAdmin
+// la elige y se la comunica en persona. No pide la actual.
+function FormularioRestablecer({ usuario, alCambiar, alTerminar, alCancelar }) {
+  const [datos, setDatos] = useState({ password_nueva: '', confirmacion: '' });
+  const [errores, setErrores] = useState({});
+  const [enviando, setEnviando] = useState(false);
+  const formulario = useRef(null);
+
+  useEffect(() => {
+    formulario.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, []);
+
+  function cambiar(evento) {
+    const { name, value } = evento.target;
+    setDatos((anteriores) => ({ ...anteriores, [name]: value }));
+    setErrores((anteriores) => ({ ...anteriores, [name]: undefined, general: undefined }));
+  }
+
+  async function alEnviar(evento) {
+    evento.preventDefault();
+    const locales = erroresPasswordNueva(datos.password_nueva, datos.confirmacion);
+    if (Object.keys(locales).length > 0) {
+      setErrores(locales);
+      return;
+    }
+    setEnviando(true);
+    try {
+      alCambiar(await restablecerPassword(usuario.id_usuario, datos.password_nueva));
+      alTerminar(`Contrasena de ${usuario.nombre_completo} restablecida. Comuniquesela en persona.`);
+    } catch (excepcion) {
+      setEnviando(false);
+      setErrores(erroresDeApi(excepcion));
+    }
+  }
+
+  return (
+    <form ref={formulario} className="formulario" onSubmit={alEnviar} noValidate>
+      <div className="formulario__titulo">
+        <h2>Restablecer la contrasena de {usuario.nombre_completo}</h2>
+        <button type="button" className="boton boton--icono" onClick={alCancelar} aria-label="Cerrar formulario">
+          <X size={18} aria-hidden="true" />
+        </button>
+      </div>
+      <p className="texto-secundario formulario__nota">
+        Para quien olvido su contrasena. Elija una nueva de al menos 8 caracteres y comuniquesela en persona.
+      </p>
+      <div className="formulario__rejilla">
+        <Campo etiqueta="Contrasena nueva" error={errores.password_nueva}>
+          <input name="password_nueva" type="password" autoComplete="new-password" value={datos.password_nueva} onChange={cambiar} />
+        </Campo>
+        <Campo etiqueta="Repita la contrasena nueva" error={errores.confirmacion}>
+          <input name="confirmacion" type="password" autoComplete="new-password" value={datos.confirmacion} onChange={cambiar} />
+        </Campo>
+      </div>
+      {errores.general && (
+        <p className="alerta alerta--error" role="alert">
+          {errores.general}
+        </p>
+      )}
+      <div className="formulario__acciones">
+        <button type="button" className="boton boton--secundario" onClick={alCancelar}>
+          Cancelar
+        </button>
+        <button type="submit" className="boton boton--primario" disabled={enviando}>
+          {enviando ? 'Guardando...' : 'Restablecer'}
         </button>
       </div>
     </form>

@@ -15,3 +15,12 @@ export async function iniciarSesion(correo, password) {
 export function obtenerSesion() {
   return pedir('/api/v1/auth/me');
 }
+
+// Cambia la contrasena del usuario con sesion (docs/api.md, "Contrasenas"). Responde { mensaje }.
+// Una contrasena actual equivocada es 400 PASSWORD_INCORRECTA, no 401: no cierra la sesion.
+export function cambiarPassword(passwordActual, passwordNueva) {
+  return pedir('/api/v1/auth/password', {
+    metodo: 'PATCH',
+    cuerpo: { password_actual: passwordActual, password_nueva: passwordNueva },
+  });
+}

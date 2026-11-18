@@ -26,6 +26,15 @@ def tiempos(segundos):
     return np.arange(int(segundos / SEGUNDOS_POR_CUADRO)) * SEGUNDOS_POR_CUADRO
 
 
+INOCENTES = ["cálculo", "calcular", "cálculos", "vehículo", "vehículos", "artículo", "artículos", "partícula",
+             "ridículo", "obstáculo", "obstáculos", "oráculo", "especular", "inocular", "maculado", "vincular",
+             "círculo", "computadora", "computadoras", "computación", "diputado", "diputados", "reputación",
+             "amputar", "disputa", "disputas", "imputar", "imputa", "apenes", "penetrar", "Penélope", "cacao",
+             "cacahuate", "cacatúa", "plano", "sano", "hermano", "verano", "ciudadano", "baño", "año", "aljodar",
+             "enjoda", "albergar", "albergue", "envergadura", "vergantín", "esteta", "pateta", "capitán",
+             "capitan", "palpito", "palpitar", "precipito", "espíritu", "compito"]
+
+
 class PruebasVocabulario(unittest.TestCase):
     def test_encuentra_la_palabra_sin_importar_tildes_ni_mayusculas(self):
         self.assertEqual(palabras_inadecuadas("¡Esto es una ESTAFA, son unos INUTILES!", LEXICO),
@@ -37,6 +46,71 @@ class PruebasVocabulario(unittest.TestCase):
     def test_plurales_y_groserias_de_una_llamada_real(self):
         self.assertEqual(palabras_inadecuadas("¡Son unos malparidos, qué mierdas, hijueputas!", LEXICO),
                          ["malparidos", "mierdas", "hijueputas"])
+
+    def test_cada_groseria_exacta(self):
+        for texto, palabra in [("puta", "puta"), ("qué tonto", "tonto"), ("es un estúpido", "estúpido"),
+                               ("me cobran un culo", "culo"), ("usted es un bruto", "bruto"),
+                               ("idiota", "idiota"), ("imbécil", "imbécil"), ("es un inútil", "inútil")]:
+            self.assertEqual(palabras_inadecuadas(texto, LEXICO), [palabra], texto)
+
+    def test_palabras_normales_que_contienen_una_groseria_no_cuentan(self):
+        for texto in ["El banco le imputa el cargo", "Revise el vehículo", "Se me dañó la computadora",
+                      "Es una disputa por el cálculo", "Es ridículo", "Llamé al diputado",
+                      "Es muy competente", "El cupón es inutilizable", "La calle se llama Bolívar",
+                      "porque está bien", "tanto tiempo esperando", "mientras tanto", "me siento feliz"]:
+            self.assertEqual(palabras_inadecuadas(texto, LEXICO), [], texto)
+
+    def test_palabras_inocentes_que_contienen_una_groseria(self):
+        # Lista de David del 17/11: contienen "culo", "puta", "pene", "caca", "ano", "joder", "verga",
+        # "teta" o "pito", pero no son malas palabras.
+        for palabra in INOCENTES:
+            self.assertEqual(palabras_inadecuadas(f"Es por el {palabra}", LEXICO), [], palabra)
+        # Todas seguidas: unir dos palabras vecinas tampoco forma una groseria.
+        self.assertEqual(palabras_inadecuadas(" ".join(INOCENTES), LEXICO), [])
+
+    def test_bruto_en_cuentas_no_es_insulto(self):
+        for texto in ["Su sueldo bruto es de dos millones", "el peso bruto del paquete",
+                      "Le facturamos el valor bruto", "lo hicieron a lo bruto"]:
+            self.assertEqual(palabras_inadecuadas(texto, LEXICO), [], texto)
+        self.assertEqual(palabras_inadecuadas("No sea bruto, el sueldo bruto es otro", LEXICO), ["bruto"])
+
+    def test_lista_de_groserias_pedida_por_el_equipo(self):
+        # Pedido de David del 17/11: todas deben contar como malas palabras.
+        for palabra in ["idiota", "estúpido", "imbécil", "pendejo", "pelotudo", "boludo", "cabrón",
+                        "malparido", "gonorrea", "culero", "mamón", "inútil", "incompetente", "gilipollas",
+                        "subnormal", "capullo", "caradura", "sinvergüenza", "bruto"]:
+            self.assertEqual(palabras_inadecuadas(f"Usted es un {palabra}", LEXICO), [palabra], palabra)
+        for frase in ["vete a la mierda", "vete al carajo", "váyanse a la chingada", "me vale verga",
+                      "me importa un carajo", "no me jodas", "deja de joder", "qué porquería de servicio",
+                      "hijo de puta", "hijo de perra", "me cago en la puta", "me cago en todo",
+                      "vete a tomar por culo", "me importa una mierda", "no me toques los cojones",
+                      "no me toques los huevos", "qué puta mierda"]:
+            self.assertEqual(palabras_inadecuadas(f"¡{frase.capitalize()}!", LEXICO), [frase], frase)
+
+    def test_frases_completas_una_alerta_por_frase(self):
+        for texto, frase in [("¡Vete a la mierda!", "vete a la mierda"), ("Vete al carajo", "vete al carajo"),
+                             ("Váyanse a la chingada", "váyanse a la chingada"),
+                             ("Me vale verga", "me vale verga"), ("me importa un carajo", "me importa un carajo"),
+                             ("¡No me jodas!", "no me jodas"), ("Deja de joder", "deja de joder"),
+                             ("¡Qué porquería de servicio!", "qué porquería de servicio"),
+                             ("hijo de puta", "hijo de puta")]:
+            self.assertEqual(palabras_inadecuadas(texto, LEXICO), [frase], texto)
+
+    def test_groseria_pegada_a_la_palabra_anterior(self):
+        # Prueba de Javier del 14/11: Whisper escribio "dinutil" por "de inútil".
+        self.assertEqual(palabras_inadecuadas("Usted es un pedazo dinutil", LEXICO), ["inútil"])
+        self.assertEqual(palabras_inadecuadas("son unos dinutiles", LEXICO), ["inútiles"])
+        self.assertEqual(palabras_inadecuadas("es unidiota", LEXICO), ["idiota"])
+
+    def test_lo_que_sobra_al_final_no_es_pegado(self):
+        # Solo se toleran letras de mas al principio (lo que queda de la palabra anterior).
+        for texto in ["Me siento estafado", "Lo tiraron al basural", "No queremos que se defraude"]:
+            self.assertEqual(palabras_inadecuadas(texto, LEXICO), [], texto)
+
+    def test_groseria_partida_en_dos_palabras(self):
+        self.assertEqual(palabras_inadecuadas("Es un in útil", LEXICO), ["inútil"])
+        # La segunda parte ya no cuenta sola: "hijue puta" es una alerta, no dos.
+        self.assertEqual(palabras_inadecuadas("hijue puta", LEXICO), ["hijueputa"])
 
     def test_una_alerta_por_palabra_y_segmento_aunque_se_repita(self):
         alertas = alertas_vocabulario([segmento(3.5, 6, "CLIENTE", "estafa, estafa y más estafa")], LEXICO)
