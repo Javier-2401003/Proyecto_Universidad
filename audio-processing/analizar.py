@@ -14,7 +14,7 @@ import os
 import sys
 import time
 
-VERSION_CONTRATO = "0.5"
+VERSION_CONTRATO = "0.6"
 FRECUENCIA_MUESTREO = 16000  # Whisper trabaja a 16 kHz
 SALTO_MUESTRAS = 320         # 20 ms entre cuadros de analisis acustico
 CUADRO_MUESTRAS = 1024       # 64 ms por cuadro (alcanza para F0 desde 65 Hz)
@@ -152,8 +152,10 @@ def resumir_tramo(f0, rms):
 
 
 def construir_resultado(args, audio, segmentos, hablantes, info, f0, rms, rms_preparado, tiempos,
-                        duraciones, lexico, reglas_acusticas, reglas_alertas):
+                        duraciones, lexico, reglas_acusticas, reglas_alertas, guion):
     import numpy as np
+
+    from guion import evaluar_guion
 
     from acustico import calcular_diagnostico, calcular_puntaje, evaluar, gritos_sostenidos
     from alertas import generar_alertas
@@ -199,9 +201,11 @@ def construir_resultado(args, audio, segmentos, hablantes, info, f0, rms, rms_pr
     diagnostico = calcular_diagnostico(final["clasificacion_final"], salida_segmentos,
                                        frases_analizadas, acustico["eventos"], baja_confianza,
                                        reglas_acusticas)
+    # Solo informativo (contrato v0.6): no entra en el puntaje, la clasificacion ni el diagnostico.
+    estado_guion, faltan_guion = evaluar_guion(salida_segmentos, baja_confianza, guion)
     alertas = generar_alertas(salida_segmentos, acustico["eventos"], f0, rms, tiempos,
                               SALTO_MUESTRAS / FRECUENCIA_MUESTREO, baja_confianza, lexico,
-                              reglas_acusticas, reglas_alertas)
+                              reglas_acusticas, reglas_alertas, faltan_guion)
 
     return {
         "version_contrato": VERSION_CONTRATO,
@@ -216,6 +220,7 @@ def construir_resultado(args, audio, segmentos, hablantes, info, f0, rms, rms_pr
         "puntaje_final": final["puntaje_final"],
         "clasificacion_final": final["clasificacion_final"],
         "diagnostico_conflicto": diagnostico,
+        "estado_guion": estado_guion,
         "resumen_acustico": {
             "f0_mediana_hz": redondear(np.median(f0_con_voz), 2) if len(f0_con_voz) else None,
             "f0_desviacion_hz": redondear(np.std(f0_con_voz), 2) if len(f0_con_voz) else None,
@@ -237,6 +242,7 @@ def main(argv):
     from alertas import cargar_reglas as cargar_reglas_alertas
     from diarizacion import asignar_hablantes, leer_canales
     from diarizacion import cargar_reglas as cargar_reglas_diarizacion
+    from guion import cargar_guion
     from lexico import cargar_lexico
 
     # Antes de transcribir: si la configuracion esta mal, falla sin gastar minutos de CPU.
@@ -244,6 +250,7 @@ def main(argv):
     reglas_acusticas = cargar_reglas()
     reglas_diarizacion = cargar_reglas_diarizacion()
     reglas_alertas = cargar_reglas_alertas()
+    guion = cargar_guion()
     audio = cargar_audio(args.ruta_audio)
 
     inicio = time.perf_counter()
@@ -264,7 +271,7 @@ def main(argv):
     }
     escribir_json(construir_resultado(args, audio, segmentos, hablantes, info, f0, rms,
                                       rms_preparado, tiempos, duraciones, lexico, reglas_acusticas,
-                                      reglas_alertas))
+                                      reglas_alertas, guion))
 
 
 if __name__ == "__main__":

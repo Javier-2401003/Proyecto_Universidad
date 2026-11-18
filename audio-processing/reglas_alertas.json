@@ -11,6 +11,9 @@
     "VOCABULARIO_INADECUADO": {
       "AGENTE": "Evite ese lenguaje: mantenga un trato respetuoso con el cliente.",
       "CLIENTE": "No responda a la provocación; enfóquese en la solución."
+    },
+    "OMISION_SCRIPT": {
+      "AGENTE": "Siga el guion: salude, preséntese, ofrezca ayuda y despídase."
     }
   },
   "factor_error_octava": 2.0,

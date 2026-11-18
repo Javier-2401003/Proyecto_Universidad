@@ -1,0 +1,33 @@
+{
+  "parecido_minimo": 0.8,
+  "segundos_minimos_agente": 8.0,
+  "pasos": [
+    {
+      "nombre": "saludo",
+      "ventana": "inicio",
+      "segundos": 20,
+      "frases": ["buenos días", "buenas tardes", "buenas noches", "hola", "gracias por llamar", "gracias por comunicarse"]
+    },
+    {
+      "nombre": "identificación",
+      "ventana": "inicio",
+      "segundos": 60,
+      "frases": ["mi nombre es", "le saluda", "le atiende", "le habla", "habla con"]
+    },
+    {
+      "nombre": "ofrecer ayuda",
+      "ventana": "inicio",
+      "segundos": 60,
+      "frases": ["en qué puedo ayudarle", "en qué le puedo ayudar", "en qué le podemos ayudar", "en qué puedo servirle",
+                 "en qué le puedo servir", "en qué le puedo colaborar", "cómo le puedo ayudar", "en qué te puedo ayudar"]
+    },
+    {
+      "nombre": "cierre",
+      "ventana": "final",
+      "segundos": 30,
+      "frases": ["algo más en que pueda ayudarle", "algo más en lo que le pueda ayudar", "gracias por llamar",
+                 "gracias por comunicarse", "que tenga buen", "que tenga buena", "que tenga un buen",
+                 "que tenga una buena", "que tenga un excelente", "que tenga una excelente", "hasta luego"]
+    }
+  ]
+}

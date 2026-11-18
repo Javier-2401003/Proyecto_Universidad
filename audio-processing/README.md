@@ -82,7 +82,7 @@ Una vez descargados los modelos, puede trabajar sin internet con
 Ejemplo de salida (recortado):
 ```json
 {
-  "version_contrato": "0.4",
+  "version_contrato": "0.6",
   "archivo": "llamada.wav",
   "duracion_segundos": 268.553,
   "idioma": "es",
@@ -93,6 +93,7 @@ Ejemplo de salida (recortado):
   "puntaje_final": 64.77,
   "clasificacion_final": "NEUTRO",
   "diagnostico_conflicto": "SIN_CONFLICTO",
+  "estado_guion": "CUMPLE",
   "resumen_acustico": { "f0_mediana_hz": 213.64, "rms_promedio_dbfs": -20.05, "...": "..." },
   "segmentos": [
     { "indice": 0, "inicio": 0.0, "fin": 7.0,
@@ -224,7 +225,7 @@ pasar de acumular a exigir continuidad y subir el umbral.
 - **E1 con la baja confianza de Whisper:** si Whisper está poco seguro, también se usa 100 % el texto,
   aunque justo ese texto sea el dudoso. Hay que revisarlo con audios ruidosos reales.
 
-## Alertas (v0.3)
+## Alertas
 
 `alertas.py` arma el arreglo `alertas` del contrato v0.3, con los valores exactos de `TB_Alerta`. Los
 mensajes están en `reglas_alertas.json` y son los mismos textos de los datos simulados del frontend.
@@ -234,9 +235,9 @@ mensajes están en `reglas_alertas.json` y son los mismos textos de los datos si
 | `EXCESO_VOLUMEN` | Cada subida de volumen de RN-02 **o grito sostenido** (contrato v0.5, ver abajo), las mismas que usa `score_acustico`. El origen es el hablante que ocupa más tiempo en la subida; el valor, el cuadro más fuerte del audio original en dBFS |
 | `ALTERACION_TONO` | RN-02 **por hablante**: dentro de sus propios segmentos, una ventana de 2 s cuyo F0 varía más del 40 % de su media. Antes se descartan los errores de octava de `pyin` (más del doble o menos de la mitad de su mediana) y la voz del otro hablante dentro de sus segmentos (cuadros en el rango típico del otro, percentiles 10 a 90, y fuera del propio) |
 | `VOCABULARIO_INADECUADO` | Una palabra de `vocabulario_inadecuado` en `lexico_es.json` (lista **provisional**); una alerta por palabra y segmento |
+| `OMISION_SCRIPT` | Contrato v0.6: un paso del guion obligatorio que el agente no dijo (ver "Guion obligatorio"); una alerta por paso, con origen `AGENTE` |
 
-Con `baja_confianza_audio` solo salen las de vocabulario. `OMISION_SCRIPT` queda para cuando el equipo
-defina el guion obligatorio.
+Con `baja_confianza_audio` solo salen las de vocabulario: el guion queda `PENDIENTE` y no da alertas.
 
 **Lo que se vio con audio:**
 
@@ -294,6 +295,33 @@ defina el guion obligatorio.
 - **Vocabulario sin contexto:** "no es una estafa" también se marca, y la alerta usa el inicio del
   segmento, porque Whisper no da la hora de cada palabra.
 - **Origen:** depende de `hablante`, así que hereda sus errores.
+
+## Guion obligatorio (contrato v0.6)
+
+`guion.py` busca cuatro pasos (decisión 6 del 14/11) solo en los segmentos del agente, con las frases de
+`guion.json`, que se pueden editar sin tocar código:
+
+| Paso | Dónde | `valor_registrado` si falta |
+|---|---|---|
+| Saludo ("buenos días", "hola", "gracias por llamar"…) | Segmentos que empiezan en los primeros 20 s | `"Falta: saludo"`, en el segundo 0 |
+| Identificación ("mi nombre es", "le atiende", "le habla"…) | Primeros 60 s | `"Falta: identificación"`, en el segundo 0 |
+| Ofrecer ayuda ("en qué le puedo ayudar"…) | Primeros 60 s | `"Falta: ofrecer ayuda"`, en el segundo 0 |
+| Cierre ("que tenga buen día", "gracias por llamar"…) | Segmentos que terminan en los últimos 30 s | `"Falta: cierre"`, al inicio del último segmento del agente |
+
+- **`estado_guion`:** `CUMPLE` si están los cuatro, `NO_CUMPLE` si falta alguno, y `PENDIENTE` (sin
+  alertas) con `baja_confianza_audio`, sin agente o si el agente habló menos de 8 s. Siempre coincide con
+  las alertas, como exige el backend: con `CUMPLE` o `PENDIENTE` ninguna `OMISION_SCRIPT`, con
+  `NO_CUMPLE` al menos una.
+- **Solo informativo:** no cambia el puntaje, la clasificación ni el diagnóstico.
+- **Errores de Whisper:** una frase cuenta si un grupo de palabras se le parece en un 80 % o más, sin
+  tildes, mayúsculas ni signos ("buenas tarde", "le atiendo"). Se probó una comparación fonética (b/v,
+  s/z/c, k/qu, h muda, ll/y) y se descartó: recuperaba muy poco con ruido y encontraba un saludo en un
+  agente grosero que no saludaba.
+- **Medido** con las 16 llamadas armadas, cuyos guiones se conocen: 68 de 68 pasos sin ruido, y 44 de 48
+  con ruido de calle de 10 y 20 dB. Con 5 y 0 dB queda `PENDIENTE` por la baja confianza.
+- **Límites:** depende de `hablante` (con los roles invertidos, el agente sale `NO_CUMPLE`), y errores
+  grandes de Whisper ("Puede estarles" por "Buenas tardes") no se reconocen. Falta medirlo con llamadas
+  reales: la decisión pide 90 % por paso antes de que afecte la calificación.
 
 ## Tiempos medidos
 
@@ -442,6 +470,6 @@ real. Falta medirla con llamadas etiquetadas.
 - Usar `hablante` para el promedio móvil por hablante de RN-02.
 - Revisar en `diagnostico_conflicto` el script omitido y las interrupciones.
 - Confirmar con el equipo la recalibración de RN-02 y RN-03, y los cortes de `clasificacion_final`.
-- `OMISION_SCRIPT`, cuando el equipo defina el guion obligatorio.
+- Medir el guion (`OMISION_SCRIPT`) con llamadas reales: 90 % por paso antes de que afecte la calificación.
 - Medir las alertas con llamadas reales de call center, en especial `ALTERACION_TONO`.
 - Recalibrar `baja_confianza_audio` con grabaciones reales.
