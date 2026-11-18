@@ -21,14 +21,14 @@ se actualiza este archivo en el mismo PR y se avisa al equipo.
 |---|---|---|
 | `POST /auth/login` | - | Hecho |
 | `GET /auth/me` | Sesión | Hecho |
-| `PATCH /auth/password` | Sesión | **Propuesto, pendiente (Willy)** |
+| `PATCH /auth/password` | Sesión | Hecho (PR #65) |
 | `GET /roles` | `GESTION_USUARIOS` leer | Hecho (PR #17) |
 | `GET /usuarios` | `GESTION_USUARIOS` leer | Hecho |
 | `POST /usuarios` | `GESTION_USUARIOS` escribir | Hecho |
 | `PUT /usuarios/:id_usuario/supervisor` | `GESTION_USUARIOS` escribir | Hecho |
 | `PATCH /usuarios/:id_usuario` | `GESTION_USUARIOS` escribir | Hecho |
 | `PATCH /usuarios/:id_usuario/estado` | `GESTION_USUARIOS` escribir | Hecho |
-| `PUT /usuarios/:id_usuario/password` | `GESTION_USUARIOS` escribir | **Propuesto, pendiente (Willy)** |
+| `PUT /usuarios/:id_usuario/password` | `GESTION_USUARIOS` escribir | Hecho (PR #65) |
 | `GET /agentes` | `CARGA_LOTES` leer | Hecho |
 | `POST /llamadas/lotes` | `CARGA_LOTES` escribir | Hecho |
 | `GET /llamadas/lotes/:id_lote` | `CARGA_LOTES` leer | Hecho |
@@ -63,9 +63,9 @@ Errores: `400 DATOS_INVALIDOS`, `401 CREDENCIALES_INVALIDAS`, `429 DEMASIADOS_IN
 Cada permiso: `{ "modulo": "GESTION_USUARIOS", "nombre": "Gestion de Usuarios y Permisos", "leer": true, "escribir": true }`.
 Solo incluye módulos activos. El frontend arma el menú con esta lista.
 
-## Contraseñas (propuesto, pendiente de implementar)
+## Contraseñas
 
-Propuesto por Willy el 15/11/2026, a revisar por Javier. Dos casos: cada usuario cambia la suya, y el
+Propuesto por Willy el 15/11/2026, aprobado por Javier (PR #64) e implementado en el PR #65. Dos casos: cada usuario cambia la suya, y el
 SuperAdmin restablece la de quien la olvidó (no hay correo para recuperarla).
 
 ### Reglas comunes
@@ -85,11 +85,12 @@ Cuerpo: `{ "password_actual": "...", "password_nueva": "..." }`
 | Estado y código | Cuándo |
 |---|---|
 | `400 DATOS_INVALIDOS` | Falta un campo o `password_nueva` no cumple las reglas. |
-| `400 PASSWORD_INCORRECTA` | `password_actual` no es la contraseña del usuario. Es `400` y no `401`, para que el frontend no cierre la sesión. |
-| `400 PASSWORD_REPETIDA` | `password_nueva` es igual a la actual. |
+| `400 PASSWORD_INCORRECTA` | `password_actual` no es la contraseña del usuario. Es `400` y no `401`, para que el frontend no cierre la sesión. `detalles`: `[{ "campo": "password_actual", "mensaje": "..." }]`. |
+| `400 PASSWORD_REPETIDA` | `password_nueva` es igual a la actual. `detalles`: `[{ "campo": "password_nueva", "mensaje": "..." }]`. |
 | `429 DEMASIADOS_INTENTOS` | Más de 10 intentos con `password_actual` incorrecta por IP en 15 minutos, como en el login. |
 
-Auditoría: `CAMBIO_PASSWORD`, módulo `AUTENTICACION`, con `{ id_usuario }`.
+Auditoría: `CAMBIO_PASSWORD`, módulo `AUTENTICACION`, con `{ id_usuario }`. `AUTENTICACION` no es un
+módulo de permisos: solo es el valor de `modulo_afectado` (ver "Registro de auditoría").
 
 ### `PUT /usuarios/:id_usuario/password`
 El SuperAdmin (`GESTION_USUARIOS` escribir) restablece la contraseña de **otro** usuario, activo o no.
@@ -351,7 +352,8 @@ para no revelar que existe):
     "clasificacion_final": "NEUTRO",
     "diagnostico_conflicto": "SIN_CONFLICTO",
     "score_global_nlp": 0.41,
-    "score_acustico": -0.25
+    "score_acustico": -0.25,
+    "estado_guion": "CUMPLE"
   },
   "transcripcion": [
     {
@@ -380,6 +382,15 @@ para no revelar que existe):
 ```
 - `resultado` es `null` mientras `estado_procesamiento` no sea `COMPLETADO`; `transcripcion`
   y `alertas` llegan vacías en ese caso.
+- `resultado.estado_guion` (guion obligatorio, contrato de audio v0.6; solo informativo, no cambia el
+  puntaje ni el diagnóstico):
+  - `"CUMPLE"`: el agente dijo los cuatro pasos (saludo, identificación, ofrecer ayuda y cierre).
+  - `"NO_CUMPLE"`: faltó alguno; cada paso que falta es una alerta `OMISION_SCRIPT` con
+    `valor_registrado` `"Falta: saludo"`, etc.
+  - `"PENDIENTE"`: no era confiable evaluarlo (audio de baja confianza o el agente casi no habló). No
+    hay alertas `OMISION_SCRIPT`. La pantalla lo muestra como "Pendiente de evaluación".
+  - `null`: no evaluado, porque la llamada se analizó antes de la v0.6. Se evalúa al reprocesarla
+    (`npm run reprocesar -- --antes-de 0.6 --confirmar`, en `backend/`).
 - `transcripcion` ordenada por `timestamp_inicio`; `alertas` por `timestamp_evento`.
 - Números como números (no texto): el backend ya usa `decimalNumbers: true`.
 - El volumen está en **dBFS** (`docs/contrato_audio.md`): `nivel_volumen_rms` es negativo (0 es el
@@ -531,7 +542,8 @@ Orden: de la más reciente a la más antigua (`fecha_inicio` y luego `id_llamada
       "resultado": {
         "puntaje_final": 72.5,
         "clasificacion_final": "POSITIVO",
-        "diagnostico_conflicto": "SIN_CONFLICTO"
+        "diagnostico_conflicto": "SIN_CONFLICTO",
+        "estado_guion": "CUMPLE"
       },
       "total_alertas": 0
     }
@@ -543,6 +555,9 @@ Orden: de la más reciente a la más antigua (`fecha_inicio` y luego `id_llamada
   de la página pedida. Una página después de la última responde `200` con `llamadas: []`.
 - `resultado` es `null` mientras `estado_procesamiento` no sea `COMPLETADO` (igual que en el
   detalle); `total_alertas` es `0` en ese caso.
+- `resultado.estado_guion`: igual que en el detalle (`CUMPLE`, `NO_CUMPLE`, `PENDIENTE` o `null`). Para
+  el porcentaje de cumplimiento de los Reportes, cuentan solo `CUMPLE` y `NO_CUMPLE`; `PENDIENTE` y
+  `null` no son llamadas evaluadas.
 - Si se filtra por `clasificacion` o `diagnostico`, solo entran llamadas `COMPLETADO`, porque
   las demás tienen los valores por defecto de la columna.
 - Un `id_agente` o `id_lote` que el usuario no puede ver no es un error: simplemente no hay
@@ -612,6 +627,11 @@ Ejemplo: `GET /auditoria?modulo=GESTION_USUARIOS&desde=2026-11-01&pagina=2&taman
 - `fecha_evento` es la hora de MySQL, enviada como fecha ISO; el frontend la muestra en hora local.
 - El usuario siempre existe: `TB_LogAuditoria` no deja borrar a un usuario con registros.
 
+**Valores de `modulo_afectado`:** es texto libre en `TB_LogAuditoria`. Hoy se usan `GESTION_USUARIOS` y
+`CARGA_LOTES`, que son módulos de permisos, y `AUTENTICACION`, que **no** lo es: agrupa lo que cada
+usuario hace sobre su propia cuenta (hoy, `CAMBIO_PASSWORD`). No aparece en `usuario.permisos` ni se
+puede usar en `requierePermiso`; la pantalla lo muestra como "Autenticación".
+
 Acciones que existen hoy, para el filtro de la pantalla:
 
 | `accion_ejecutada` | `modulo_afectado` | Cuándo |
@@ -623,8 +643,8 @@ Acciones que existen hoy, para el filtro de la pantalla:
 | `CARGA_LOTE` | `CARGA_LOTES` | `POST /llamadas/lotes` |
 | `PROCESAMIENTO_LLAMADA` | `CARGA_LOTES` | El análisis de una llamada terminó; se atribuye a quien cargó el lote. |
 | `REPROCESO_LLAMADAS` | `CARGA_LOTES` | `npm run reprocesar` (PR #60) devolvió llamadas a `PENDIENTE` para volver a analizarlas; se atribuye al SuperAdmin de `SEED_ADMIN_CORREO`. `detalle_cambio`: `{ total, ids_llamadas, origen: "SCRIPT", antes_de, incluir_errores }`. |
-| `CAMBIO_PASSWORD` | `AUTENTICACION` | `PATCH /auth/password` (propuesto). `detalle_cambio`: `{ id_usuario }`, sin contraseñas. |
-| `RESTABLECIMIENTO_PASSWORD` | `GESTION_USUARIOS` | `PUT /usuarios/:id_usuario/password` (propuesto). `detalle_cambio`: `{ id_usuario }`, sin contraseñas. |
+| `CAMBIO_PASSWORD` | `AUTENTICACION` | `PATCH /auth/password`. `detalle_cambio`: `{ id_usuario }`, sin contraseñas. |
+| `RESTABLECIMIENTO_PASSWORD` | `GESTION_USUARIOS` | `PUT /usuarios/:id_usuario/password`. `detalle_cambio`: `{ id_usuario }`, sin contraseñas. |
 
 Si más adelante aparecen acciones nuevas, se agregan a esta tabla en el mismo PR que las crea.
 
