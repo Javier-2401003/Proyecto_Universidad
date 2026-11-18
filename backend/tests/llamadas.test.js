@@ -209,6 +209,7 @@ test('GET llamada: el Supervisor ve el detalle completo de una llamada de su age
     diagnostico_conflicto: 'SIN_CONFLICTO',
     score_global_nlp: 0.41,
     score_acustico: -0.125,
+    estado_guion: null, // analizada sin guion (antes de la v0.6)
   });
   assert.equal(datos.tiene_audio, true);
 });

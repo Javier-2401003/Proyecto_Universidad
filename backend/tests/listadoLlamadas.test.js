@@ -103,7 +103,7 @@ before(async () => {
   llamadas.antes = await insertarLlamada(ids.ana, 'antes.mp3', '2026-10-31 23:59:59', completada(80, 'POSITIVO', 'SIN_CONFLICTO'));
   llamadas.positiva = await insertarLlamada(ids.ana, 'llamada señora Núñez.mp3', '2026-11-01 00:00:00',
     completada(72.5, 'POSITIVO', 'SIN_CONFLICTO', { baja_confianza_audio: 1 }));
-  llamadas.critica = await insertarLlamada(ids.ana, 'llamada_100%.mp3', '2026-11-02 10:00:00', completada(10, 'CRITICO', 'FALLA_AGENTE'));
+  llamadas.critica = await insertarLlamada(ids.ana, 'llamada_100%.mp3', '2026-11-02 10:00:00', completada(10, 'CRITICO', 'FALLA_AGENTE', { estado_guion: 'NO_CUMPLE' }));
   // Pendiente con los valores por defecto (NEUTRO, SIN_CONFLICTO): no debe salir al filtrar por ellos.
   llamadas.pendiente = await insertarLlamada(ids.ana, 'llamadaX100.wav', '2026-11-02 10:00:00');
   llamadas.error = await insertarLlamada(ids.ana, 'rota.mp3', '2026-11-03 23:59:59', {
@@ -173,7 +173,7 @@ test('forma de cada llamada: resultado solo si COMPLETADO, alertas solo si COMPL
     estado_procesamiento: 'COMPLETADO',
     mensaje_error: null,
     baja_confianza_audio: false,
-    resultado: { puntaje_final: 10, clasificacion_final: 'CRITICO', diagnostico_conflicto: 'FALLA_AGENTE' },
+    resultado: { puntaje_final: 10, clasificacion_final: 'CRITICO', diagnostico_conflicto: 'FALLA_AGENTE', estado_guion: 'NO_CUMPLE' },
     total_alertas: 2,
   });
   assert.equal(porId.get(llamadas.positiva).baja_confianza_audio, true);

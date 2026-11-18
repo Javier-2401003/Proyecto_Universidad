@@ -222,6 +222,54 @@ test('v0.3 con alertas vacias, o v0.2 sin el campo: COMPLETADO sin alertas', asy
   }
 });
 
+test('v0.6: guarda estado_guion (CUMPLE, NO_CUMPLE con su OMISION_SCRIPT, PENDIENTE) y lo audita', async () => {
+  const casos = { v06_cumple: 'CUMPLE', v06_no_cumple: 'NO_CUMPLE', v06_pendiente: 'PENDIENTE' };
+  for (const [modo, estado] of Object.entries(casos)) {
+    const llamada = await procesarModo(modo);
+    assert.equal(llamada.estado_procesamiento, 'COMPLETADO', modo);
+    assert.equal(llamada.estado_guion, estado, modo);
+    const [auditoria] = await auditoriaDe(llamada.id_llamada);
+    assert.equal(auditoria.detalle_cambio.estado_guion, estado, modo);
+    assert.equal(auditoria.detalle_cambio.version_contrato, '0.6', modo);
+  }
+  const conOmision = await procesarModo('v06_no_cumple');
+  const tipos = (await alertasDe(conOmision.id_llamada)).map((alerta) => alerta.tipo_alerta);
+  assert.ok(tipos.includes('OMISION_SCRIPT'));
+});
+
+test('antes de la v0.6 no hay guion: estado_guion queda NULL', async () => {
+  for (const modo of ['exito', 'v03']) {
+    const llamada = await procesarModo(modo);
+    assert.equal(llamada.estado_procesamiento, 'COMPLETADO', modo);
+    assert.equal(llamada.estado_guion, null, modo);
+  }
+});
+
+test('v0.6 sin estado_guion, con un valor invalido o incoherente con las alertas: ERROR', async () => {
+  const casos = {
+    v06_sin_estado: 'falta estado_guion',
+    v06_estado_invalido: 'estado_guion',
+    v06_cumple_con_omision: 'estado_guion CUMPLE con alertas OMISION_SCRIPT',
+    v06_pendiente_con_omision: 'estado_guion PENDIENTE con alertas OMISION_SCRIPT',
+    v06_no_cumple_sin_omision: 'estado_guion NO_CUMPLE sin alertas OMISION_SCRIPT',
+  };
+  for (const [modo, texto] of Object.entries(casos)) {
+    const llamada = await procesarModo(modo);
+    assert.equal(llamada.estado_procesamiento, 'ERROR', modo);
+    assert.match(llamada.mensaje_error, /^CONTRATO_INCOMPLETO: /, modo);
+    assert.ok(llamada.mensaje_error.includes(texto), `${modo}: ${llamada.mensaje_error}`);
+    assert.equal(llamada.estado_guion, null, modo);
+    assert.deepEqual(await alertasDe(llamada.id_llamada), [], modo);
+  }
+});
+
+test('un reproceso con una version sin guion vuelve estado_guion a NULL', async () => {
+  const id = await crearLlamada('v03');
+  await consultar(`UPDATE TB_Llamada SET estado_guion = 'CUMPLE' WHERE id_llamada = ?`, [id]);
+  await procesarLlamada(id, opciones);
+  assert.equal((await verLlamada(id)).estado_guion, null);
+});
+
 test('una alerta invalida deja la llamada en ERROR sin guardar nada', async () => {
   const casos = {
     alerta_tipo_invalido: 'alertas[].tipo_alerta',

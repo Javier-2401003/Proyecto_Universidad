@@ -76,7 +76,7 @@ export async function listarLlamadas(req, res) {
       `SELECT c.id_llamada, c.id_lote, l.codigo_lote, c.nombre_archivo_original,
               c.id_agente, u.nombre_completo AS nombre_agente, c.fecha_inicio, c.duracion_segundos,
               c.estado_procesamiento, c.mensaje_error, c.baja_confianza_audio,
-              c.puntaje_final, c.clasificacion_final, c.diagnostico_conflicto,
+              c.puntaje_final, c.clasificacion_final, c.diagnostico_conflicto, c.estado_guion,
               CASE WHEN c.estado_procesamiento = 'COMPLETADO'
                    THEN (SELECT COUNT(*) FROM TB_Alerta t WHERE t.id_llamada = c.id_llamada)
                    ELSE 0 END AS total_alertas
@@ -110,6 +110,7 @@ export async function listarLlamadas(req, res) {
               puntaje_final: fila.puntaje_final,
               clasificacion_final: fila.clasificacion_final,
               diagnostico_conflicto: fila.diagnostico_conflicto,
+              estado_guion: fila.estado_guion, // null = no evaluado (analizada antes de la v0.6)
             }
           : null,
         total_alertas: fila.total_alertas,
