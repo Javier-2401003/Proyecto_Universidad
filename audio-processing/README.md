@@ -407,6 +407,16 @@ siempre es `AGENTE` o `CLIENTE`, aunque la separación no sea segura:
    de sus cuadros con voz) y tono (F0 mediano, con peso 4). Antes agrupaba ventanas de 1 s, con el
    timbre promediado también sobre pausas y ruido, y las suavizaba con un filtro de mediana: en
    llamadas de 40 s eso agrupaba por pausas y por lo que se decía, no por quién hablaba (ver abajo).
+   Desde el 17/11, para voces del mismo género:
+   - **Cada segmento pesa lo que duran sus cuadros con voz.** El timbre promedio de un "sí" de medio
+     segundo es poco confiable; sin pesos, un segmento corto y raro podía quedarse solo en un grupo.
+   - **Varios arranques:** con 7 a 12 segmentos por llamada, el resultado del k-means depende de dónde
+     empieza. Se prueba desde cada par de los 12 segmentos más largos (`segmentos_para_arrancar`) y
+     desde los dos puntos más lejanos, y gana el reparto más compacto. Siempre da el mismo resultado.
+   - **Ajuste cuadro a cuadro**, solo si los tonos de los dos grupos se parecen (razón menor a
+     `razon_tonos_para_refinar`, 1,4): cada segmento pasa al grupo cuya distribución de timbre y tono
+     mejor explica sus cuadros. Con un hombre y una mujer (razón cercana a 2) no se aplica, porque el
+     tono ya separa y el timbre de un tramo con ruido de fondo podría contradecirlo.
 3. **Quién es el agente:** el grupo con más pistas de agente frente a pistas de cliente, en **toda la
    llamada** (`reglas_diarizacion.json`). Pistas de agente: frases de atención ("le atiende", "permítame",
    "con gusto", "le confirmo") y hablar de las cosas del otro ("su", "sus", "señor"). De cliente: hablar de
@@ -414,22 +424,39 @@ siempre es `AGENTE` o `CLIENTE`, aunque la separación no sea segura:
    las de varias palabras pesan doble ("mi nombre es" sigue siendo del agente). Si empatan, quien habla
    primero.
 
-**Precisión medida** (13/11) con llamadas armadas de call center de unos 40 s, con voces de Windows y
+**Precisión medida** (17/11) con llamadas armadas de call center de unos 40 s, con voces de Windows y
 la verdad de cada turno guardada al armarlas. Es el porcentaje del tiempo con el hablante correcto;
-entre paréntesis, la peor llamada:
+entre paréntesis, la peor llamada. "Máximo" es lo mejor posible dando a cada segmento de Whisper el
+hablante que más tiempo ocupa en él: cuando Whisper junta dos turnos en un segmento, no se puede más.
 
-| Caso (6 llamadas cada uno) | Antes (ventanas) | Ahora (segmentos) |
-|---|---|---|
-| Hombre y mujer (Raúl y Sabina) | 66,6 % (45 %) | **99,3 %** (98 %) |
-| Dos hombres (Raúl y Raúl 3 semitonos más agudo) | 66,7 % (53 %) | **87,0 %** (58 %) |
-| Dos mujeres (Sabina y Sabina 3 semitonos más grave) | 62,1 % (41 %) | **73,6 %** (20 %) |
-| Hombre y mujer con ruido de calle a 20, 10 y 5 dB (24 versiones) | 94,0-95,2 % | 94,2-98,7 % |
-| Llamada real con conflicto (8 min 56 s, hombre y mujer; verdad por el tono) | 97,7 % | 98,7 % |
+| Caso (6 llamadas cada uno) | Ventanas (antes del 13/11) | Segmentos (13/11) | Con pesos y ajuste (17/11) | Máximo |
+|---|---|---|---|---|
+| Hombre y mujer (Raúl y Sabina) | 66,6 % (45 %) | 99,3 % (98 %) | **99,3 %** (98 %) | 99,3 % |
+| Dos hombres (Mark y Raúl) | - | 83,3 % (24 %) | **99,8 %** (99 %) | 99,8 % |
+| Dos hombres (Raúl y David) | - | 96,0 % (90 %) | **98,0 %** (95 %) | 99,3 % |
+| Dos hombres (Raúl y Raúl 3 semitonos más agudo) | 66,7 % (53 %) | 87,0 % (58 %) | **97,2 %** (93 %) | 99,0 % |
+| Dos mujeres (Sabina y Zira) | - | 92,5 % (72 %) | **98,1 %** (94 %) | 98,9 % |
+| Dos mujeres (Zira y Sabina) | - | 92,9 % (80 %) | **99,9 %** (100 %) | 99,9 % |
+| Dos mujeres (Sabina y Sabina 3 semitonos más grave) | 62,1 % (41 %) | 87,6 % (62 %) | **94,9 %** (80 %) | 96,5 % |
+| Hombre y mujer con ruido de calle grave, a 20, 10 y 5 dB (18 versiones) | 94,0-95,2 % | 94,2-98,7 % | **91,7-98,7 %** | - |
+| Hombre y mujer con ruido en la banda de la voz, a 20, 10, 5 y 0 dB (24 versiones) | - | 60,0-96,6 % | **61,1-96,6 %** | - |
+| Llamada real con conflicto (8 min 56 s, hombre y mujer; verdad por el tono) | 97,7 % | 98,7 % | **98,7 %** (sin cambios) | - |
 
-Las pruebas anteriores, con llamadas de unos 100 s, daban 99,6 % con hombre y mujer: las llamadas
-cortas tienen pocas ventanas y ahí fallaba. Con voces del mismo género sigue siendo poco confiable: en
-2 de las 12 llamadas los roles quedaron casi invertidos (Whisper juntó turnos de las dos, o el primer
-segmento se agrupó con el cliente).
+- Windows solo trae en español a Raúl y a Sabina. Para tener personas distintas del mismo género se
+  usan también las voces en inglés (Mark, David, Zira) leyendo el guion en español, y la misma voz
+  con otro tono. Las voces sintéticas son más parejas que las reales: falta medirlo con llamadas reales.
+- La columna del 13/11 ya incluye las pistas de rol de toda la llamada (PR #73); por eso dos mujeres
+  pasó de 73,6 % a 87,6 % antes de este cambio.
+- Con ruido en la banda de la voz mejora a 5 dB (de 82,7 % a 87,3 %; la peor, de 48 % a 76 %) y lo demás
+  queda igual. Con el ruido grave baja una llamada a 5 dB (de 74,5 % a 50,5 %): Whisper juntó en un
+  segmento el "gracias, siempre son muy amables" del cliente y la despedida del agente (tono de 147 Hz,
+  entre las dos voces). Antes ese segmento iba al agente y ahora al cliente; las dos opciones aciertan
+  la mitad, pero la medida lo cuenta entero.
+- En 27 llamadas completas (armadas, demos y reales), clasificación, puntaje, diagnóstico, guion y
+  alertas quedan iguales en 26. En una demo, el conductor que pregunta "¿en qué te podemos ayudar?"
+  pasa a ser el agente y sale una `OMISION_SCRIPT` menos. En la llamada de radio, que antes quedaba casi
+  entera como un solo hablante (el "otro" era un "Ok, gracias" de 1 s), ahora el conductor y quien llama
+  quedan separados, sin cambiar el resultado.
 
 **Precisión esperada en llamadas reales: de 65 a 85 % en audio mono, y por encima de 95 % con canales
 separados.** Es una estimación, no una medida: las voces sintéticas son más fáciles que una llamada
@@ -437,7 +464,10 @@ real. Falta medirla con llamadas etiquetadas.
 
 **Límites conocidos:**
 
-- **Voces parecidas:** dos personas del mismo género y tono casi no se separan.
+- **Voces parecidas:** con voces sintéticas del mismo género ya se separa (94,9-99,9 %), pero dos
+  personas reales de timbre y tono parecidos pueden mezclarse. Falta medirlo con llamadas reales.
+- **Más de dos voces:** si un tercero toma el teléfono (en una llamada real, la esposa del cliente),
+  se reparte entre los dos grupos.
 - **Roles invertidos:** si no hay pistas suficientes y el cliente habla primero, se invierten **todos** los
   hablantes de la llamada, aunque la separación sea buena. Antes solo contaban las frases de apertura:
   si Whisper no transcribía un "Diga" corto, o el agente no se presentaba, la llamada salía al revés (en

@@ -289,8 +289,8 @@ señaló Willy, encontré que la diarización fallaba en llamadas cortas aunque 
   negativas que van después de "su"/"sus" (nombra el problema del cliente); los insultos sí cuentan. Una
   llamada armada como la de Willy pasa de `FALLA_AGENTE` a `CLIENTE_PROBLEMATICO`; en las 27 de
   calibración no cambia ningún diagnóstico. El puntaje no cambia. 128 pruebas pasando.
-- **"inútil" transcrito "dinutil" (prueba de Javier del 14/11), corregido el 17/11 en la rama
-  `david-vocabulario-tolerante`:** no daba `VOCABULARIO_INADECUADO`. Ahora, en las groserías de 6 letras o
+- **"inútil" transcrito "dinutil" (prueba de Javier del 14/11), corregido el 17/11 (PR #76, en
+  `main`):** no daba `VOCABULARIO_INADECUADO`. Ahora, en las groserías de 6 letras o
   más, se acepta la palabra pegada a la anterior (1 o 2 letras de más al principio) o partida en dos ("in
   útil"); una palabra normal nunca cuenta por contener una grosería (prueba con 56: "vehículo",
   "computadora", "reputación", "albergar"…). También
@@ -298,6 +298,13 @@ señaló Willy, encontré que la diarización fallaba en llamadas cortas aunque 
   mierda", "me vale verga", "no me toques los cojones"…): una frase da una sola alerta con la frase
   entera. "Sueldo bruto" y "peso bruto" no cuentan. En 769 frases de llamadas solo cambia una alerta
   ("hijo de puta" en vez de "puta") y ningún sentimiento. 140 pruebas pasando.
+- **Voces del mismo género, 17/11 en la rama `david-mismo-genero`:** cada segmento pesa lo que dura su voz
+  (un "sí" corto y raro ya no se queda con un grupo), se prueban varios arranques del k-means y, si los
+  tonos de los dos grupos se parecen, un ajuste cuadro a cuadro. Medido con voces distintas del mismo
+  género (también las de Windows en inglés leyendo en español): dos hombres de 83-96 % a 97-99,8 %, dos
+  mujeres de 88-93 % a 95-99,9 %; hombre y mujer sigue en 99,3 %. En 27 llamadas completas cambia el
+  resultado de una sola (una demo, con el agente bien elegido). 159 pruebas pasando. Falta medirlo con
+  llamadas reales del mismo género.
 
 **v0.3 (alertas):**
 - Contrato v0.3 (PR #41): Willy lo aprobó y lo fusionó el 10/11. Arreglo `alertas` con los valores
@@ -360,8 +367,9 @@ hablante esté 6 dB o más por encima del volumen típico del otro durante 2 s s
 llamada es negativo. La real con conflicto pasa a `CRITICO` (33 alertas de la clienta); ninguna llamada
 sin gritos cambia. Hay que correr `npm run reprocesar -- --antes-de 0.5 --confirmar` en cada base.
 
-**En curso: decisión 6 del 14/11, guion obligatorio (contrato v0.6: Willy lo aprobó y está en `main`
-desde el 17/11, PR #71; implementación en el PR #72).** Campo nuevo `estado_guion` (`CUMPLE`, `NO_CUMPLE` o
+**Hecho: decisión 6 del 14/11, guion obligatorio (contrato v0.6, PRs #71 y #72, en `main` desde el
+17/11; Willy aprobó el contrato).** Hay que correr `npm run reprocesar -- --antes-de 0.6 --confirmar` en
+cada base cuando exista `TB_Llamada.estado_guion`. Campo nuevo `estado_guion` (`CUMPLE`, `NO_CUMPLE` o
 `PENDIENTE`) y una `OMISION_SCRIPT` por cada paso que falte: saludo (primeros 20 s), identificación y
 ofrecer ayuda (primeros 60 s) y cierre (últimos 30 s), buscados en los segmentos del agente.
 - Frases editables en `audio-processing/guion.json`; una frase cuenta con un 80 % de parecido, para
