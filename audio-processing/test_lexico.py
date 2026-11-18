@@ -64,6 +64,15 @@ class PruebasFamilias(unittest.TestCase):
     def test_solo_ignora_negativas(self):
         self.assertEqual(analizar_frase("excelente", LEXICO, {"excel"}), (0.5, 1))
 
+    def test_lo_del_otro_solo_se_ignora_si_se_pide(self):
+        # El puntaje de la frase no cambia; solo el diagnostico pide ignorarlo.
+        self.assertEqual(analizar_frase("Registro su queja", LEXICO), (-0.5, 1))
+        self.assertEqual(analizar_frase("Registro su queja", LEXICO, ignorar_lo_del_otro=True), (0.0, 0))
+        self.assertEqual(analizar_frase("su reporte de fraude", LEXICO, ignorar_lo_del_otro=True), (0.0, 0))
+
+    def test_sin_posesivo_cerca_la_palabra_cuenta(self):
+        self.assertEqual(analizar_frase("es una queja", LEXICO, ignorar_lo_del_otro=True), (-0.5, 1))
+
 
 class PruebasInsultos(unittest.TestCase):
     def test_todo_el_vocabulario_inadecuado_resta(self):
@@ -77,6 +86,19 @@ class PruebasInsultos(unittest.TestCase):
     def test_las_palabras_de_sentimiento_se_siguen_negando(self):
         # "fraude" esta en las dos listas: se niega como palabra de sentimiento.
         self.assertEqual(puntaje("no es un fraude"), 0.5)
+
+    def test_frase_inadecuada_cuenta_una_vez(self):
+        self.assertEqual(analizar_frase("vete a la mierda", LEXICO), (-1.0, 1))
+        self.assertEqual(analizar_frase("no me jodas", LEXICO), (-1.0, 1))
+
+    def test_palabras_inocentes_no_restan(self):
+        from test_alertas import INOCENTES
+        for palabra in INOCENTES:
+            self.assertEqual(analizar_frase(f"Es por el {palabra}", LEXICO), (0.0, 0), palabra)
+
+    def test_bruto_en_cuentas_no_resta(self):
+        self.assertEqual(analizar_frase("Su sueldo bruto es de dos millones", LEXICO), (0.0, 0))
+        self.assertEqual(analizar_frase("usted es un bruto", LEXICO), (-1.0, 1))
 
     def test_formas_conjugadas_y_expresiones(self):
         self.assertEqual(puntaje("me cancelaron el servicio"), -1.0)

@@ -271,6 +271,27 @@ señaló Willy, encontré que la diarización fallaba en llamadas cortas aunque 
 - `baja_confianza_audio` con ruido: lo repetí con ruido dentro de la banda de la voz. El criterio de la
   v0.3 no se activaba nunca con ruido de calle; el nuevo (señal/ruido menor a 18 dB) va en el contrato
   v0.4 (#53) y su implementación en el #54.
+- **Roles invertidos (prueba de Javier del 14/11), corregido el 17/11 (PR #73, en `main`):**
+  quién es el agente se decidía casi solo con frases de apertura; si Whisper no transcribía un "Diga" o el
+  agente no se presentaba, toda la llamada salía al revés. Ahora cuentan pistas de toda la llamada ("su"
+  frente a "mi", "permítame", "con gusto", "quiero", "necesito"…). Sin el primer turno del agente, de 18
+  llamadas se invertían 14; ahora, 1. La llamada del agente grosero sin su "Sí, diga" pasa de
+  `CLIENTE_PROBLEMATICO` a `FALLA_AGENTE`. 123 pruebas pasando.
+- **Diagnóstico con "su queja" (prueba de Willy del 14/11), corregido el 17/11 (PR #74, en `main`):**
+  el agente que decía "voy a registrar su queja", sin que el cliente hubiera dicho
+  "queja", quedaba como `FALLA_AGENTE`. Ahora, para el diagnóstico, al agente no le cuentan las palabras
+  negativas que van después de "su"/"sus" (nombra el problema del cliente); los insultos sí cuentan. Una
+  llamada armada como la de Willy pasa de `FALLA_AGENTE` a `CLIENTE_PROBLEMATICO`; en las 27 de
+  calibración no cambia ningún diagnóstico. El puntaje no cambia. 128 pruebas pasando.
+- **"inútil" transcrito "dinutil" (prueba de Javier del 14/11), corregido el 17/11 en la rama
+  `david-vocabulario-tolerante`:** no daba `VOCABULARIO_INADECUADO`. Ahora, en las groserías de 6 letras o
+  más, se acepta la palabra pegada a la anterior (1 o 2 letras de más al principio) o partida en dos ("in
+  útil"); una palabra normal nunca cuenta por contener una grosería (prueba con 56: "vehículo",
+  "computadora", "reputación", "albergar"…). También
+  amplié la lista con las groserías y frases que pedí ("bruto", "cabrón", "gilipollas", "vete a la
+  mierda", "me vale verga", "no me toques los cojones"…): una frase da una sola alerta con la frase
+  entera. "Sueldo bruto" y "peso bruto" no cuentan. En 769 frases de llamadas solo cambia una alerta
+  ("hijo de puta" en vez de "puta") y ningún sentimiento. 140 pruebas pasando.
 
 **v0.3 (alertas):**
 - Contrato v0.3 (PR #41): Willy lo aprobó y lo fusionó el 10/11. Arreglo `alertas` con los valores
@@ -346,9 +367,6 @@ ofrecer ayuda (primeros 60 s) y cierre (últimos 30 s), buscados en los segmento
 - **Roles invertidos (prueba de Javier del 14/11):** si el agente abre con una sola palabra que Whisper
   no transcribe ("Diga") y no dice frases típicas, toda la llamada sale al revés. Pasa también con mucho
   ruido, cuando Whisper deforma esas frases.
-- **Diagnóstico (prueba de Willy):** el agente que dice "voy a registrar su queja" sin que el cliente la
-  haya dicho sigue culpándose a sí mismo (`FALLA_AGENTE`).
-- **Errores de Whisper en el vocabulario:** "inútil" transcrito "dinutil" no da alerta.
 - **Consulta cortés:** una consulta neutra con "Perfecto, gracias" sale `POSITIVO` 96 (punto 2 de "Para
   revisar con llamadas reales").
 - Repetir la prueba de punta a punta con llamadas reales de call center, junto con Willy y Javier.

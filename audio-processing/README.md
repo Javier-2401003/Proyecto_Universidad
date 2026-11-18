@@ -273,6 +273,25 @@ Con `baja_confianza_audio` solo salen las de vocabulario: el guion queda `PENDIE
   los rangos se solapan y el filtro casi no actúa.
 - **El 40 % de RN-02 casi nunca se cumple con voz real:** sin los errores de octava, ni la llamada real
   ni los audios armados llegaron a ese nivel. Hay que medirlo con llamadas reales de call center.
+- **Qué cuenta como vocabulario inadecuado** (`vocabulario_inadecuado` en `lexico_es.json`, editable):
+  - **La palabra exacta** de la lista ("bruto", "cabrón", "gilipollas"…). Una palabra normal nunca
+    cuenta por contener una grosería: hay una prueba con 56 ("vehículo", "artículo", "computadora",
+    "diputado", "reputación", "penetrar", "cacao", "hermano", "albergar", "envergadura", "capitán"…),
+    solas y todas seguidas. "Ano" no se puede agregar a la lista: sin tildes, "año" se escribe igual.
+  - **Frases enteras** ("vete a la mierda", "me vale verga", "no me toques los cojones", "qué porquería de
+    servicio"…): gana la más larga, así que da una sola alerta con la frase y no otra por "mierda". En el
+    sentimiento también cuenta una vez.
+  - **Excepciones** (`no_inadecuadas`): expresiones con una grosería que no lo son, como "sueldo bruto",
+    "peso bruto" o "a lo bruto". No dan alerta ni restan en el sentimiento.
+  - **Errores de Whisper**, solo en groserías de 6 letras o más: pegada a la palabra anterior, con 1 o 2
+    letras de más al principio ("de inútil" sale "dinutil"), o partida en dos ("in útil"), si la segunda
+    parte tiene 4 letras o más ("la calle se llama" no es "cállese"). Las letras de más al final no
+    cuentan: "estafado" no es "estafa".
+  - En 769 frases de llamadas (armadas, con ruido y reales), con 21 alertas: solo cambia una, de la
+    llamada real ("hijo de puta" en vez de "puta"), y ningún puntaje de sentimiento. El parecido de
+    letras del 80 % que usa el guion se descartó: daba decenas de alertas falsas ("porque" por
+    "porquería", "esta" por "estafa", "tanto" por "tonto", "mientras" por "mierdas").
+  - Solo las alertas toleran errores de Whisper: el sentimiento cuenta la palabra o frase exacta.
 - **Vocabulario sin contexto:** "no es una estafa" también se marca, y la alerta usa el inicio del
   segmento, porque Whisper no da la hora de cada palabra.
 - **Origen:** depende de `hablante`, así que hereda sus errores.
@@ -386,8 +405,12 @@ siempre es `AGENTE` o `CLIENTE`, aunque la separación no sea segura:
    de sus cuadros con voz) y tono (F0 mediano, con peso 4). Antes agrupaba ventanas de 1 s, con el
    timbre promediado también sobre pausas y ruido, y las suavizaba con un filtro de mediana: en
    llamadas de 40 s eso agrupaba por pausas y por lo que se decía, no por quién hablaba (ver abajo).
-3. **Quién es el agente:** el grupo con más frases típicas de agente (`reglas_diarizacion.json`); si
-   empatan, quien habla primero.
+3. **Quién es el agente:** el grupo con más pistas de agente frente a pistas de cliente, en **toda la
+   llamada** (`reglas_diarizacion.json`). Pistas de agente: frases de atención ("le atiende", "permítame",
+   "con gusto", "le confirmo") y hablar de las cosas del otro ("su", "sus", "señor"). De cliente: hablar de
+   lo propio ("mi", "mis") y pedir ("quiero", "necesito", "llamo"). Se cuentan como palabras completas y
+   las de varias palabras pesan doble ("mi nombre es" sigue siendo del agente). Si empatan, quien habla
+   primero.
 
 **Precisión medida** (13/11) con llamadas armadas de call center de unos 40 s, con voces de Windows y
 la verdad de cada turno guardada al armarlas. Es el porcentaje del tiempo con el hablante correcto;
@@ -413,8 +436,12 @@ real. Falta medirla con llamadas etiquetadas.
 **Límites conocidos:**
 
 - **Voces parecidas:** dos personas del mismo género y tono casi no se separan.
-- **Roles invertidos:** si no hay frases típicas y el cliente habla primero, se invierten **todos** los
-  hablantes de la llamada, aunque la separación sea buena.
+- **Roles invertidos:** si no hay pistas suficientes y el cliente habla primero, se invierten **todos** los
+  hablantes de la llamada, aunque la separación sea buena. Antes solo contaban las frases de apertura:
+  si Whisper no transcribía un "Diga" corto, o el agente no se presentaba, la llamada salía al revés (en
+  la prueba de Javier del 14/11, el agente grosero quedó como cliente). Quitando el primer turno del agente
+  a 18 llamadas con la verdad de cada turno, se invertían 14; con las pistas de toda la llamada, 1. En 27
+  llamadas completas no cambia ninguna.
 - **Un hablante por segmento:** si dos personas hablan dentro de un mismo segmento de Whisper, sus voces
   se mezclan en el promedio. Con ruido, Whisper junta más turnos: es la mayor parte de los errores que
   quedan con ruido. En una llamada real hubo segmentos de más de 60 s con muy poco texto.
@@ -426,8 +453,13 @@ real. Falta medirla con llamadas etiquetadas.
   el final del turno del agente (antes eso bastaba para dar `FALLA_AGENTE`). Al agente no le cuentan
   las palabras negativas que el cliente ya dijo antes, comparadas por familia (las 5 primeras letras:
   "cancelar" y "cancelación"), para no culparlo por "registro su queja". Por eso, si el cliente dijo
-  "nunca" y el agente contesta con otro "nunca" grosero, ese tampoco cuenta. Esto solo cambia el
-  diagnóstico: el puntaje y el `score_sentimiento` de cada frase siguen igual.
+  "nunca" y el agente contesta con otro "nunca" grosero, ese tampoco cuenta. Tampoco le cuentan las
+  palabras negativas que van después de "su" o "sus" (hasta 3 palabras antes): con "voy a registrar su
+  queja" o "su solicitud de cancelación" el agente nombra el problema del cliente, aunque el cliente no
+  haya dicho esa palabra (prueba de Willy del 14/11: salía `FALLA_AGENTE`). Los insultos sí cuentan
+  aunque vayan después de "su"; "su queja no me importa" deja de contar, pero un agente grosero suele
+  decir más ("nunca", "tonto"). Esto solo cambia el diagnóstico: el puntaje y el `score_sentimiento` de
+  cada frase siguen igual.
 - **RN-02:** el promedio móvil todavía mezcla las dos voces.
 
 ## Pendiente

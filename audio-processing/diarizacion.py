@@ -4,8 +4,9 @@ Dos caminos, en este orden:
   1. Canales: si el archivo trae dos canales distintos, izquierdo = agente y derecho = cliente
      (Blueprint, 3.2.1).
   2. Agrupacion: reparte los segmentos de Whisper en dos grupos por timbre (MFCC de sus cuadros con
-     voz) y tono (F0). Las frases tipicas de reglas_diarizacion.json dicen que grupo es el agente;
-     si no alcanzan, es quien habla primero.
+     voz) y tono (F0). Las pistas de reglas_diarizacion.json, de toda la llamada, dicen que grupo
+     es el agente: frases de atencion ("le atiende", "permitame", "con gusto"), "su" frente a "mi",
+     pedidos ("quiero", "necesito"). Si empatan, es quien habla primero.
 
 Se agrupan segmentos y no ventanas de 1 s: en llamadas de 40 s, las ventanas se agrupaban por pausas
 y por lo que se decia, y acertaban 67 % del tiempo con un hombre y una mujer; por segmento, 99 %.
@@ -134,13 +135,28 @@ def completar_sin_voz(total, medidos, grupos):
     return asignados
 
 
+def contar_pistas(texto, pistas):
+    """Veces que aparecen las pistas como palabras completas; las de varias palabras pesan doble.
+
+    Palabras completas: "su" no cuenta dentro de "consulta". Peso doble: "mi nombre es" (del agente)
+    pesa mas que el "mi" suelto (del cliente) que lleva adentro.
+    """
+    relleno = f" {texto} "
+    return sum(relleno.count(f" {pista} ") * (2 if " " in pista else 1) for pista in pistas)
+
+
 def grupo_del_agente(segmentos, asignados, reglas):
-    """Grupo con mas frases de agente frente a frases de cliente; si empatan, quien habla primero."""
+    """Grupo con mas pistas de agente frente a pistas de cliente; si empatan, quien habla primero.
+
+    Las pistas son de toda la llamada y no solo del saludo: si Whisper no transcribe una apertura
+    corta ("Diga") o el agente no se presenta, con solo las frases de apertura toda la llamada salia
+    al reves (14 de 18 llamadas de prueba sin su primer turno; con las pistas, 1).
+    """
     puntos = [0, 0]
     for segmento, grupo in zip(segmentos, asignados):
         texto = " ".join(palabras_normalizadas(segmento["texto"]))
-        puntos[grupo] += sum(frase in texto for frase in reglas["frases_agente"])
-        puntos[grupo] -= sum(frase in texto for frase in reglas["frases_cliente"])
+        puntos[grupo] += contar_pistas(texto, reglas["frases_agente"])
+        puntos[grupo] -= contar_pistas(texto, reglas["frases_cliente"])
     if puntos[0] != puntos[1]:
         return 0 if puntos[0] > puntos[1] else 1
     return asignados[0]

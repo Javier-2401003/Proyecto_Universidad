@@ -18,7 +18,7 @@ from collections import deque
 import numpy as np
 from scipy.signal import butter, sosfiltfilt
 
-from lexico import analizar_frase, cargar_lexico, puntaje_global, raices_negativas
+from lexico import analizar_frase, cargar_lexico, puntaje_global, raices_negativas, tiene_posesivo
 
 RUTA_REGLAS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reglas_acusticas.json")
 ESCALAS_LADO_POSITIVO = ("lineal", "curva")
@@ -294,16 +294,17 @@ def hablante_del_evento(evento, segmentos):
 
 
 def frases_sin_eco(segmentos, frases_analizadas, lexico):
-    """Frases analizadas sin las palabras negativas que el agente repite de lo que ya dijo el cliente.
+    """Frases del agente sin las palabras negativas con que nombra el problema del cliente.
 
-    "Registro su queja y su solicitud de cancelacion" no es una falla del agente si el cliente ya
-    se quejo y pidio cancelar. Se compara por familia de palabras (lexico.raiz).
+    No cuentan las que el cliente ya dijo antes (por familia de palabras, lexico.raiz), ni las que van
+    despues de "su"/"sus": "registro su queja y su solicitud de cancelacion" no es una falla del agente,
+    aunque el cliente no haya dicho "queja" (prueba de Willy del 14/11). Los insultos si cuentan.
     """
     dichas_por_cliente = set()
     resultado = []
     for segmento, frase in zip(segmentos, frases_analizadas):
-        if segmento["hablante"] == "AGENTE" and dichas_por_cliente:
-            frase = analizar_frase(segmento["texto"], lexico, dichas_por_cliente)
+        if segmento["hablante"] == "AGENTE" and (dichas_por_cliente or tiene_posesivo(segmento["texto"])):
+            frase = analizar_frase(segmento["texto"], lexico, dichas_por_cliente, ignorar_lo_del_otro=True)
         elif segmento["hablante"] == "CLIENTE":
             dichas_por_cliente |= raices_negativas(segmento["texto"], lexico)
         resultado.append(frase)

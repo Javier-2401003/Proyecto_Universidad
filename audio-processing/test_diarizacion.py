@@ -89,6 +89,23 @@ class PruebasRoles(unittest.TestCase):
         segmentos = [segmento(0, 1, "buenas"), segmento(1, 2, "hola")]
         self.assertEqual(grupo_del_agente(segmentos, [1, 0], REGLAS), 1)
 
+    def test_sin_apertura_deciden_las_pistas_de_toda_la_llamada(self):
+        # Whisper no transcribio el "Diga" del agente: el primero que habla es el cliente.
+        segmentos = [segmento(0, 3, "Llamo porque mi póliza vino con un cargo que no reconozco."),
+                     segmento(3, 6, "Su póliza tiene un cargo de mantenimiento, señora."),
+                     segmento(6, 9, "Quiero que me lo quiten."),
+                     segmento(9, 12, "Permítame, le confirmo en un momento.")]
+        self.assertEqual(grupo_del_agente(segmentos, [1, 0, 1, 0], REGLAS), 0)
+
+    def test_las_pistas_cuentan_como_palabras_completas(self):
+        # "consulta" lleva "su" adentro y "camisa" lleva "mi": no son pistas.
+        segmentos = [segmento(0, 1, "una consulta"), segmento(1, 2, "la camisa")]
+        self.assertEqual(grupo_del_agente(segmentos, [1, 0], REGLAS), 1)
+
+    def test_mi_nombre_es_cuenta_para_el_agente(self):
+        segmentos = [segmento(0, 1, "buenas"), segmento(1, 2, "mi nombre es Carla")]
+        self.assertEqual(grupo_del_agente(segmentos, [1, 0], REGLAS), 0)
+
 
 class PruebasAsignacion(unittest.TestCase):
     def test_sin_segmentos_no_hay_hablantes(self):
@@ -137,6 +154,22 @@ class PruebasDiagnostico(unittest.TestCase):
         self.assertEqual(self.diagnostico_de_turnos(
             (CLIENTE, "Quiero poner una queja."),
             (AGENTE, "Su queja es una pésima idea, nunca devolvemos nada.")), "FALLA_AGENTE")
+
+    def test_el_agente_que_nombra_la_queja_del_cliente_no_es_su_falla(self):
+        # Prueba de Willy del 14/11: el cliente nunca dijo "queja", pero el agente la registra.
+        self.assertEqual(self.diagnostico_de_turnos(
+            (CLIENTE, "Esto es una estafa, son unos ladrones."),
+            (AGENTE, "Voy a registrar su queja.")), "CLIENTE_PROBLEMATICO")
+
+    def test_su_solicitud_de_cancelacion_tampoco_es_falla_del_agente(self):
+        self.assertEqual(self.diagnostico_de_turnos(
+            (CLIENTE, "El servicio es pésimo."),
+            (AGENTE, "Dejo registrada su solicitud de cancelación.")), "CLIENTE_PROBLEMATICO")
+
+    def test_un_insulto_despues_de_sus_sigue_siendo_falla_del_agente(self):
+        self.assertEqual(self.diagnostico_de_turnos(
+            (CLIENTE, "Buenas tardes, tengo un problema."),
+            (AGENTE, "Usted y sus tontos reclamos.")), "FALLA_AGENTE")
 
     def test_llamada_buena_no_tiene_conflicto(self):
         self.assertEqual(self.diagnostico("NEUTRO", [(-1.0, 2), (-1.0, 2)]), "SIN_CONFLICTO")
