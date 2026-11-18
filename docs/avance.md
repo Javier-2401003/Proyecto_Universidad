@@ -354,14 +354,17 @@ hablante esté 6 dB o más por encima del volumen típico del otro durante 2 s s
 llamada es negativo. La real con conflicto pasa a `CRITICO` (33 alertas de la clienta); ninguna llamada
 sin gritos cambia. Hay que correr `npm run reprocesar -- --antes-de 0.5 --confirmar` en cada base.
 
-**En curso: decisión 6 del 14/11, guion obligatorio (contrato v0.6 en el PR #71, que revisa Willy;
-implementación en la rama `david-guion`).** Campo nuevo `estado_guion` (`CUMPLE`, `NO_CUMPLE` o
+**En curso: decisión 6 del 14/11, guion obligatorio (contrato v0.6: Willy lo aprobó y está en `main`
+desde el 17/11, PR #71; implementación en el PR #72).** Campo nuevo `estado_guion` (`CUMPLE`, `NO_CUMPLE` o
 `PENDIENTE`) y una `OMISION_SCRIPT` por cada paso que falte: saludo (primeros 20 s), identificación y
 ofrecer ayuda (primeros 60 s) y cierre (últimos 30 s), buscados en los segmentos del agente.
 - Frases editables en `audio-processing/guion.json`; una frase cuenta con un 80 % de parecido, para
   tolerar errores chicos de Whisper. Solo informativo: no cambia el puntaje.
 - Con las 16 llamadas armadas: 68 de 68 pasos sin ruido y 44 de 48 con ruido de 10 y 20 dB; con 5 y 0 dB
-  queda `PENDIENTE` por la baja confianza. 132 pruebas pasando. Falta medirlo con llamadas reales.
+  queda `PENDIENTE` por la baja confianza. Falta medirlo con llamadas reales.
+- Reglas que pidió Willy al aprobar, y que el backend va a exigir: desde la v0.6 `estado_guion` es
+  obligatorio, y con `CUMPLE` o `PENDIENTE` no puede venir ninguna `OMISION_SCRIPT` (con `NO_CUMPLE`, al
+  menos una). Las dos se cumplen; la segunda tiene su prueba. 153 pruebas pasando.
 
 **Pendiente:**
 - **Roles invertidos (prueba de Javier del 14/11):** si el agente abre con una sola palabra que Whisper
@@ -385,8 +388,9 @@ ofrecer ayuda (primeros 60 s) y cierre (últimos 30 s), buscados en los segmento
   ver con llamadas reales si alguna vez se dispara. Las falsas que quedan son de llamadas con ruido.
 
 **Necesito de otros:**
-- Willy: revisar el contrato v0.6 del guion (PR #71) y agregar `TB_Llamada.estado_guion`. Y tu grabación
-  de 52 s (por fuera de GitHub, como dijiste), para el umbral de baja confianza.
+- Willy: `TB_Llamada.estado_guion` (`database/04_estado_guion.sql`) y la API, como dijiste al aprobar el
+  #71. Cuando estén, y con el #72 en `main`, correr `npm run reprocesar -- --antes-de 0.6 --confirmar` en
+  cada base. Y tu grabación de 52 s (por fuera de GitHub, como dijiste), para el umbral de baja confianza.
 - Javier: el porcentaje de cumplimiento del guion en los reportes sale de `estado_guion` (sin contar los
   `PENDIENTE`).
 - Willy o Javier: correr `analizar.py` con `base` en su laptop y anotar cuánto tarda, para medir en la

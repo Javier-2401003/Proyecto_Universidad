@@ -5,6 +5,8 @@ import os
 import tempfile
 import unittest
 
+import numpy as np
+
 from alertas import cargar_reglas as cargar_reglas_alertas, generar_alertas
 from acustico import cargar_reglas as cargar_reglas_acusticas
 from guion import CUMPLE, NO_CUMPLE, PENDIENTE, RUTA_GUION, cargar_guion, evaluar_guion
@@ -83,6 +85,33 @@ class PruebasAlertasGuion(unittest.TestCase):
         self.assertEqual([(a["origen_evento"], a["timestamp_evento"], a["valor_registrado"]) for a in omisiones],
                          [("AGENTE", 0.0, "Falta: saludo"), ("AGENTE", 28.0, "Falta: cierre")])
         self.assertTrue(all(a["mensaje_sugerencia"] for a in omisiones))
+
+    def test_estado_y_alertas_siempre_coinciden(self):
+        # Regla de Willy al aprobar la v0.6: con CUMPLE o PENDIENTE no puede venir ninguna
+        # OMISION_SCRIPT y con NO_CUMPLE al menos una; si no, el backend rechaza la llamada.
+        sin_cierre = llamada_completa()
+        sin_cierre[4]["texto"] = "Le envío el número del caso por mensaje."
+        sin_apertura = llamada_completa()
+        sin_apertura[0]["texto"] = "Tienda Moda Plus."
+        casi_no_hablo = [segmento(0, 3, "AGENTE", "Diga."), segmento(3, 30, "CLIENTE", "Quiero hacer un reclamo.")]
+        casos = [(llamada_completa(), False), (llamada_completa(), True), (sin_cierre, False), (sin_cierre, True),
+                 (sin_apertura, False), (casi_no_hablo, False), ([segmento(0, 30, "CLIENTE", "Hola")], False),
+                 ([], False)]
+        t = np.arange(0, 40, 0.02)
+        estados = set()
+        for numero, (segmentos, baja_confianza) in enumerate(casos):
+            with self.subTest(caso=numero):
+                estado, faltan = evaluar_guion(segmentos, baja_confianza, GUION)
+                alertas = generar_alertas(segmentos, [], np.full(len(t), 150.0), np.full(len(t), 0.05), t, 0.02,
+                                          baja_confianza, cargar_lexico(), cargar_reglas_acusticas(),
+                                          cargar_reglas_alertas(), faltan)
+                omisiones = sum(a["tipo_alerta"] == "OMISION_SCRIPT" for a in alertas)
+                if estado == NO_CUMPLE:
+                    self.assertGreater(omisiones, 0)
+                else:
+                    self.assertEqual(omisiones, 0)
+                estados.add(estado)
+        self.assertEqual(estados, {CUMPLE, NO_CUMPLE, PENDIENTE})
 
 
 class PruebasCargaGuion(unittest.TestCase):

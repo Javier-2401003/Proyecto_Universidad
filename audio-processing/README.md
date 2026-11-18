@@ -309,7 +309,9 @@ Con `baja_confianza_audio` solo salen las de vocabulario: el guion queda `PENDIE
 | Cierre ("que tenga buen día", "gracias por llamar"…) | Segmentos que terminan en los últimos 30 s | `"Falta: cierre"`, al inicio del último segmento del agente |
 
 - **`estado_guion`:** `CUMPLE` si están los cuatro, `NO_CUMPLE` si falta alguno, y `PENDIENTE` (sin
-  alertas) con `baja_confianza_audio`, sin agente o si el agente habló menos de 8 s.
+  alertas) con `baja_confianza_audio`, sin agente o si el agente habló menos de 8 s. Siempre coincide con
+  las alertas, como exige el backend: con `CUMPLE` o `PENDIENTE` ninguna `OMISION_SCRIPT`, con
+  `NO_CUMPLE` al menos una.
 - **Solo informativo:** no cambia el puntaje, la clasificación ni el diagnóstico.
 - **Errores de Whisper:** una frase cuenta si un grupo de palabras se le parece en un 80 % o más, sin
   tildes, mayúsculas ni signos ("buenas tarde", "le atiendo"). Se probó una comparación fonética (b/v,
