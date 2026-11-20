@@ -1,7 +1,7 @@
 """Analiza un audio de llamada y escribe un JSON por la salida estandar.
 
 Uso:
-    python analizar.py ruta_del_audio [--modelo base|small] [--idioma es]
+    python analizar.py ruta_del_audio [--modelo small|base] [--idioma es]
 
 La salida estandar (stdout) lleva SOLO el JSON descrito en docs/contrato_audio.md.
 Los mensajes de avance y las advertencias van a la salida de errores (stderr).
@@ -24,6 +24,23 @@ F0_MAXIMO_HZ = 500.0
 # problema quedaba marcada (-1.142); ver "Baja confianza" en el README. El otro criterio del flujo
 # E1 (ruido con variaciones extremas) esta en acustico.py.
 UMBRAL_LOGPROB_BAJA_CONFIANZA = -1.5
+# Modelo por defecto: "small" transcribe mucho mejor que "base" las llamadas reales ("el vuelo" y no
+# "huelo", "Estados Unidos" y no "estado subido") y cabe en una laptop de 8 GB (unos 740 MB), aunque
+# tarda cerca del doble. Ver "Llamadas reales" en el README.
+MODELO_POR_DEFECTO = "small"
+# Opciones de Whisper, medidas con 10 llamadas reales etiquetadas:
+#   - condition_on_previous_text=False: cada tramo no arrastra el texto anterior, que es lo que hace
+#     que Whisper repita una frase en bucle ("me repite, me repite, me repite...").
+#   - word_timestamps=True: ademas del tiempo de cada palabra, Whisper empieza cada tramo al final de
+#     la ultima palabra reconocida, y los segmentos quedan mejor alineados con los turnos. Sin esta
+#     opcion, quien habla bajaba de 82 a 78 % y la clasificacion de 8 a 6 de 10 llamadas.
+#   - Se mantienen los reintentos de Whisper (temperatura de 0 a 1 cuando el texto sale en bucle): sin
+#     ellos, una voz dificil quedaba atrapada en "k-l-o-r-v-i-s-e-k-l-o-r..." y se perdia el resto
+#     de la llamada.
+OPCIONES_WHISPER = {"vad_filter": True, "condition_on_previous_text": False, "word_timestamps": True}
+# Los reintentos usan azar: con una semilla fija, la misma llamada da siempre el mismo texto. Sin ella,
+# una llamada real dio 93, 105 o 112 segmentos y NEUTRO o POSITIVO segun la corrida.
+SEMILLA_WHISPER = 1234
 
 
 class ErrorAnalisis(Exception):
@@ -66,8 +83,8 @@ def redondear(valor, decimales):
 def leer_argumentos(argv):
     parser = ParserConErrorJson(description="Analisis de audio de una llamada.")
     parser.add_argument("ruta_audio", help="Ruta del archivo de audio (mp3, wav, ogg...)")
-    parser.add_argument("--modelo", default="base", choices=["tiny", "base", "small", "medium"],
-                        help="Modelo de Whisper (por defecto: base)")
+    parser.add_argument("--modelo", default=MODELO_POR_DEFECTO, choices=["tiny", "base", "small", "medium"],
+                        help=f"Modelo de Whisper (por defecto: {MODELO_POR_DEFECTO})")
     parser.add_argument("--idioma", default="es", help="Idioma del audio (por defecto: es)")
     return parser.parse_args(argv)
 
@@ -92,12 +109,14 @@ def cargar_audio(ruta_audio):
 
 
 def transcribir(audio, nombre_modelo, idioma):
+    import ctranslate2
     from faster_whisper import WhisperModel
 
     registrar(f"Cargando modelo {nombre_modelo} (la primera vez se descarga)...")
     modelo = WhisperModel(nombre_modelo, device="cpu", compute_type="int8")
     registrar("Transcribiendo...")
-    segmentos, info = modelo.transcribe(audio, language=idioma, vad_filter=True)
+    ctranslate2.set_random_seed(SEMILLA_WHISPER)
+    segmentos, info = modelo.transcribe(audio, language=idioma, **OPCIONES_WHISPER)
     # transcribe() es perezoso: el trabajo ocurre al recorrer los segmentos.
     lista = [
         {

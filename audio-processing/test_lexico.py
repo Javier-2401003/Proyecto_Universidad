@@ -100,6 +100,17 @@ class PruebasInsultos(unittest.TestCase):
         self.assertEqual(analizar_frase("Su sueldo bruto es de dos millones", LEXICO), (0.0, 0))
         self.assertEqual(analizar_frase("usted es un bruto", LEXICO), (-1.0, 1))
 
+    def test_enojo_sin_groserias_resta(self):
+        # Llamada real 3: el cliente esta furioso sin decir una sola groseria.
+        for frase in ["Esto es un robo", "No me está ayudando nada", "Ya no quiero hablar con usted",
+                      "Qué horror de servicio", "Está perdiendo el tiempo", "Me parece el colmo", "No sirve"]:
+            self.assertLess(puntaje(frase), 0, frase)
+
+    def test_frases_normales_de_una_llamada_no_restan(self):
+        for frase in ["¿Me repite su número, por favor?", "Aló, ¿no me escucha?", "¿No me ayuda con su cédula?",
+                      "Quiero saber hasta cuándo hay plazo", "Le paso su comentario a su supervisor"]:
+            self.assertEqual(analizar_frase(frase, LEXICO), (0.0, 0), frase)
+
     def test_formas_conjugadas_y_expresiones(self):
         self.assertEqual(puntaje("me cancelaron el servicio"), -1.0)
         self.assertEqual(analizar_frase("esto es una falta de respeto", LEXICO), (-0.5, 1))

@@ -69,10 +69,12 @@ Una vez descargados los modelos, puede trabajar sin internet con
 ## Uso
 
 ```powershell
-.\venv\Scripts\python.exe analizar.py ruta_del_audio [--modelo base|small] [--idioma es]
+.\venv\Scripts\python.exe analizar.py ruta_del_audio [--modelo small|base] [--idioma es]
 ```
 
-- `--modelo`: `base` (por defecto, más rápido) o `small` (algo más preciso, el doble de lento).
+- `--modelo`: `small` (por defecto desde el 20/11: transcribe mucho mejor las llamadas reales) o `base`
+  (cerca del doble de rápido). Ver "Llamadas reales de call center". El backend usa el de
+  `AUDIO_MODELO_WHISPER` en `backend/.env`.
 - `--idioma`: `es` por defecto.
 - **stdout**: solo el JSON, en UTF-8. Se puede guardar con `> resultado.json`.
 - **stderr**: mensajes de avance y advertencias.
@@ -458,9 +460,8 @@ hablante que más tiempo ocupa en él: cuando Whisper junta dos turnos en un seg
   entera como un solo hablante (el "otro" era un "Ok, gracias" de 1 s), ahora el conductor y quien llama
   quedan separados, sin cambiar el resultado.
 
-**Precisión esperada en llamadas reales: de 65 a 85 % en audio mono, y por encima de 95 % con canales
-separados.** Es una estimación, no una medida: las voces sintéticas son más fáciles que una llamada
-real. Falta medirla con llamadas etiquetadas.
+**Con llamadas reales** el acierto es menor que con voces sintéticas: ver "Llamadas reales de call
+center" (10 llamadas etiquetadas por Javier).
 
 **Límites conocidos:**
 
@@ -493,6 +494,65 @@ real. Falta medirla con llamadas etiquetadas.
   decir más ("nunca", "tonto"). Esto solo cambia el diagnóstico: el puntaje y el `score_sentimiento` de
   cada frase siguen igual.
 - **RN-02:** el promedio móvil todavía mezcla las dos voces.
+
+## Llamadas reales de call center
+
+Javier etiquetó 10 llamadas reales en español (audios y CSV en el Drive del equipo): quién habla de
+verdad en cada segmento, leyendo la transcripción, y la clasificación y el diagnóstico esperados. Con
+esas etiquetas se midió cada cambio y se ajustaron tres cosas (20/11):
+
+| Medida, en las 10 llamadas reales | Antes | Ahora |
+|---|---|---|
+| Quién habla (tiempo con el hablante correcto, sin los tramos mezclados) | 72,1 % | **82,3 %** |
+| Clasificación esperada | 7 de 10 | **8 de 10** |
+| Diagnóstico de conflicto esperado | 8 de 10 | **9 de 10** |
+
+- **Quién habla, por llamada:** la 7 pasa de 8 % a 92 % (tenía los roles invertidos). Mejoran la 6, la
+  8, la 9 y la 10; la 2 baja de 80 % a 74 %; las demás quedan casi iguales.
+- **Clasificación y diagnóstico:** la 5 (cliente que no quiere dar su nombre y discute) pasa de `NEUTRO` a
+  `NEGATIVO` con `CLIENTE_PROBLEMATICO`, como se esperaba.
+- **En 27 llamadas de calibración** (armadas, demos y reales), el diagnóstico queda igual en las 27 y la
+  clasificación en 26: la demo del cliente furioso pasa de `NEGATIVO` 20,6 a `CRITICO` 13,8. En la
+  llamada real con insultos salen 12 alertas de vocabulario en vez de 10.
+- Con 10 llamadas, una o dos de diferencia pueden ser azar. Hacen falta más llamadas etiquetadas.
+
+1. **Whisper `small`, sin arrastrar el texto anterior y con semilla fija** (`MODELO_POR_DEFECTO`,
+   `OPCIONES_WHISPER` y `SEMILLA_WHISPER` en `analizar.py`):
+   - `small` corrige palabras que `base` cambiaba: "el vuelo" (no "huelo"), "Estados Unidos" (no
+     "estado subido"), "anormalidad"; los insultos chilenos salen como son ("hueón", "weón").
+   - Sin arrastrar el texto anterior (`condition_on_previous_text=False`), un tramo no repite el
+     anterior en bucle.
+   - Se mantienen los reintentos de Whisper cuando el texto sale en bucle: sin ellos, una voz difícil
+     quedó atrapada en "k-l-o-r-v-i-s-e-k-l-o-r…" y se perdió el resto de la llamada. Los reintentos
+     usan azar, y con la semilla fija la misma llamada da siempre el mismo texto (antes, la llamada 5
+     daba 93, 105 o 112 segmentos y `NEUTRO` o `POSITIVO` según la corrida).
+   - Cuesta cerca del doble de tiempo que `base` (ver "Tiempos medidos") y unos 740 MB de memoria.
+2. **Pistas de rol para el trato de "tú" y las llamadas salientes** (`reglas_diarizacion.json`): del
+   agente, "te hablan", "le llamo", "asesor", "el motivo de mi llamada", "de parte de", "tu servicio",
+   "tu plan"…; del cliente, "aló", "¿quién habla?", "no me interesa", "no tengo tiempo". La llamada 7
+   (venta saliente en la que el vendedor tutea) tenía los roles invertidos.
+   - Se descartaron "tu" suelto y "tu cuenta" (en dos programas de radio el oyente los repite e
+     invertían los roles) y "no se retire" (lo dice un cliente que imita a un call center).
+3. **Léxico** (`lexico_es.json`): enojo sin groserías ("un robo", "no me está ayudando", "ya no quiero
+   hablar con usted", "qué horror", "el colmo", "no sirve") e insultos chilenos ("hueón", "weón",
+   "huea", "conchesumare", "culiao").
+   - Se descartaron frases que salen en llamadas tranquilas: "¿me repite su número?", "¿no me
+     escucha?" (audio cortado), "¿no me ayuda con su cédula?", "hasta cuándo hay plazo" y todo lo de
+     "supervisor" ("le paso su comentario a su supervisor").
+
+**Se probó y no se usó:** cortar los segmentos de Whisper en oraciones con el tiempo de cada palabra,
+para separar los turnos mezclados. No mejoró: donde los turnos se mezclan, Whisper no pone signos ni
+deja pausas.
+
+**Lo que sigue fallando:**
+- **Llamada 1:** Whisper corta a mitad de turno; en el 55 % del tiempo un segmento mezcla a los dos.
+- **Llamada 6:** el contestador automático del inicio y la encuesta del final son una tercera voz, y
+  el análisis solo separa dos.
+- **Llamada 3:** un cliente furioso sin groserías queda `NEUTRO`, cerca del corte de 35: cada frase de
+  enojo vale -0,5 y se promedia con las amables del agente. Que pesen como las amenazas (-1) es una
+  decisión del equipo (decisión 4 del 11/11).
+- "No sé si es una estafa" da `VOCABULARIO_INADECUADO`: la alerta no mira la negación ni la duda
+  (contrato v0.3).
 
 ## Pendiente
 

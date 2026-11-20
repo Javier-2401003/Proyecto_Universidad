@@ -240,16 +240,15 @@ Los CSV de etiquetas están en el Drive.
 ---
 
 ## David - Procesamiento de audio
-_Última actualización: 18/11/2026_
+_Última actualización: 20/11/2026_
 
 **Para la presentación (18/11):** el análisis queda congelado en `main` con el guion (#72) y la
 separación de voces del mismo género (#79); no lo toco más.
-- **El #79, medido con las 10 llamadas reales de Javier:** no cambia ninguna clasificación ni diagnóstico
-  (siguen 7 de 10 y 8 de 10). Cambia el hablante de 75 de 387 segmentos, en 4 llamadas; leyendo la
-  transcripción, 40 pasan a estar bien, 24 a estar mal y 11 no se pueden decidir. Mejoran la 5 (la
-  recepcionista vuelve a ser el agente) y la 4; empeoran la 7 (venta saliente) y la 8. Neto: quién habla
-  pasa de 66 % a cerca de 70 %, por mi lectura (falta confirmarlo con los CSV de Javier). La 3 y la 10
-  traen canales distintos y se separan por canal.
+- **El #79, medido por Javier con sus etiquetas:** no cambia ninguna clasificación ni diagnóstico (siguen
+  7 de 10 y 8 de 10). Quién habla da 71 %, pero solo porque la llamada 5 se transcribió distinto; sin
+  ella baja de 72,5 % a 70,5 %. Se queda y el análisis queda congelado hasta después de presentar. (Mi
+  estimación anterior, leyendo los segmentos, daba la 5 como mejorada y la 8 como empeorada; la medida de
+  Javier la reemplaza.)
 - **Whisper puede transcribir distinto en otra laptop:** en la mía, la llamada 5 no tiene el "Perfecto."
   que anotó Javier y sale `NEUTRO` 48,1 en vez de `POSITIVO` 71,6. Conviene ensayar la demo en la laptop
   de la presentación.
@@ -259,6 +258,21 @@ separación de voces del mismo género (#79); no lo toco más.
   `npm start`, así no espera a que falle la conexión.
 - Mi parte de la presentación (cómo funciona el análisis, resultados, límites y lista para el ensayo) está
   en un documento aparte que comparto con el equipo.
+
+**Llamadas reales, 20/11 en la rama `david-llamadas-reales` (no entra antes de presentar; lo decide el
+equipo):** con las etiquetas de Javier corregí los errores que impedían analizar bien las llamadas reales.
+Quién habla pasa de 72 % a 82 % del tiempo, la clasificación de 7 a 8 de 10 y el diagnóstico de 8 a 9 de
+10. En las 27 de calibración el diagnóstico queda igual en las 27 y la clasificación en 26 (la demo del
+cliente furioso pasa de `NEGATIVO` a `CRITICO`). 167 pruebas pasando.
+- Whisper `small`, sin arrastrar el texto anterior y con semilla fija: mejores palabras ("el vuelo" y no
+  "huelo"), sin frases en bucle y la misma llamada da siempre el mismo resultado (la 5 ya no cambia entre
+  corridas).
+- Pistas de rol para el trato de "tú" y las ventas salientes: la llamada 7 tenía los roles invertidos.
+- Léxico: enojo sin groserías ("un robo", "no me está ayudando", "ya no quiero hablar con usted") e
+  insultos chilenos ("hueón", "weón", "conchesumare").
+- Sigue fallando: la llamada 1 (Whisper mezcla los turnos), la 6 (el contestador es una tercera voz) y la
+  3 (cliente furioso sin groserías, cerca del corte de `NEGATIVO`). Detalle en `audio-processing/README.md`,
+  "Llamadas reales de call center".
 
 **Objetivo para la próxima reunión**
 - [x] `audio-processing/README.md` con la instalación (Python, ffmpeg, dependencias).
@@ -426,8 +440,8 @@ ofrecer ayuda (primeros 60 s) y cierre (últimos 30 s), buscados en los segmento
 - **Consulta cortés:** una consulta neutra con "Perfecto, gracias" sale `POSITIVO` 96 (punto 2 de "Para
   revisar con llamadas reales").
 - Repetir la prueba de punta a punta con llamadas reales de call center, junto con Willy y Javier.
-- `hablante` con llamadas reales: 66 % en las 10 de Javier, cerca de 70 % con el #79. Los roles se
-  invierten en ventas salientes (llamada 7). Falta usarlo en el promedio móvil de RN-02.
+- `hablante` con llamadas reales: ver "Llamadas reales, 20/11". Falta usarlo en el promedio móvil de
+  RN-02.
 - Medir con gritos reales: el Blueprint pide 88 % sobre 50 muestras y la recalibración bajó la
   sensibilidad.
 - Recalibrar `baja_confianza_audio` con grabaciones reales, y revisar que con ruido el puntaje sube
@@ -443,7 +457,10 @@ ofrecer ayuda (primeros 60 s) y cierre (últimos 30 s), buscados en los segmento
 **Necesito de otros:**
 - Todos, antes del ensayo: en cada base, aplicar `database/04_estado_guion.sql` (PR #78 de Willy) y
   correr `npm run reprocesar -- --antes-de 0.6 --confirmar` en `backend/`.
-- Javier: los CSV de etiquetas de las 10 llamadas, para confirmar el "cerca de 70 %" de `hablante`.
+- Equipo, después de presentar: decidir si la rama `david-llamadas-reales` entra. Si entra, hay que poner
+  `AUDIO_MODELO_WHISPER=small` en `backend/.env` de cada laptop (Willy: también en `.env.example`) y
+  reprocesar las llamadas. Y decidir si las frases de enojo sin groserías pesan como las amenazas
+  (decisión 4 del 11/11): la llamada 3 queda `NEUTRO` cerca del corte.
 - Willy: tu grabación de 52 s (por fuera de GitHub, como dijiste), para el umbral de baja confianza.
 - Javier: el porcentaje de cumplimiento del guion en los reportes sale de `estado_guion` (sin contar los
   `PENDIENTE`).
