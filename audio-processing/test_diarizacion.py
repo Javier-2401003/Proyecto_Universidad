@@ -6,7 +6,7 @@ import numpy as np
 
 from acustico import calcular_diagnostico, cargar_reglas as cargar_reglas_acusticas, hablante_del_evento
 from diarizacion import (AGENTE, CLIENTE, agrupar, asignar_hablantes, canales_distintos, cargar_reglas,
-                         caracteristicas_por_segmento, completar_sin_voz, grupo_del_agente,
+                         caracteristicas_por_segmento, completar_sin_voz, contar_pistas, grupo_del_agente,
                          hablante_por_canal, refinar_por_cuadros, tonos_parecidos)
 from lexico import analizar_frase, cargar_lexico
 
@@ -137,6 +137,18 @@ class PruebasRoles(unittest.TestCase):
         # "consulta" lleva "su" adentro y "camisa" lleva "mi": no son pistas.
         segmentos = [segmento(0, 1, "una consulta"), segmento(1, 2, "la camisa")]
         self.assertEqual(grupo_del_agente(segmentos, [1, 0], REGLAS), 1)
+
+    def test_agente_que_tutea_en_una_venta_saliente(self):
+        # Llamada real 7: el cliente contesta primero y el vendedor dice "el motivo de MI llamado".
+        segmentos = [segmento(0, 2, "¿Aló?"),
+                     segmento(2, 6, "Hola Santiago, te hablan de la compañía, soy asesor comercial."),
+                     segmento(6, 8, "No me interesa, no tengo tiempo."),
+                     segmento(8, 12, "El motivo de mi llamado es mejorar tu servicio y tu plan.")]
+        self.assertEqual(grupo_del_agente(segmentos, [1, 0, 1, 0], REGLAS), 0)
+
+    def test_tu_cuenta_no_es_pista_de_agente(self):
+        # En los programas de deudas el oyente repite "¿tu cuenta?": no distingue al agente.
+        self.assertEqual(contar_pistas("tu cuenta", REGLAS["frases_agente"]), 0)
 
     def test_mi_nombre_es_cuenta_para_el_agente(self):
         segmentos = [segmento(0, 1, "buenas"), segmento(1, 2, "mi nombre es Carla")]

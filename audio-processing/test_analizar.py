@@ -6,7 +6,27 @@ import os
 import tempfile
 import unittest
 
-from analizar import ErrorAnalisis, cargar_audio, escribir_json
+from analizar import (MODELO_POR_DEFECTO, OPCIONES_WHISPER, SEMILLA_WHISPER, ErrorAnalisis, cargar_audio,
+                      escribir_json, leer_argumentos)
+
+
+class PruebasWhisper(unittest.TestCase):
+    """Medido con 10 llamadas reales etiquetadas (ver "Llamadas reales" en el README)."""
+
+    def test_sin_arrastrar_el_texto_anterior_y_con_tiempos_por_palabra(self):
+        self.assertIs(OPCIONES_WHISPER["condition_on_previous_text"], False)
+        self.assertIs(OPCIONES_WHISPER["word_timestamps"], True)
+        self.assertIs(OPCIONES_WHISPER["vad_filter"], True)
+
+    def test_mantiene_los_reintentos_con_semilla_fija(self):
+        # Sin reintentos (temperature=0), una voz dificil quedaba en bucle y se perdia el resto de la llamada.
+        self.assertNotIn("temperature", OPCIONES_WHISPER)
+        self.assertIsInstance(SEMILLA_WHISPER, int)
+
+    def test_modelo_small_por_defecto(self):
+        self.assertEqual(MODELO_POR_DEFECTO, "small")
+        self.assertEqual(leer_argumentos(["llamada.mp3"]).modelo, "small")
+        self.assertEqual(leer_argumentos(["llamada.mp3", "--modelo", "base"]).modelo, "base")
 
 
 class PruebasCargaDeAudio(unittest.TestCase):

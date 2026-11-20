@@ -87,6 +87,11 @@ class PruebasVocabulario(unittest.TestCase):
                       "no me toques los huevos", "qué puta mierda"]:
             self.assertEqual(palabras_inadecuadas(f"¡{frase.capitalize()}!", LEXICO), [frase], frase)
 
+    def test_insultos_chilenos(self):
+        # Llamada real 4 (cobranza en Chile), tal como la transcribe Whisper small.
+        self.assertEqual(palabras_inadecuadas("Llamó un hueón ayer, corten la huea", LEXICO), ["hueón", "huea"])
+        self.assertEqual(palabras_inadecuadas("Ya pues weón, conchesumare", LEXICO), ["weón", "conchesumare"])
+
     def test_frases_completas_una_alerta_por_frase(self):
         for texto, frase in [("¡Vete a la mierda!", "vete a la mierda"), ("Vete al carajo", "vete al carajo"),
                              ("Váyanse a la chingada", "váyanse a la chingada"),
